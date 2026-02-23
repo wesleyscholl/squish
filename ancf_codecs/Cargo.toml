@@ -1,0 +1,11 @@
+[package]
+name = "ancf_codecs"
+version = "0.1.0"
+edition = "2021"
+description = "Bundled codec implementations for ANCF"
+
+[dependencies]
+anyhow = { workspace = true }
+zstd = { workspace = true }
+lz4_flex = { workspace = true }
+ancf_core = { path = "../ancf_core" }

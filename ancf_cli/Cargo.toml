@@ -1,0 +1,15 @@
+[package]
+name = "ancf_cli"
+version = "0.1.0"
+edition = "2021"
+description = "CLI for compressing, inspecting, and randomly accessing ANCF1 files"
+
+[[bin]]
+name = "ancf"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+ancf_core = { path = "../ancf_core" }
+ancf_codecs = { path = "../ancf_codecs" }

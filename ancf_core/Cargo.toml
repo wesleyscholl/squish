@@ -1,0 +1,12 @@
+[package]
+name = "ancf_core"
+version = "0.1.0"
+edition = "2021"
+description = "ANCF1 format spec, Codec trait, Writer, and Reader"
+
+[dependencies]
+anyhow = { workspace = true }
+xxhash-rust = { workspace = true }
+
+[dev-dependencies]
+ancf_codecs = { path = "../ancf_codecs" }
