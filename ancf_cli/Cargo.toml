@@ -8,8 +8,14 @@ description = "CLI for compressing, inspecting, and randomly accessing ANCF1 fil
 name = "ancf"
 path = "src/main.rs"
 
+[[bin]]
+name = "ancf-demo"
+path = "src/bin/demo.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
+zstd = { workspace = true }
+flate2 = { workspace = true }
 ancf_core = { path = "../ancf_core" }
 ancf_codecs = { path = "../ancf_codecs" }

@@ -8,4 +8,5 @@ serde = { version = "1", features = ["derive"] }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 zstd = "0.13"
 lz4_flex = "0.11"
+flate2 = "1"
 clap = { version = "4", features = ["derive"] }
