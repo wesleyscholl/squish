@@ -1,0 +1,1 @@
+{"rustc":10276018074478368523,"features":"[\"default\", \"std\"]","declared_features":"[\"default\", \"std\"]","target":929485496544747924,"profile":3033921117576893,"path":17167517096803832322,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/shlex-3711ed71eef731fe/dep-lib-shlex","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}
