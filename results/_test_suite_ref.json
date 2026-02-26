@@ -1,0 +1,47 @@
+[
+  {
+    "category": "geography",
+    "prompt": "The capital of Japan is",
+    "output": "Tokyo. Tokyo is the largest city in Japan.",
+    "load_time_s": 1.3721911907196045,
+    "gen_time_s": 0.6282021999359131,
+    "max_tokens": 10,
+    "model_dir": "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-bf16"
+  },
+  {
+    "category": "arithmetic",
+    "prompt": "15 multiplied by 8 equals",
+    "output": "120. What is the value of",
+    "load_time_s": 1.3721911907196045,
+    "gen_time_s": 0.5576879978179932,
+    "max_tokens": 10,
+    "model_dir": "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-bf16"
+  },
+  {
+    "category": "science",
+    "prompt": "The chemical symbol for water is",
+    "output": "H2O, which means it has two hydrogen",
+    "load_time_s": 1.3721911907196045,
+    "gen_time_s": 0.5684289932250977,
+    "max_tokens": 10,
+    "model_dir": "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-bf16"
+  },
+  {
+    "category": "language",
+    "prompt": "The French word for 'cat' is",
+    "output": "'chat'. Is this statement:\nA. Correct",
+    "load_time_s": 1.3721911907196045,
+    "gen_time_s": 0.5718071460723877,
+    "max_tokens": 10,
+    "model_dir": "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-bf16"
+  },
+  {
+    "category": "coding",
+    "prompt": "To get the length of a list in Python use",
+    "output": "the len() function. The len() function returns",
+    "load_time_s": 1.3721911907196045,
+    "gen_time_s": 0.5891919136047363,
+    "max_tokens": 10,
+    "model_dir": "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-bf16"
+  }
+]

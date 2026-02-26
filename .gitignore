@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Rust
+squish_quant_rs/target/
+
+# Model weights (large files)
+squish_4bit/
+squish_int8/
+squish_fp16/
+*.npy
+*.safetensors
+
+# Eval outputs
+results/eval_output*/
+nohup.out
+/tmp/squish_*.log
+
+# IDE
+.DS_Store
+.vscode/
+.idea/

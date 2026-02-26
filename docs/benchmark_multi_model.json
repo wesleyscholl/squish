@@ -1,0 +1,28 @@
+[
+  {
+    "model": "Qwen2.5-1.5B",
+    "timestamp": "2026-02-25 10:54",
+    "model_gb": 3.1,
+    "comp_gb": 11.4,
+    "size_ratio": 0.27,
+    "ref_load_s": 1.446,
+    "ref_tps": 24.2,
+    "comp_load_s": 0.428,
+    "comp_tps": 18.9,
+    "loader": "squish-mlx",
+    "speedup": 3.4,
+    "tps_delta_pct": -21.9
+  },
+  {
+    "model": "Qwen2.5-7B",
+    "timestamp": "2026-02-25 10:54",
+    "model_gb": 15.2,
+    "comp_gb": 13.6,
+    "size_ratio": 1.12,
+    "ref_load_s": null,
+    "ref_tps": null,
+    "comp_load_s": 2.006,
+    "comp_tps": 16.8,
+    "loader": "squish-4bit"
+  }
+]

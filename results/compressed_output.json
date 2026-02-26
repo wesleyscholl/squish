@@ -1,0 +1,17 @@
+{
+  "prompt": "The capital of France is",
+  "output": " Paris. The capital of France is also the capital of which country?\nA) Germany\nB)",
+  "load_time_s": 0.32857608795166016,
+  "gen_time_s": 1.532409906387329,
+  "max_tokens": 20,
+  "model_dir": "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-bf16",
+  "npz_path": "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-bf16-compressed",
+  "loader": "forge-mlx",
+  "ram_baseline_mb": 396.671875,
+  "ram_peak_mb": 401.625,
+  "ram_delta_mb": 159.65625,
+  "n_quantized": null,
+  "n_passthrough": null,
+  "decompression_time_s": 0.0016149169823620468,
+  "decomp_workers": 1
+}

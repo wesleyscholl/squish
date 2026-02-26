@@ -1,0 +1,27 @@
+# ── Core inference ────────────────────────────────────────────────────────────
+mlx-lm
+safetensors
+numpy
+transformers
+huggingface_hub
+
+# ── OpenAI-compatible API server (server.py) ──────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+sse-starlette>=1.8.2
+
+# ── Entropy compression (disk-size reduction) ─────────────────────────────────
+zstandard>=0.22.0
+
+# ── Industry-standard benchmarks (run_eval.py) ───────────────────────────────
+lm-eval>=0.4.0
+datasets
+sacrebleu
+rouge_score
+nltk
+
+# ── Constrained generation for tool calling (tool_calling_demo.py) ────────────
+# outlines[mlxlm]   # uncomment when ready
+
+# ── Pydantic for schema validation (benchmark.py) ─────────────────────────────
+# pydantic>=2.0

@@ -1,0 +1,30 @@
+[package]
+name    = "squish-quant"
+version = "0.1.0"
+edition = "2021"
+description = "High-throughput INT8 weight quantizer for Squish LLM compression"
+
+[lib]
+name      = "squish_quant"
+crate-type = ["cdylib", "rlib"]  # cdylib for PyO3 Python extension, rlib for Rust tests
+
+[features]
+default     = ["python"]
+python      = ["pyo3/extension-module"]
+simd-neon   = []                          # ARM NEON (Apple Silicon) explicit SIMD
+
+[dependencies]
+# PyO3: Python ↔ Rust bridge
+pyo3 = { version = "0.21", features = ["extension-module", "abi3-py38"] }
+
+# NumPy arrays via PyO3 — zero-copy access to numpy array buffers
+numpy = "0.21"
+
+# Rayon: data-parallel row processing (one thread per row batch)
+rayon = "1.8"
+
+# Half: f16/bf16 support (model weights may be bf16 or f16)
+half  = { version = "2.3", features = ["num-traits"] }
+
+[dev-dependencies]
+criterion = "0.5"             # micro-benchmarks

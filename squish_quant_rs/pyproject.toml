@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name    = "squish-quant"
+version = "0.1.0"
+requires-python = ">=3.10"
+description     = "High-throughput INT8 quantizer for Squish LLM compression"
+readme          = "README.md"
+
+[tool.maturin]
+features       = ["pyo3/extension-module"]
+module-name    = "squish_quant"

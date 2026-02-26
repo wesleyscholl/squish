@@ -1,0 +1,57 @@
+[
+  {
+    "category": "geography",
+    "prompt": "The capital of Japan is",
+    "output": " Tokyo. Tokyo is the largest city in Japan.",
+    "load_time_s": 0.320239782333374,
+    "gen_time_s": 1.379565715789795,
+    "max_tokens": 10,
+    "loader": "forge-mlx",
+    "ram_delta_mb": 160.4375,
+    "decompression_time_s": 0.0013302090228535235
+  },
+  {
+    "category": "arithmetic",
+    "prompt": "15 multiplied by 8 equals",
+    "output": " 120. What is the value of",
+    "load_time_s": 0.320239782333374,
+    "gen_time_s": 0.5099761486053467,
+    "max_tokens": 10,
+    "loader": "forge-mlx",
+    "ram_delta_mb": 160.4375,
+    "decompression_time_s": 0.0013302090228535235
+  },
+  {
+    "category": "science",
+    "prompt": "The chemical symbol for water is",
+    "output": " H2O, which means that the water molecule",
+    "load_time_s": 0.320239782333374,
+    "gen_time_s": 0.5123977661132812,
+    "max_tokens": 10,
+    "loader": "forge-mlx",
+    "ram_delta_mb": 160.4375,
+    "decompression_time_s": 0.0013302090228535235
+  },
+  {
+    "category": "language",
+    "prompt": "The French word for 'cat' is",
+    "output": " 'chat'. Is this statement:\nA. Correct",
+    "load_time_s": 0.320239782333374,
+    "gen_time_s": 0.5098059177398682,
+    "max_tokens": 10,
+    "loader": "forge-mlx",
+    "ram_delta_mb": 160.4375,
+    "decompression_time_s": 0.0013302090228535235
+  },
+  {
+    "category": "coding",
+    "prompt": "To get the length of a list in Python use",
+    "output": " the len() function. The len() function returns",
+    "load_time_s": 0.320239782333374,
+    "gen_time_s": 0.5107629299163818,
+    "max_tokens": 10,
+    "loader": "forge-mlx",
+    "ram_delta_mb": 160.4375,
+    "decompression_time_s": 0.0013302090228535235
+  }
+]

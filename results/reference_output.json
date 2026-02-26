@@ -1,0 +1,8 @@
+{
+  "prompt": "The capital of France is",
+  "output": "Paris. The capital of France is also the capital of which country?\nA) Germany\nB)",
+  "load_time_s": 1.9614231586456299,
+  "gen_time_s": 1.3099720478057861,
+  "max_tokens": 20,
+  "model_dir": "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-bf16"
+}
