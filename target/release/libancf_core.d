@@ -1,1 +1,0 @@
-/Users/wscholl/squish/target/release/libancf_core.rlib: /Users/wscholl/squish/ancf_core/src/codec.rs /Users/wscholl/squish/ancf_core/src/format.rs /Users/wscholl/squish/ancf_core/src/lib.rs /Users/wscholl/squish/ancf_core/src/reader.rs /Users/wscholl/squish/ancf_core/src/writer.rs
