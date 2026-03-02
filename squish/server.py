@@ -38,8 +38,16 @@ import hashlib
 import threading
 import collections
 from pathlib import Path
-from typing import AsyncIterator, Optional, List, Dict, Any
+from typing import AsyncIterator, Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
+
+# ── Ensure the squish package root is importable when run as a script ────────
+# cli.py launches this file directly with `python3 .../squish/server.py`, so
+# the parent directory (/Users/wscholl/squish) must be on sys.path for any
+# `from squish.*` imports to resolve.
+_pkg_root = str(Path(__file__).resolve().parent.parent)
+if _pkg_root not in sys.path:
+    sys.path.insert(0, _pkg_root)
 
 # ── Validate dependencies ────────────────────────────────────────────────────
 
@@ -539,7 +547,10 @@ app.add_middleware(
 )
 
 # ── Ollama compatibility layer (POST /api/chat etc.) ────────────────────────
-from squish.ollama_compat import mount_ollama as _mount_ollama
+try:
+    from .ollama_compat import mount_ollama as _mount_ollama          # package import
+except ImportError:
+    from ollama_compat import mount_ollama as _mount_ollama            # direct script run
 _mount_ollama(
     app,
     get_state     = lambda: _state,

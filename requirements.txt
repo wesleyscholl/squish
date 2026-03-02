@@ -1,7 +1,7 @@
 # ── Core inference ────────────────────────────────────────────────────────────
 mlx>=0.18
 mlx-lm>=0.19
-safetensors
+safetensors>=0.4
 numpy>=1.26
 transformers>=4.40
 huggingface_hub>=0.23
@@ -13,17 +13,12 @@ sse-starlette>=1.8.2
 
 # ── Entropy compression / transparent .npy.zst loading ───────────────────────
 zstandard>=0.22.0
+aiofiles>=23.0
 
-# ── Industry-standard benchmarks (run_eval.py / squish_lm_eval.py) ───────────
+# ── Evaluation (optional — pip install squish[eval]) ─────────────────────────
 lm-eval>=0.4.0
 datasets>=2.18
 accelerate>=0.29
 sacrebleu
 rouge_score
 nltk
-
-# ── Constrained generation for tool calling (tool_calling_demo.py) ────────────
-# outlines[mlxlm]   # uncomment when ready
-
-# ── Pydantic for schema validation (benchmark.py) ─────────────────────────────
-# pydantic>=2.0

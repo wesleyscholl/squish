@@ -6,23 +6,31 @@ __pycache__/
 dist/
 build/
 .venv/
+*.egg
 
 # Rust
 squish_quant_rs/target/
 
-# Model weights (large files)
+# Model weights — never commit model files
+models/
+*.npy
+*.safetensors
 squish_4bit/
 squish_int8/
 squish_fp16/
-*.npy
-*.safetensors
 
-# Eval outputs
-results/eval_output*/
+# Eval outputs (all root-level and nested)
+eval_output*/
+results/
 nohup.out
 /tmp/squish_*.log
+*.log
 
-# IDE
+# Paper / research tooling artifacts
+*.cast
+demos/squish_demo.cast
+
+# IDE / OS
 .DS_Store
 .vscode/
 .idea/

@@ -1,5 +1,10 @@
 # Squish
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/squish.svg)](https://pypi.org/project/squish/)
+[![Platform](https://img.shields.io/badge/platform-Apple%20Silicon-lightgrey.svg)](https://github.com/wesleyscholl/squish)
+[![Paper](https://img.shields.io/badge/paper-coming%20soon-lightgrey)](https://github.com/wesleyscholl/squish)
+
 > **Local LLM inference at sub-second load times.**  
 > **Drop-in for OpenAI, Ollama, and any LLM client.**  
 > **Web chat UI · Tool calling · Batch scheduler · CLI**  
@@ -81,18 +86,7 @@ Evaluated with **EleutherAI lm-evaluation-harness** — the framework behind the
 Pass criterion: ≤2% delta (well within measurement noise at 200 samples).  
 Winogrande improved by 1.5% — INT8 quantisation noise is uncorrelated with task variance.
 
-```bash
-# Reproduce (10-30 min)
-python3 evals/run_eval.py --tasks arc_easy,hellaswag,winogrande,piqa --limit 200
-
-# Multi-seed (publication-quality mean ± std)
-python3 evals/run_eval.py --tasks arc_easy,hellaswag,winogrande,piqa --runs 3 --limit 200
-
-# Full dataset + extended tasks (overnight)
-python3 evals/run_eval.py \
-    --tasks arc_easy,arc_challenge,hellaswag,winogrande,piqa \
-    --no-limit
-```
+Full reproducibility commands and multi-seed results are in [docs/RESULTS.md](docs/RESULTS.md).
 
 ---
 
@@ -293,11 +287,9 @@ out of the box with zero additional configuration.
 # Install
 pip install squish
 # or from source:
+git clone https://github.com/wesleyscholl/squish.git
+cd squish
 pip install -e '.[dev]'
-
-# Required extras
-pip install mlx-lm numpy transformers huggingface_hub safetensors \
-    fastapi 'uvicorn[standard]' aiofiles lm-eval datasets zstandard
 
 # First-time compression (~19s, one-time per device)
 squish run 7b --compress-only
@@ -316,9 +308,6 @@ squish models
 
 # Benchmark load times vs mlx_lm
 squish bench 7b
-
-# Benchmark accuracy (200-sample fast run)
-python3 evals/run_eval.py --tasks arc_easy,hellaswag,winogrande,piqa --limit 200
 ```
 
 ---
@@ -333,21 +322,20 @@ python3 evals/run_eval.py --tasks arc_easy,hellaswag,winogrande,piqa --limit 200
 | `squish/tool_calling.py` | Tool/function calling (schema injection + JSON parser) |
 | `squish/scheduler.py` | Batch scheduler — dynamic batching, priority queues |
 | `squish/static/index.html` | Web chat UI (dark theme, streaming, history) |
-| `compressed_loader.py` | Three-tier weight loader (INT8 → f16 → bf16 MLX) |
 | `squish/entropy.py` | zstd entropy compression/decompression helpers |
 | `squish/speculative.py` | Speculative decoding (target + draft model) |
 | `squish/awq.py` | AWQ activation-guided quantisation calibration |
 | `squish/kv_cache.py` | KIVI + SnapKV quantised KV cache |
-| `squish/prefix_cache.py` | Prompt prefix cache |
-| `evals/squish_lm_eval.py` | lm-evaluation-harness wrapper (`SquishCompressedLM`) |
-| `evals/run_eval.py` | Eval runner (multi-seed, full task suite) |
-| `evals/update_paper_v15.py` | Patches RESULTS.md with latest eval numbers |
-| `run_poc.py` | 8-phase automated validation runner |
-| `convert_weights.py` | `.safetensors` → Vectro INT8 conversion |
-| `verify.py` | Token agreement + cosine similarity checker |
-| `benchmark.py` | Load-time three-strategy comparison table |
-| `ARCHITECTURE.md` | Technical deep-dive: why these numbers are real |
-| `RESULTS.md` | Every measured number with reproducibility commands |
+| `squish/layerwise_loader.py` | Layer-wise weight streaming loader |
+| `squish/split_loader.py` | Sharded model loader (multi-file checkpoints) |
+| `compressed_loader.py` | Three-tier weight loader (INT8 → f16 → bf16 MLX) |
+| `demos/tool_calling_demo.py` | Tool calling walkthrough (full round-trip example) |
+| `demos/run_inference.py` | Minimal inference example (no server needed) |
+| `demos/squish_demo.gif` | Animated load-time demo |
+| `squish_quant_rs/` | Rust/PyO3 ARM NEON INT8 quantiser (optional) |
+| `docs/ARCHITECTURE.md` | Technical deep-dive: why these numbers are real |
+| `docs/RESULTS.md` | Every measured number with reproducibility commands |
+| `docs/benchmark_multi_model.md` | Multi-model benchmark comparison table |
 | `configs/continue.json` | Continue.dev config (VS Code / JetBrains AI) |
 | `configs/litellm.yaml` | LiteLLM proxy config (unified multi-provider endpoint) |
 | `configs/aider.yml` | aider config (AI pair programming CLI) |
@@ -358,9 +346,10 @@ python3 evals/run_eval.py --tasks arc_easy,hellaswag,winogrande,piqa --limit 200
 
 - macOS · Apple Silicon (M1–M5)
 - Python 3.10+ (3.12 recommended)
-- `mlx-lm`, `numpy`, `transformers`, `fastapi`, `uvicorn[standard]`, `aiofiles`
-- `zstandard` (entropy compression), `lm-eval`, `datasets` (eval only)
-- [Vectro](https://github.com/wesleyscholl/vectro) at `~/vectro/` (or `VECTRO_DIR` env)
+- Dependencies install automatically via `pip install squish`
+- Core: `mlx-lm`, `numpy`, `transformers`, `fastapi`, `uvicorn[standard]`, `safetensors`, `zstandard`, `aiofiles`
+- Eval extras: `pip install squish[eval]` adds `lm-eval`, `datasets`, `accelerate`
+- [Vectro](https://github.com/wesleyscholl/vectro) at `~/vectro/` (or `VECTRO_DIR` env) for INT8 compression
 
 ---
 

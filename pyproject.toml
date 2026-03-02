@@ -4,14 +4,14 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "squish"
-version = "0.1.0"
+version = "1.0.0"
 description = "Fast compressed model loader and OpenAI-compatible inference server for Apple Silicon"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 keywords = ["llm", "inference", "quantization", "apple-silicon", "mlx", "speculative-decoding"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
@@ -25,12 +25,14 @@ dependencies = [
     "mlx>=0.18",
     "mlx-lm>=0.19",
     "numpy>=1.26",
+    "safetensors>=0.4",
     "fastapi>=0.111",
     "uvicorn[standard]>=0.29",
+    "sse-starlette>=1.8",
     "huggingface-hub>=0.23",
     "transformers>=4.40",
-    "zstandard>=0.22",      # transparent .npy.zst loading + compress_npy_dir()
-    "aiofiles>=23.0",       # static file serving via FastAPI StaticFiles
+    "zstandard>=0.22",
+    "aiofiles>=23.0",
 ]
 
 [project.optional-dependencies]
@@ -38,10 +40,13 @@ eval = [
     "lm-eval>=0.4",
     "datasets>=2.18",
     "accelerate>=0.29",
+    "sacrebleu",
+    "rouge_score",
+    "nltk",
 ]
 dev = [
     "pytest>=8",
-    "maturin>=1.5",         # Rust extension builds (squish_quant_rs)
+    "maturin>=1.5",
     "ruff>=0.4",
 ]
 
