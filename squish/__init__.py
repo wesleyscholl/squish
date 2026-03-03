@@ -14,7 +14,9 @@ Public API:
 import sys
 from pathlib import Path
 
-# Ensure repo root is on sys.path so imports of compressed_loader work
+# Development fallback: ensure repo root is on sys.path so that the root-level
+# compressed_loader.py can be imported directly.  When installed via pip the
+# module is available as a proper top-level `compressed_loader` module.
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -73,7 +75,18 @@ from squish.flash_attention import (  # noqa: F401
     PatchResult,
 )
 
-__version__ = "0.3.0"
+# Quantizer public API (self-contained, no external deps beyond numpy)
+from squish.quantizer import (  # noqa: F401
+    QuantizationResult,
+    quantize_embeddings,
+    reconstruct_embeddings,
+    quantize_int4,
+    dequantize_int4,
+    mean_cosine_similarity,
+    get_backend_info,
+)
+
+__version__ = "0.2.0"
 __all__ = [
     "load_compressed_model",
     "load_from_npy_dir",
@@ -109,6 +122,14 @@ __all__ = [
     "predict_memory_savings",
     "print_memory_table",
     "PatchResult",
+    # Quantizer API
+    "QuantizationResult",
+    "quantize_embeddings",
+    "reconstruct_embeddings",
+    "quantize_int4",
+    "dequantize_int4",
+    "mean_cosine_similarity",
+    "get_backend_info",
     # Phase 2.1 — BatchScheduler  (import: from squish.scheduler import BatchScheduler)
     # Phase 2.2 — Tool calling    (import: from squish.tool_calling import ...)
     # Phase 2.2 — Ollama compat   (import: from squish.ollama_compat import mount_ollama)

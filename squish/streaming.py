@@ -47,34 +47,17 @@ from typing import Optional
 
 import numpy as np
 
-# ---------------------------------------------------------------------------
-# Resolve vectro source tree — same logic as compressed_loader.py
-# ---------------------------------------------------------------------------
-import os as _os
-
-def _find_vectro() -> str:
-    if "VECTRO_DIR" in _os.environ:
-        return _os.environ["VECTRO_DIR"]
-    candidate = Path(__file__).resolve().parent.parent.parent / "vectro"
-    if candidate.exists():
-        return str(candidate)
-    return str(Path.home() / "vectro")
-
-sys.path.insert(0, _find_vectro())
-from python.interface import reconstruct_embeddings, QuantizationResult
-
-import mlx.core as mx
-import mlx.nn as nn
-from transformers import AutoTokenizer
-
-# Re-use architecture helpers from compressed_loader
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from compressed_loader import (
+from squish.quantizer import reconstruct_embeddings, QuantizationResult
+from squish.loader_utils import (
     _instantiate_model,
     _safe_key_to_original,
     _unique_base_keys,
     _dequantize,
 )
+
+import mlx.core as mx
+import mlx.nn as nn
+from transformers import AutoTokenizer
 
 
 # ---------------------------------------------------------------------------

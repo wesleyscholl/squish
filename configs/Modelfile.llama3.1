@@ -1,0 +1,36 @@
+FROM llama3.1:8b
+
+# ── Speed: context window ──────────────────────────────────────────────────
+# Default is 131072 — that allocates a massive KV cache and is the #1 cause
+# of slow generation on 16 GB. 8192 covers nearly all code tasks comfortably.
+PARAMETER num_ctx 8192
+
+# ── Speed: Flash Attention ─────────────────────────────────────────────────
+# Reduces memory bandwidth per attention op. Significant on Apple Silicon.
+# Also set OLLAMA_FLASH_ATTENTION=1 in your shell profile for server-wide effect.
+PARAMETER num_gpu 1
+
+# ── Speed: prediction batch size ──────────────────────────────────────────
+# How many tokens are evaluated in parallel during prompt ingestion.
+# Higher = faster prompt processing. 512 is safe for 16 GB.
+PARAMETER num_batch 512
+
+# ── Speed: keep model in VRAM between calls ────────────────────────────────
+# -1 = keep loaded indefinitely (no cold-start penalty on subsequent calls)
+PARAMETER num_keep -1
+
+# ── Generation quality ─────────────────────────────────────────────────────
+PARAMETER temperature 0.2        # low = more deterministic code output
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER repeat_penalty 1.1     # reduces repetitive boilerplate
+
+# ── Stop tokens ────────────────────────────────────────────────────────────
+PARAMETER stop "<|eot_id|>"
+PARAMETER stop "<|end_of_text|>"
+
+# ── System prompt ──────────────────────────────────────────────────────────
+SYSTEM """You are an expert software engineer. You write clean, correct, idiomatic code.
+When asked to write code, produce only the code and a brief explanation.
+When reviewing code, be direct and specific about issues and fixes.
+Prefer working solutions over theoretically perfect ones."""

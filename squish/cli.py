@@ -516,6 +516,262 @@ def cmd_bench(args):
 
 # ── CLI entry point ───────────────────────────────────────────────────────────
 
+def cmd_doctor(args):
+    """Check that all squish components are installed correctly."""
+    import platform as _platform
+    import socket
+
+    print()
+    _box(["squish doctor — dependency check"])
+    print()
+
+    ok = True
+
+    def _check(label: str, passed: bool, fix: str = "") -> None:
+        nonlocal ok
+        sym = "✓" if passed else "✗"
+        print(f"  {sym}  {label}")
+        if not passed:
+            ok = False
+            if fix:
+                print(f"       Fix: {fix}")
+
+    # OS
+    _check("macOS / Apple Silicon",
+           _platform.system() == "Darwin" and _platform.machine() == "arm64",
+           "squish requires macOS on Apple Silicon (M-series)")
+
+    # MLX
+    try:
+        import mlx.core as mx
+        _check(f"mlx ≥ 0.18  (found {mx.__version__})", True)
+    except ImportError:
+        _check("mlx", False, "pip install mlx")
+
+    # mlx-lm
+    try:
+        import mlx_lm
+        version = getattr(mlx_lm, "__version__", "?")
+        _check(f"mlx-lm ≥ 0.19  (found {version})", True)
+    except ImportError:
+        _check("mlx-lm", False, "pip install mlx-lm")
+
+    # numpy
+    try:
+        import numpy as np
+        _check(f"numpy ≥ 1.26  (found {np.__version__})", True)
+    except ImportError:
+        _check("numpy", False, "pip install numpy")
+
+    # transformers
+    try:
+        import transformers
+        _check(f"transformers ≥ 4.40  (found {transformers.__version__})", True)
+    except ImportError:
+        _check("transformers", False, "pip install transformers")
+
+    # zstandard
+    try:
+        import zstandard
+        _check(f"zstandard ≥ 0.22  (found {zstandard.__version__})", True)
+    except ImportError:
+        _check("zstandard (optional zstd entropy layer)", False, "pip install zstandard")
+
+    # squish_quant Rust extension
+    try:
+        import squish_quant
+        _check("squish_quant Rust extension (6 GB/s quantizer)", True)
+    except ImportError:
+        _check("squish_quant Rust extension (optional — 4× faster quantization)", False,
+               "cd squish_quant_rs && python3 -m maturin build --release && pip install .")
+
+    # squish.quantizer self-test
+    try:
+        import numpy as np
+        from squish.quantizer import quantize_embeddings, reconstruct_embeddings, mean_cosine_similarity
+        rng = np.random.default_rng(0)
+        emb = rng.standard_normal((32, 128)).astype(np.float32)
+        r   = quantize_embeddings(emb, group_size=64)
+        rec = reconstruct_embeddings(r)
+        sim = mean_cosine_similarity(emb, rec)
+        _check(f"squish.quantizer round-trip  (cosine={sim:.5f})", sim > 0.999,
+               "Run: python3 -m squish.quantizer")
+    except Exception as e:
+        _check(f"squish.quantizer self-test: {e}", False)
+
+    # Models directory
+    models_dir = _MODELS_DIR
+    if models_dir.exists():
+        n = sum(1 for d in models_dir.iterdir() if d.is_dir() and not d.name.startswith("."))
+        _check(f"models dir {models_dir}  ({n} model(s))", True)
+    else:
+        _check(f"models dir {models_dir}", False,
+               f"mkdir -p {models_dir}")
+
+    # Server status
+    s = socket.socket()
+    s.settimeout(0.5)
+    try:
+        s.connect(("127.0.0.1", _DEFAULT_PORT))
+        _check(f"server running on :{_DEFAULT_PORT}", True)
+    except Exception:
+        _check(f"server not running (optional)", True)  # not an error
+    finally:
+        s.close()
+
+    print()
+    if ok:
+        print("  All checks passed. squish is ready.\n")
+    else:
+        print("  Some checks failed. See fixes above.\n")
+
+
+def cmd_daemon(args):
+    """Start, stop, or check the Squish daemon (persistent background server)."""
+    import platform
+    import signal
+
+    pid_file = Path.home() / ".squish" / "daemon.pid"
+    log_file = Path.home() / ".squish" / "daemon.log"
+    pid_file.parent.mkdir(parents=True, exist_ok=True)
+
+    def _read_pid() -> int | None:
+        try:
+            return int(pid_file.read_text().strip())
+        except Exception:
+            return None
+
+    def _is_running(pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+            return True
+        except (ProcessLookupError, PermissionError):
+            return False
+
+    action = args.daemon_action or "status"
+
+    if action == "status":
+        pid = _read_pid()
+        if pid and _is_running(pid):
+            print(f"\n  ✓  Squish daemon running  (pid {pid})")
+            print(f"     Endpoint : http://{args.host}:{args.port}/v1")
+            print(f"     Log      : {log_file}\n")
+        else:
+            print(f"\n  ✗  Squish daemon not running  (start with: squish daemon start)\n")
+        return
+
+    if action == "stop":
+        pid = _read_pid()
+        if pid and _is_running(pid):
+            try:
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(1)
+                if _is_running(pid):
+                    os.kill(pid, signal.SIGKILL)
+                pid_file.unlink(missing_ok=True)
+                print(f"\n  ✓  Daemon stopped  (pid {pid})\n")
+            except Exception as e:
+                _die(f"Could not stop daemon: {e}")
+        else:
+            print("\n  Daemon is not running.\n")
+            pid_file.unlink(missing_ok=True)
+        return
+
+    if action == "start":
+        pid = _read_pid()
+        if pid and _is_running(pid):
+            print(f"\n  Daemon already running  (pid {pid}).")
+            print(f"  Stop first with: squish daemon stop\n")
+            return
+
+        model_dir, compressed_dir = _resolve_model(args.model)
+        server_script = Path(__file__).resolve().parent / "server.py"
+        if not server_script.exists():
+            _die(f"server.py not found at {server_script}")
+
+        port    = args.port
+        host    = args.host
+        api_key = args.api_key
+
+        print(f"\n  Starting Squish daemon for {model_dir.name} …")
+        print(f"  Endpoint : http://{host}:{port}/v1")
+        print(f"  Log      : {log_file}\n")
+
+        with open(log_file, "a") as log:
+            proc = subprocess.Popen(
+                [
+                    sys.executable, str(server_script),
+                    "--model-dir",      str(model_dir),
+                    "--compressed-dir", str(compressed_dir),
+                    "--port",           str(port),
+                    "--host",           host,
+                    "--api-key",        api_key,
+                ],
+                stdout=log,
+                stderr=log,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+
+        pid_file.write_text(str(proc.pid))
+
+        # Wait up to 30s for server to respond
+        import socket as _sock
+        for _ in range(60):
+            time.sleep(0.5)
+            s = _sock.socket()
+            s.settimeout(0.5)
+            try:
+                s.connect((host, port))
+                s.close()
+                print(f"  ✓  Daemon ready  (pid {proc.pid})\n")
+                return
+            except Exception:
+                pass
+        print(f"  ⚠  Daemon started (pid {proc.pid}) but hasn't responded yet.")
+        print(f"     Check logs: tail -f {log_file}\n")
+
+
+def cmd_compress(args):
+    """Compress a model directory to Squish npy-dir format (INT8 or INT4)."""
+    # Resolve model path (accept shorthand or full path)
+    if args.model in _MODEL_SHORTHAND:
+        model_dir = _MODELS_DIR / _MODEL_SHORTHAND[args.model]
+    else:
+        model_dir = Path(args.model).expanduser()
+
+    if not model_dir.exists():
+        _die(f"Model directory not found: {model_dir}")
+
+    output_dir = Path(args.output).expanduser() if args.output else Path(str(model_dir) + _COMPRESSED_SUFFIX)
+
+    quant_label = "INT4 (½ disk, ≤2% accuracy delta)" if getattr(args, "int4", False) else "INT8 group-64"
+    print(f"\n  Compressing: {model_dir}")
+    print(f"  Quantization: {quant_label}")
+    print(f"  Output:      {output_dir}\n")
+
+    cmd = [
+        sys.executable, "-m", "squish.convert",
+        "--model-dir", str(model_dir),
+        "--output",    str(output_dir),
+        "--format",    "npy-dir",
+    ]
+    if args.passthrough:
+        cmd += ["--passthrough"] + args.passthrough
+    if args.outlier_threshold != 20.0:
+        cmd += ["--outlier-threshold", str(args.outlier_threshold)]
+    if getattr(args, "int4", False):
+        cmd.append("--int4")
+    if args.verbose:
+        cmd.append("--verbose")
+
+    result = subprocess.run(cmd, cwd=Path(__file__).parent.parent)
+    if result.returncode != 0:
+        _die("Compression failed — see output above.")
+    print(f"\n  ✓  Compressed model saved to {output_dir}")
+    print(f"     Run with: squish run {model_dir}\n")
+
+
 def main():
     ap = argparse.ArgumentParser(
         prog="squish",
@@ -529,7 +785,12 @@ Examples:
   squish chat                        Chat against already-running server
   squish models                      List local models
   squish info                        System info + server status
+  squish doctor                      Check all dependencies
+  squish daemon start 7b             Start persistent background server
+  squish daemon status               Check daemon status
+  squish daemon stop                 Stop daemon
   squish bench                       Quick throughput benchmark
+  squish compress ~/models/my-model  Compress model to INT8 npy-dir format
 
 OpenAI drop-in (after squish run):
   export OPENAI_BASE_URL=http://localhost:11435/v1
@@ -587,6 +848,36 @@ Ollama drop-in:
     p_bench.add_argument("--api-key",    default="squish")
     p_bench.add_argument("--max-tokens", type=int, default=128)
     p_bench.set_defaults(func=cmd_bench)
+
+    # ── doctor ──
+    p_doctor = sub.add_parser("doctor", help="Check all dependencies and system requirements")
+    p_doctor.set_defaults(func=cmd_doctor)
+
+    # ── daemon ──
+    p_daemon = sub.add_parser("daemon", help="Manage the persistent background server daemon")
+    p_daemon.add_argument("daemon_action", nargs="?",
+                          choices=["start", "stop", "status"],
+                          default="status",
+                          help="start | stop | status (default: status)")
+    p_daemon.add_argument("model", nargs="?", help="Model shorthand or path (for start)")
+    p_daemon.add_argument("--port",    type=int, default=_DEFAULT_PORT)
+    p_daemon.add_argument("--host",    default="127.0.0.1")
+    p_daemon.add_argument("--api-key", default="squish")
+    p_daemon.set_defaults(func=cmd_daemon)
+
+    # ── compress ──
+    p_compress = sub.add_parser("compress", help="Compress (squish) a model to INT8 npy-dir format")
+    p_compress.add_argument("model", help="Model path (e.g. ~/.squish/models/llama3.1-8b-4bit) or shorthand (7b, 14b)")
+    p_compress.add_argument("--output",            default=None,
+                            help="Output directory (default: <model>-compressed)")
+    p_compress.add_argument("--passthrough",       nargs="*", default=[], metavar="PATTERN",
+                            help="Tensor substrings to keep as float32 (e.g. embed lm_head)")
+    p_compress.add_argument("--outlier-threshold", type=float, default=20.0)
+    p_compress.add_argument("--int4",    action="store_true",
+                            help="INT4 nibble-packed (~1.5 GB for 1.5B, half the INT8 disk). "
+                                 "Requires squish_quant Rust ext. Recommended for 1.5B models.")
+    p_compress.add_argument("--verbose",           action="store_true")
+    p_compress.set_defaults(func=cmd_compress)
 
     args = ap.parse_args()
 

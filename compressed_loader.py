@@ -108,21 +108,10 @@ def _rss_mb() -> float:
         return ru / 1_048_576
     return ru / 1_024
 
-# ---------------------------------------------------------------------------
-# Resolve the vectro source tree (VECTRO_DIR env var → sibling → ~/vectro)
-# ---------------------------------------------------------------------------
 import os as _os
 
-def _find_vectro() -> str:
-    if "VECTRO_DIR" in _os.environ:
-        return _os.environ["VECTRO_DIR"]
-    candidate = Path(__file__).resolve().parent.parent.parent / "vectro"
-    if candidate.exists():
-        return str(candidate)
-    return str(Path.home() / "vectro")
-
-sys.path.insert(0, _find_vectro())
-from python.interface import reconstruct_embeddings, QuantizationResult
+# squish.quantizer is the self-contained replacement for vectro/python/interface.py
+from squish.quantizer import reconstruct_embeddings, QuantizationResult
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -811,6 +800,34 @@ def load_from_npy_dir(
     dir_path   = Path(dir_path)
     tensor_dir = dir_path / "tensors"
     manifest_path_obj = dir_path / "manifest.json"
+
+    # ── Tier 0a: directory IS a native MLX/HF model (config.json present, no manifest) ──
+    # Handles mlx-community 4-bit models passed directly as model_dir, e.g.
+    #   squish run ~/.squish/models/llama3.1-8b-4bit
+    # These have config.json + model.safetensors but no manifest.json/tensors/.
+    if (dir_path / "config.json").exists() and not manifest_path_obj.exists():
+        if verbose:
+            _sf = list(dir_path.glob("*.safetensors"))
+            _sz = sum(f.stat().st_size for f in _sf) / 1e9
+            print(f"  → Native MLX model detected ({_sz:.1f} GB safetensors) "
+                  f"— loading via mlx_lm.load()")
+        import mlx_lm as _mlx_lm_native
+        _rss0 = _rss_mb()
+        _t0   = time.perf_counter()
+        _model, _tok = _mlx_lm_native.load(str(dir_path))
+        _load_s = time.perf_counter() - _t0
+        _rss1   = _rss_mb()
+        if verbose:
+            print(f"  Model loaded in {_load_s:.2f}s  (RAM Δ {_rss1 - _rss0:+.0f} MB)")
+        _stats = {
+            "loader":               "mlx-native",
+            "decompression_time_s": _load_s,
+            "ram_delta_mb":         _rss1 - _rss0,
+            "ram_baseline_mb":      _rss0,
+        }
+        if return_stats:
+            return _model, _tok, _stats
+        return _model, _tok
 
     # ── Tier 0: 4-bit MLX model dir (built once by mlx_lm.convert) ──────────
     # Check this FIRST — before manifest/tensors guards — so models that were

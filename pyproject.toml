@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "squish"
-version = "1.0.0"
+version = "0.2.0"
 description = "Fast compressed model loader and OpenAI-compatible inference server for Apple Silicon"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -36,6 +36,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+quant = [
+    "maturin>=1.5",
+]
 eval = [
     "lm-eval>=0.4",
     "datasets>=2.18",
@@ -53,14 +56,19 @@ dev = [
 [project.urls]
 "Homepage" = "https://github.com/wesleyscholl/squish"
 "Bug Tracker" = "https://github.com/wesleyscholl/squish/issues"
+"Documentation" = "https://github.com/wesleyscholl/squish#readme"
 
 [project.scripts]
 squish        = "squish.cli:main"
 squish-server = "squish.server:main"
+squish-convert = "squish.convert:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["squish*"]
+
+[tool.setuptools]
+py-modules = ["compressed_loader"]
 
 [tool.ruff]
 line-length = 100

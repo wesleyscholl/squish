@@ -30,7 +30,6 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-import os as _os
 
 # ---------------------------------------------------------------------------
 # AWQ scale application (imported lazily so convert.py works without awq.py)
@@ -51,19 +50,7 @@ def _apply_awq_single(name: str, arr_f32: np.ndarray, awq_scales: dict) -> np.nd
         return arr_f32
 
 
-# ---------------------------------------------------------------------------
-# Resolve the vectro source tree (VECTRO_DIR env var → sibling → ~/vectro)
-# ---------------------------------------------------------------------------
-def _find_vectro() -> str:
-    if "VECTRO_DIR" in _os.environ:
-        return _os.environ["VECTRO_DIR"]
-    candidate = Path(__file__).resolve().parent.parent.parent / "vectro"
-    if candidate.exists():
-        return str(candidate)
-    return str(Path.home() / "vectro")
-
-sys.path.insert(0, _find_vectro())
-from python.interface import quantize_embeddings, QuantizationResult
+from squish.quantizer import quantize_embeddings, quantize_int4, QuantizationResult
 
 
 # ---------------------------------------------------------------------------
@@ -156,13 +143,15 @@ def quantize_tensor(
     arr_f32: np.ndarray,
     outlier_threshold: float,
     passthrough_patterns: list[str],
+    use_int4: bool = False,
 ) -> dict:
     """
     Quantize a single float32 tensor.
 
-    Returns a dict of npz sub-arrays:
-      __q, __s, __shape  (quantized path)
-      __pt, __shape      (passthrough path)
+    Returns a dict of file suffixes → numpy arrays:
+      INT8 (default):  __q, __s, __shape
+      INT4 (use_int4): __q4, __s4, __shape
+      passthrough:     __pt, __shape
     """
     original_shape = arr_f32.shape
 
@@ -190,10 +179,21 @@ def quantize_tensor(
     else:
         flat = arr_f32.reshape(-1, arr_f32.shape[-1])
 
-    result: QuantizationResult = quantize_embeddings(flat)
+    result: QuantizationResult = quantize_embeddings(flat, group_size=64)
+    if use_int4:
+        # INT4 nibble-packed: ~50 % disk vs INT8, requires squish_quant Rust ext.
+        # Reconstruct from INT8 first, then pack to INT4.
+        from squish.quantizer import reconstruct_embeddings
+        reconstructed = reconstruct_embeddings(result)
+        packed, scales4 = quantize_int4(reconstructed, group_size=64)
+        return {
+            "__q4":    packed,   # uint8 nibble-packed  (n, d//2)
+            "__s4":    scales4,  # float32              (n, d//64)
+            "__shape": shape_arr,
+        }
     return {
-        "__q": result.quantized,   # int8
-        "__s": result.scales,      # float32
+        "__q": result.quantized,   # int8  (grouped-64 per default)
+        "__s": result.scales,      # float32 (n_rows, n_groups) or (n_rows,)
         "__shape": shape_arr,
     }
 
@@ -251,6 +251,7 @@ def process_weights_streaming(
     outlier_threshold: float,
     verbose: bool,
     awq_scales: dict | None = None,
+    use_int4: bool = False,
 ) -> dict:
     """
     Streaming shard-by-shard compression — works for any model size.
@@ -293,7 +294,7 @@ def process_weights_streaming(
             if awq_scales:
                 arr_f32 = _apply_awq_single(name, arr_f32, awq_scales)
 
-            sub = quantize_tensor(name, arr_f32, outlier_threshold, passthrough_patterns)
+            sub = quantize_tensor(name, arr_f32, outlier_threshold, passthrough_patterns, use_int4=use_int4)
 
             # Write immediately — don't accumulate in RAM
             for suffix, data in sub.items():
@@ -316,7 +317,7 @@ def process_weights_streaming(
 
             if verbose:
                 ratio = orig_bytes / max(comp_bytes, 1)
-                mode  = "PT" if "__pt" in sub else "Q8"
+                mode  = "PT" if "__pt" in sub else ("Q4" if use_int4 else "Q8")
                 _clear_line()
                 print(f"  [{mode}] {name}: {arr_f32.shape} ratio={ratio:.2f}x")
 
@@ -403,6 +404,15 @@ def main():
              "quantization for improved INT8 accuracy.",
     )
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument(
+        "--int4",
+        action="store_true",
+        default=False,
+        help="Use INT4 nibble-packed quantization instead of INT8.  Halves disk usage "
+             "(~1.5 GB for 1.5B vs ~2.9 GB INT8) at ≤2%% accuracy delta.  "
+             "Requires squish_quant Rust extension (built with maturin).  "
+             "Recommended for 1.5B models where every GB matters.",
+    )
     args = ap.parse_args()
 
     model_dir = Path(args.model_dir)
@@ -442,6 +452,7 @@ def main():
             args.outlier_threshold,
             args.verbose,
             awq_scales=awq_scales,
+            use_int4=args.int4,
         )
         elapsed = time.time() - t0
 
@@ -456,6 +467,7 @@ def main():
 
         print(f"\n{'='*50}")
         print(f"  Format:           npy-dir (streaming)")
+        print(f"  Quantization:     {'INT4 nibble-packed (group-64)' if args.int4 else 'INT8 per-group-64'}")
         print(f"  Tensors:          {n_total} total")
         print(f"    Quantized (Q8): {stats['n_quantized']}")
         print(f"    Passthrough (f16 on disk): {stats['n_passthrough']}")
