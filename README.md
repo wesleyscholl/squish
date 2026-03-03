@@ -37,7 +37,7 @@ squish run  qwen3:8b        # start server on :11435
 
 Then open **http://localhost:11435/chat** in any browser.
 
-<img src="demos/squish_demo.gif" />
+![](demos/squish_demo.gif)
 
 Or chat in the terminal:
 

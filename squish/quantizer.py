@@ -284,6 +284,7 @@ def reconstruct_embeddings(
     use_rust = (
         _squish_quant is not None
         and backend in ("auto", "rust")
+        and result.zero_points is None   # Rust path is symmetric-only
     )
     if use_rust:
         return _reconstruct_rust(result)
