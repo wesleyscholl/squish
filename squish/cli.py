@@ -1020,6 +1020,23 @@ def cmd_compress(args):
     if result.returncode != 0:
         _die("Compression failed — see output above.")
     print(f"\n  ✓  Compressed model saved to {output_dir}")
+
+    # ── Optional zstd entropy pass ──────────────────────────────────────────
+    zstd_level = getattr(args, "zstd_level", 0)
+    if zstd_level and zstd_level > 0:
+        tensors_dir = output_dir / "tensors"
+        if tensors_dir.exists():
+            print(f"  Applying zstd entropy compression at level {zstd_level} …")
+            try:
+                from squish.entropy import compress_npy_dir
+                compress_npy_dir(tensors_dir, level=zstd_level, verbose=True)
+                print(f"  ✓  Entropy compression complete.")
+            except ImportError:
+                print("  Warning: zstandard not installed — skipping entropy pass.")
+                print("  Install with: pip install zstandard")
+        else:
+            print(f"  Warning: tensors/ not found at {tensors_dir} — skipping entropy pass.")
+
     print(f"     Run with: squish run {model_dir}\n")
 
 
@@ -1266,6 +1283,10 @@ Ollama drop-in:
     p_compress.add_argument("--int4",    action="store_true",
                             help="INT4 nibble-packed (~1.5 GB for 1.5B, half the INT8 disk). "
                                  "Requires squish_quant Rust ext. Recommended for 1.5B models.")
+    p_compress.add_argument("--zstd-level", type=int, default=0, metavar="N",
+                            help="Apply zstd entropy compression at level N (1-22) after "
+                                 "quantization.  Level 3 is a good default; 0 = skip (default). "
+                                 "Requires: pip install zstandard")
     p_compress.add_argument("--verbose",           action="store_true")
     p_compress.set_defaults(func=cmd_compress)
 

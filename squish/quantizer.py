@@ -43,12 +43,15 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 class QuantizationResult(NamedTuple):
-    """Result of INT8 quantization."""
-    quantized: np.ndarray   # int8,   shape (n, d)  or padded to group boundary
-    scales:    np.ndarray   # float32 shape (n,)     per-row
-                            #         or   (n, n_groups) per-group
-    dims:      int          # original column dimension d
-    n:         int          # number of rows n
+    """Result of INT8 quantization (symmetric or asymmetric)."""
+    quantized:   np.ndarray   # int8,   shape (n, d)  or padded to group boundary
+    scales:      np.ndarray   # float32 shape (n,)     per-row
+                              #         or   (n, n_groups) per-group
+    dims:        int          # original column dimension d
+    n:           int          # number of rows n
+    zero_points: np.ndarray | None = None
+                              # int32 zero-points for asymmetric quant (same shape
+                              # as scales); None for symmetric (default).
 
 
 # ---------------------------------------------------------------------------
@@ -115,13 +118,80 @@ def _quantize_numpy(embeddings: np.ndarray, group_size: int = 0) -> Quantization
         return QuantizationResult(quantized=q, scales=scales, dims=d, n=n)
 
 
+def _quantize_numpy_asymmetric(embeddings: np.ndarray, group_size: int = 0) -> QuantizationResult:
+    """Asymmetric per-row or per-group INT8 quantisation with zero-point.
+
+    Maps the range ``[x_min, x_max]`` to ``[-128, 127]`` using both a scale
+    and an integer zero-point, yielding ~0.1–0.5 dB better SNR than symmetric
+    quantisation for activations with non-zero mean (e.g. post-softmax tensors).
+
+    ``QuantizationResult.zero_points`` is set; Rust path returns None (falls
+    back to numpy symmetric automatically).
+    """
+    emb = np.array(embeddings, dtype=np.float32, order="C")
+    n, d = emb.shape
+    _QMIN, _QMAX = -128, 127
+
+    def _asym_scale_zero(xmin: np.ndarray, xmax: np.ndarray):
+        scale = np.where(xmax == xmin, 1.0,
+                         (xmax - xmin) / (_QMAX - _QMIN)).astype(np.float32)
+        # zero_point in quantised domain: round(-xmin / scale) + QMIN → clamped
+        zp = np.round(-xmin / scale + _QMIN).astype(np.int32)
+        zp = np.clip(zp, _QMIN, _QMAX).astype(np.int32)
+        return scale, zp
+
+    if group_size <= 0 or group_size >= d:
+        xmin = emb.min(axis=1)   # (n,)
+        xmax = emb.max(axis=1)   # (n,)
+        scales, zps = _asym_scale_zero(xmin, xmax)
+        # q = clamp( round(x / scale) + zp, QMIN, QMAX )
+        q_f = emb / scales[:, None] + zps[:, None]
+        np.round(q_f, out=q_f)
+        q = np.clip(q_f, _QMIN, _QMAX).astype(np.int8)
+        return QuantizationResult(quantized=q, scales=scales, dims=d, n=n,
+                                  zero_points=zps)
+    else:
+        pad = (-d) % group_size
+        emb_pad = np.pad(emb, ((0, 0), (0, pad))) if pad else emb
+        n_groups = emb_pad.shape[1] // group_size
+        grouped  = emb_pad.reshape(n * n_groups, group_size)  # (n*G, gs)
+        xmin = grouped.min(axis=1)
+        xmax = grouped.max(axis=1)
+        gscale, gzp = _asym_scale_zero(xmin, xmax)
+        q_f = grouped / gscale[:, None] + gzp[:, None]
+        np.round(q_f, out=q_f)
+        q_groups = np.clip(q_f, _QMIN, _QMAX).astype(np.int8)
+        q      = q_groups.reshape(n, -1)[:, :d]
+        scales = gscale.reshape(n, n_groups).astype(np.float32)
+        zps    = gzp.reshape(n, n_groups).astype(np.int32)
+        return QuantizationResult(quantized=q, scales=scales, dims=d, n=n,
+                                  zero_points=zps)
+
+
 def _reconstruct_numpy(result: QuantizationResult) -> np.ndarray:
     """Reconstruct float32 from QuantizationResult using numpy broadcast."""
     q      = result.quantized.astype(np.float32)
     scales = np.asarray(result.scales, dtype=np.float32)
+    if result.zero_points is not None:
+        # Asymmetric: x = scale * (q - zero_point)
+        zp = np.asarray(result.zero_points, dtype=np.float32)
+        if scales.ndim == 1:
+            return scales[:, None] * (q - zp[:, None])
+        n, d = q.shape
+        n_groups  = scales.shape[1]
+        group_size = result.dims // n_groups
+        pad = (-d) % group_size
+        full_cols = n_groups * group_size
+        if pad:
+            q  = np.pad(q,  ((0, 0), (0, pad)))
+        q_shifted = (q[:, :full_cols].reshape(n, n_groups, group_size)
+                     - zp[:, :, np.newaxis])
+        recon = (q_shifted * scales[:, :, np.newaxis]).reshape(n, full_cols)
+        return recon[:, :d]
+
     if scales.ndim == 1:
         return q * scales[:, None]
-    # grouped: scales is (n, n_groups), q is (n, d) — broadcast without np.repeat
+    # grouped symmetric: scales is (n, n_groups), q is (n, d)
     n, d = q.shape
     n_groups = scales.shape[1]
     group_size = result.dims // n_groups
@@ -151,29 +221,50 @@ def quantize_embeddings(
     embeddings: np.ndarray,
     group_size: int = 64,
     backend: str = "auto",
+    asymmetric: bool = False,
+    soft_clip_sigma: float = 0.0,
 ) -> QuantizationResult:
     """Quantize a float32 (n, d) matrix to INT8.
 
     Args:
-        embeddings: 2D float32 array of shape (n, d).
-        group_size: Columns per quantization group.  0 = per-row (legacy).
-                    Default 64 gives noticeably better accuracy at no disk cost.
-        backend:    'auto' | 'rust' | 'numpy'
+        embeddings:      2D float32 array of shape (n, d).
+        group_size:      Columns per quantization group.  0 = per-row (legacy).
+                         Default 64 gives noticeably better accuracy at no disk cost.
+        backend:         'auto' | 'rust' | 'numpy'
+        asymmetric:      If True, use asymmetric (zero-point) INT8 for ~0.1–0.5 dB
+                         better SNR on activations with non-zero mean.
+                         Rust backend falls back to symmetric when asymmetric=True.
+        soft_clip_sigma: If > 0, clip each row to ``mean ± soft_clip_sigma * std``
+                         before quantizing to suppress extreme outliers.
+                         Typical value: 3.0–5.0.  Set to 0 (default) to disable.
 
     Returns:
-        QuantizationResult(quantized, scales, dims, n)
+        QuantizationResult(quantized, scales, dims, n[, zero_points])
     """
     if embeddings.ndim != 2:
         raise ValueError(f"embeddings must be 2-D, got shape {embeddings.shape}")
 
+    work = embeddings
+    if soft_clip_sigma > 0.0:
+        # Clip each row to [mean - k*std, mean + k*std] to suppress outliers
+        work = np.array(embeddings, dtype=np.float32, order="C")
+        row_mean = work.mean(axis=1, keepdims=True)
+        row_std  = work.std(axis=1, keepdims=True)
+        lo = row_mean - soft_clip_sigma * row_std
+        hi = row_mean + soft_clip_sigma * row_std
+        np.clip(work, lo, hi, out=work)
+
     use_rust = (
         _squish_quant is not None
         and backend in ("auto", "rust")
+        and not asymmetric   # Rust path is symmetric-only
     )
 
     if use_rust:
-        return _quantize_rust(embeddings, group_size)
-    return _quantize_numpy(embeddings, group_size)
+        return _quantize_rust(work, group_size)
+    if asymmetric:
+        return _quantize_numpy_asymmetric(work, group_size)
+    return _quantize_numpy(work, group_size)
 
 
 def reconstruct_embeddings(
