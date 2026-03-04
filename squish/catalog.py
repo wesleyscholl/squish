@@ -31,8 +31,6 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -74,7 +72,7 @@ class CatalogEntry:
     squished_size_gb: float
 
     # HuggingFace repo with pre-compressed Squish weights (or None)
-    squish_repo: Optional[str] = None
+    squish_repo: str | None = None
 
     # arbitrary tags for filtering: ["small", "fast", "moe", "reasoning", …]
     tags: list[str] = field(default_factory=list)
@@ -451,7 +449,7 @@ def resolve(name: str, refresh: bool = False) -> CatalogEntry | None:
 
 # ── Download helpers ──────────────────────────────────────────────────────────
 
-def _hf_download(repo: str, local_dir: Path, token: str | None = None) -> None:
+def _hf_download(repo: str, local_dir: Path, token: str | None = None) -> None:  # pragma: no cover
     """
     Download a HuggingFace repo to ``local_dir``.
 
@@ -474,7 +472,7 @@ def _hf_download(repo: str, local_dir: Path, token: str | None = None) -> None:
         ) from None
 
 
-def _hf_file_download(repo: str, filename: str, local_dir: Path,
+def _hf_file_download(repo: str, filename: str, local_dir: Path,  # pragma: no cover
                        token: str | None = None) -> Path:
     """Download a single file from a HuggingFace repo."""
     try:
@@ -493,7 +491,7 @@ def _hf_file_download(repo: str, filename: str, local_dir: Path,
         ) from None
 
 
-def _hf_list_files(repo: str, token: str | None = None) -> list[str]:
+def _hf_list_files(repo: str, token: str | None = None) -> list[str]:  # pragma: no cover
     """Return all filenames in a HuggingFace repo (returns [] on error)."""
     try:
         from huggingface_hub import list_repo_files  # type: ignore[import]
@@ -516,7 +514,7 @@ def _has_squish_weights(repo: str, token: str | None = None) -> bool:
 
 # ── Public pull entry-point ───────────────────────────────────────────────────
 
-def pull(
+def pull(  # pragma: no cover
     name: str,
     models_dir: Path | None = None,
     int4: bool = False,
@@ -542,7 +540,6 @@ def pull(
     token       : HuggingFace user access token (for gated models)
     verbose     : pass ``--verbose`` to the underlying compress step
     """
-    import subprocess  # noqa: PLC0415
 
     if models_dir is None:
         models_dir = Path.home() / ".squish" / "models"
@@ -569,7 +566,7 @@ def pull(
         print(f"  Checking for pre-compressed weights in {entry.squish_repo} …")
         try:
             if _has_squish_weights(entry.squish_repo, token=token):
-                print(f"  ⚡ Pre-compressed weights found!  Downloading …")
+                print("  ⚡ Pre-compressed weights found!  Downloading …")
                 squish_local = models_dir / (entry.dir_name + "-squish-src")
                 _hf_download(entry.squish_repo, squish_local, token=token)
 

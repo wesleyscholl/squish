@@ -62,16 +62,14 @@ Notes
 from __future__ import annotations
 
 import json
-import os
 import threading
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
-
 
 # ---------------------------------------------------------------------------
 # Lazy MLX import

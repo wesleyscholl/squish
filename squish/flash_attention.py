@@ -55,13 +55,10 @@ Notes
 from __future__ import annotations
 
 import inspect
-import textwrap
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
-
 
 # ---------------------------------------------------------------------------
 # Lazy MLX import
@@ -207,7 +204,7 @@ def patch_model_attention(
             print("[flash_attention] Model has no .layers attribute — skipping")
         return result
 
-    for i, layer in enumerate(layers):
+    for _i, layer in enumerate(layers):
         # Attention layer is usually model.layers[i].self_attn or .attention
         attn = (
             getattr(layer, "self_attn", None)
@@ -446,8 +443,8 @@ def benchmark_attention(
     """
     try:
         import mlx.core as mx
-    except ImportError:
-        raise RuntimeError("MLX is required for benchmark_attention()")
+    except ImportError as exc:
+        raise RuntimeError("MLX is required for benchmark_attention()") from exc
 
     if context_lengths is None:
         context_lengths = [512, 2048, 4096, 32768]

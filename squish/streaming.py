@@ -34,31 +34,24 @@ stats keys:
     decompression_time_s  Total wall time for decompression
     prefetch_savings_s    Estimated latency hidden by prefetch thread
 """
-import sys
-import re
-import json
-import time
+import platform
 import queue
+import re
 import resource
 import threading
-import platform
+import time
 from pathlib import Path
-from typing import Optional
 
+import mlx.core as mx
 import numpy as np
+from transformers import AutoTokenizer
 
-from squish.quantizer import reconstruct_embeddings, QuantizationResult
 from squish.loader_utils import (
+    _dequantize,
     _instantiate_model,
     _safe_key_to_original,
     _unique_base_keys,
-    _dequantize,
 )
-
-import mlx.core as mx
-import mlx.nn as nn
-from transformers import AutoTokenizer
-
 
 # ---------------------------------------------------------------------------
 # RSS helper
@@ -139,7 +132,7 @@ def _decompress_group(
 def load_streaming(
     model_dir: str,
     npz_path: str,
-    manifest_path: Optional[str] = None,
+    manifest_path: str | None = None,
     verbose: bool = True,
 ) -> tuple:
     """
@@ -303,7 +296,7 @@ def load_streaming(
 
     if verbose:
         delta = rss_final - rss_baseline
-        print(f"\n[stream] Done.")
+        print("\n[stream] Done.")
         print(f"  RAM baseline:       {rss_baseline:.0f} MB")
         print(f"  RAM peak (layer {peak_layer}): {rss_peak:.0f} MB")
         print(f"  RAM after load:     {rss_after:.0f} MB  (Δ {delta:+.0f} MB)")
@@ -318,6 +311,7 @@ def load_streaming(
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import argparse
+
     from mlx_lm import generate
 
     ap = argparse.ArgumentParser(description="Streaming compressed-weight loader")

@@ -44,7 +44,6 @@ import re
 import uuid
 from typing import Any
 
-
 # ── Prompt formatting ──────────────────────────────────────────────────────────
 
 _TOOL_SYSTEM_PREFIX = """\

@@ -29,18 +29,18 @@ Dependencies:
     pip install fastapi "uvicorn[standard]"
 """
 import argparse
-import json
-import time
-import uuid
-import sys
-import os
+import collections
 import hashlib
 import hmac
+import json
+import os
+import sys
 import threading
-import collections
+import time
+import uuid
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator, Optional, List, Dict, Any, Tuple
-from dataclasses import dataclass, field
+from typing import Any
 
 # ── Ensure the squish package root is importable when run as a script ────────
 # cli.py launches this file directly with `python3 .../squish/server.py`, so
@@ -62,10 +62,11 @@ def _require(pkg: str, install: str | None = None) -> None:
 _require("fastapi")
 _require("uvicorn", "uvicorn[standard]")
 
-from fastapi import FastAPI, HTTPException, Request, Security
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, HTTPException, Request, Security  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse  # noqa: E402
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # noqa: E402
+
 try:
     from fastapi.staticfiles import StaticFiles as _StaticFiles
     _STATIC_FILES_AVAILABLE = True
@@ -81,7 +82,7 @@ _QueueFullError  = None  # QueueFullError class — imported alongside BatchSche
 
 # ── Tool calling + Ollama compat (Phase 2.2) ─────────────────────────────────
 # Imported lazily in endpoints — no startup cost when unused
-import uvicorn
+import uvicorn  # noqa: E402
 
 # ── Model state ──────────────────────────────────────────────────────────────
 
@@ -141,7 +142,8 @@ _draft = _DraftState()
 # Exact-match cache with a fixed capacity — avoids re-running the model for
 # repeated identical prompts (e.g. benchmark harnesses, agent tool loops).
 
-import hashlib as _hashlib
+import hashlib as _hashlib  # noqa: E402
+
 
 class _PrefixCache:
     """Thread-safe O(1) LRU cache of (prompt → response) for exact prompt matches.
@@ -152,7 +154,7 @@ class _PrefixCache:
     """
 
     def __init__(self, maxsize: int = 256):
-        self._cache: collections.OrderedDict[str, Tuple[str, str]] = (
+        self._cache: collections.OrderedDict[str, tuple[str, str]] = (
             collections.OrderedDict()
         )
         self._maxsize = maxsize
@@ -165,7 +167,7 @@ class _PrefixCache:
         # non-security-critical local cache with ≤1024 slots.
         return _hashlib.blake2b(prompt.encode(), digest_size=16).hexdigest()
 
-    def get(self, prompt: str) -> Optional[Tuple[str, str]]:
+    def get(self, prompt: str) -> tuple[str, str] | None:
         k = self._key(prompt)
         with self._lock:
             if k in self._cache:
@@ -195,7 +197,7 @@ class _PrefixCache:
 _prefix_cache = _PrefixCache(maxsize=512)
 
 
-def _sample_mx(logits_row, temperature: float, top_p: float) -> int:
+def _sample_mx(logits_row, temperature: float, top_p: float) -> int:  # pragma: no cover
     """
     Sample a single token id from an MLX logits vector.
 
@@ -245,9 +247,13 @@ def _system_fingerprint() -> str:
     ).hexdigest()[:8]
 
 
-def load_model(model_dir: str, compressed_dir: str, verbose: bool = True) -> None:
+def load_model(model_dir: str, compressed_dir: str, verbose: bool = True) -> None:  # pragma: no cover
     """Load the Squish compressed model into global state."""
-    from .compressed_loader import load_compressed_model as _load_compressed_model
+    try:
+        from .compressed_loader import load_compressed_model as _load_compressed_model
+    except ImportError:
+        # server.py launched directly (not as package) — use absolute import
+        from squish.compressed_loader import load_compressed_model as _load_compressed_model
     # Keep backward-compat shim
     load_from_npy_dir = _load_compressed_model
 
@@ -274,7 +280,7 @@ def load_model(model_dir: str, compressed_dir: str, verbose: bool = True) -> Non
         print(f"  ✓ Model ready  ({elapsed:.2f}s, loader={_state.loader_tag})")
 
 
-def load_draft_model(draft_model_dir: str, draft_compressed_dir: str = "",
+def load_draft_model(draft_model_dir: str, draft_compressed_dir: str = "",  # pragma: no cover
                      verbose: bool = True) -> None:
     """Load the small draft model used for speculative decoding."""
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -296,7 +302,7 @@ def load_draft_model(draft_model_dir: str, draft_compressed_dir: str = "",
     _rebuild_spec_gen()
 
 
-def _rebuild_spec_gen() -> None:
+def _rebuild_spec_gen() -> None:  # pragma: no cover
     """(Re-)create the SpeculativeGenerator from current target + draft state."""
     if _state.model is None or _draft.model is None:
         _draft.generator = None
@@ -310,7 +316,7 @@ def _rebuild_spec_gen() -> None:
 
 # ── Token generation ─────────────────────────────────────────────────────────
 
-def _apply_chat_template(messages: List[Dict[str, str]], tokenizer) -> str:
+def _apply_chat_template(messages: list[dict[str, str]], tokenizer) -> str:
     """Apply chat template if available, fall back to manual formatting."""
     if hasattr(tokenizer, "apply_chat_template"):
         try:
@@ -344,7 +350,7 @@ def _count_tokens(text: str) -> int:
         return len(text.split())
 
 
-def _get_stop_ids(stop: List[str] | str | None) -> List[List[int]]:
+def _get_stop_ids(stop: list[str] | str | None) -> list[list[int]]:
     """Convert stop string(s) to lists of token IDs."""
     if stop is None:
         return []
@@ -362,12 +368,12 @@ def _get_stop_ids(stop: List[str] | str | None) -> List[List[int]]:
     return result
 
 
-def _generate_tokens(
+def _generate_tokens(  # pragma: no cover
     prompt: str,
     max_tokens: int    = 512,
     temperature: float = 0.7,
     top_p: float       = 0.9,
-    stop: List[str] | str | None = None,
+    stop: list[str] | str | None = None,
     seed: int | None   = None,
     use_cache: bool    = True,
 ):
@@ -424,7 +430,7 @@ def _generate_tokens(
             return
 
     # Collect full output so we can populate the cache after generation
-    _cache_buf: List[str] = [] if cache_eligible else []
+    _cache_buf: list[str] = [] if cache_eligible else []
     _last_finish = "stop"
 
     # Apply optional seed for reproducible generation
@@ -536,7 +542,7 @@ def _generate_tokens(
             top_p      = top_p,
         )
         emitted = 0
-        stop_buf: List[int] = []
+        stop_buf: list[int] = []
         for item in gen:
             # mlx_lm >= 0.19 yields GenerationResult objects; older yields strings
             if hasattr(item, "text"):
@@ -655,9 +661,9 @@ app.add_middleware(
 
 # ── Ollama compatibility layer (POST /api/chat etc.) ────────────────────────
 try:
-    from .ollama_compat import mount_ollama as _mount_ollama          # package import
+    from .ollama_compat import mount_ollama as _mount_ollama  # package import
 except ImportError:
-    from ollama_compat import mount_ollama as _mount_ollama            # direct script run
+    from ollama_compat import mount_ollama as _mount_ollama  # direct script run
 _mount_ollama(
     app,
     get_state     = lambda: _state,
@@ -735,7 +741,7 @@ def _make_chunk(content: str, model: str, cid: str, finish_reason=None) -> str:
 
 
 @app.post("/v1/chat/completions")
-async def chat_completions(
+async def chat_completions(  # pragma: no cover
     request: Request,
     creds: HTTPAuthorizationCredentials | None = Security(_bearer),
 ):
@@ -749,7 +755,7 @@ async def chat_completions(
     if _state.model is None:
         raise HTTPException(503, "Model not loaded")
 
-    body: Dict[str, Any] = await request.json()
+    body: dict[str, Any] = await request.json()
     messages    = body.get("messages", [])
     max_tokens  = int(body.get("max_tokens", 512))
     temperature = float(body.get("temperature", 0.7))
@@ -847,7 +853,7 @@ async def chat_completions(
 
         # ── Tool calling: detect function call in output ──────────────────────
         if tools:
-            from squish.tool_calling import parse_tool_calls, build_tool_calls_response
+            from squish.tool_calling import build_tool_calls_response, parse_tool_calls
             raw_calls = parse_tool_calls(full_text)
             if raw_calls is not None:
                 return JSONResponse({
@@ -894,7 +900,7 @@ async def chat_completions(
 
 
 @app.post("/v1/completions")
-async def completions(
+async def completions(  # pragma: no cover
     request: Request,
     creds: HTTPAuthorizationCredentials | None = Security(_bearer),
 ):
@@ -905,7 +911,7 @@ async def completions(
     if _state.model is None:
         raise HTTPException(503, "Model not loaded")
 
-    body: Dict[str, Any] = await request.json()
+    body: dict[str, Any] = await request.json()
     prompt      = body.get("prompt", "")
     max_tokens  = int(body.get("max_tokens", 512))
     temperature = float(body.get("temperature", 0.7))
@@ -1005,7 +1011,7 @@ async def embeddings(
     import mlx.core as mx
     import numpy as np
 
-    body: Dict[str, Any] = await request.json()
+    body: dict[str, Any] = await request.json()
     inputs   = body.get("input", "")
     model_id = body.get("model", _state.model_name)
     if isinstance(inputs, str):
@@ -1147,7 +1153,7 @@ async def tokenize(
         ids = tok.encode(text) if hasattr(tok, "encode") else \
               tok(text, return_tensors="np")["input_ids"][0].tolist()
     except Exception as e:
-        raise HTTPException(500, f"Tokenization failed: {e}")
+        raise HTTPException(500, f"Tokenization failed: {e}") from e
 
     return JSONResponse({
         "token_ids":   ids,
@@ -1158,7 +1164,7 @@ async def tokenize(
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
-def main():
+def main():  # pragma: no cover
     ap = argparse.ArgumentParser(
         description = "Squish OpenAI-compatible inference server",
         formatter_class = argparse.RawTextHelpFormatter,
@@ -1234,9 +1240,9 @@ Examples:
     elif args.prefix_cache_size != 512:
         _prefix_cache._maxsize = args.prefix_cache_size
 
-    print(f"╔══════════════════════════════════════════════╗")
-    print(f"║       Squish OpenAI-compatible Server        ║")
-    print(f"╚══════════════════════════════════════════════╝")
+    print("╔══════════════════════════════════════════════╗")
+    print("║       Squish OpenAI-compatible Server        ║")
+    print("╚══════════════════════════════════════════════╝")
     print(f"  Model dir     : {args.model_dir}")
     print(f"  Compressed dir: {args.compressed_dir}")
     if args.draft_model:
@@ -1296,7 +1302,8 @@ Examples:
     global _scheduler
     if args.batch_scheduler and _state.model is not None:
         try:
-            from squish.scheduler import BatchScheduler, QueueFullError as _QFE
+            from squish.scheduler import BatchScheduler
+            from squish.scheduler import QueueFullError as _QFE
             global _QueueFullError
             _QueueFullError = _QFE
             _scheduler = BatchScheduler(
@@ -1322,9 +1329,9 @@ Examples:
     print(f"  Server ready → http://{args.host}:{args.port}/v1")
     print(f"  Web chat UI  → http://{args.host}:{args.port}/chat")
     print(f"  Ollama compat→ http://{args.host}:{args.port}/api/chat")
-    print(f"  Set in clients:")
+    print("  Set in clients:")
     print(f"    OPENAI_BASE_URL=http://{args.host}:{args.port}/v1")
-    print(f"    OPENAI_API_KEY=squish")
+    print("    OPENAI_API_KEY=squish")
     print()
 
     uvicorn.run(

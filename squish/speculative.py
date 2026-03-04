@@ -34,15 +34,13 @@ Standalone test:
         --prompt "Explain quantum entanglement in one paragraph."
 """
 
-import sys
-import time
 import logging
+import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Callable, Generator, Iterator, List, Optional, Tuple
 
-import numpy as np
 import mlx.core as mx
-import mlx.nn as mx_nn
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +90,7 @@ def _greedy(logits_row: np.ndarray) -> int:
     return int(np.argmax(logits_row))
 
 
-def _get_logits(model, ids: List[int]) -> np.ndarray:
+def _get_logits(model, ids: list[int]) -> np.ndarray:
     """
     Single synchronous forward pass.
 
@@ -106,7 +104,7 @@ def _get_logits(model, ids: List[int]) -> np.ndarray:
     return np.array(last, dtype=np.float32)
 
 
-def _get_all_logits(model, ids: List[int], n_positions: int) -> np.ndarray:
+def _get_all_logits(model, ids: list[int], n_positions: int) -> np.ndarray:
     """
     Verification pass: run the model and return the last ``n_positions`` rows.
 
@@ -200,9 +198,9 @@ class SpeculativeGenerator:
         max_tokens: int       = 512,
         temperature: float    = _DEFAULT_TEMP,
         top_p: float          = _DEFAULT_TOP_P,
-        stop_ids: Optional[List[List[int]]] = None,
-        seed: Optional[int]   = None,
-    ) -> Iterator[Tuple[str, Optional[str]]]:
+        stop_ids: list[list[int]] | None = None,
+        seed: int | None   = None,
+    ) -> Iterator[tuple[str, str | None]]:
         """
         Yield (token_text, finish_reason_or_None) tuples.
         finish_reason is 'stop' or 'length' on the final token; None otherwise.
@@ -236,13 +234,13 @@ class SpeculativeGenerator:
 
     def _speculative_stream(
         self,
-        ids: List[int],
+        ids: list[int],
         max_tokens: int,
         temperature: float,
         top_p: float,
-        stop_ids: List[List[int]],
+        stop_ids: list[list[int]],
         eos_id: int,
-    ) -> Iterator[Tuple[str, Optional[str]]]:
+    ) -> Iterator[tuple[str, str | None]]:
         """
         Core speculative decoding loop.
 
@@ -255,13 +253,13 @@ class SpeculativeGenerator:
         This gives the same distribution as sampling from the target alone.
         """
         generated     = 0
-        stop_buf: List[int] = []
+        stop_buf: list[int] = []
         context       = list(ids)
 
         while generated < max_tokens:
             # ── Step 1: draft K tokens ────────────────────────────────────
-            draft_ids     : List[int]        = []
-            draft_probs   : List[np.ndarray] = []
+            draft_ids     : list[int]        = []
+            draft_probs   : list[np.ndarray] = []
 
             for _ in range(self._k):
                 logits = _get_logits(self._draft, context + draft_ids)
@@ -285,9 +283,9 @@ class SpeculativeGenerator:
             # which predicts token draft_ids[i].
 
             # ── Step 3: sequential accept/reject ─────────────────────────
-            new_tokens: List[int] = []
+            new_tokens: list[int] = []
             accepted   = 0
-            for i, (d_tok, d_probs) in enumerate(zip(draft_ids, draft_probs)):
+            for i, (d_tok, d_probs) in enumerate(zip(draft_ids, draft_probs, strict=False)):
                 t_probs = _softmax_np(target_rows[i], temperature)
                 t_probs = _top_p_filter(t_probs, top_p)
 
@@ -360,16 +358,16 @@ class SpeculativeGenerator:
 
     def _plain_stream(
         self,
-        ids: List[int],
+        ids: list[int],
         max_tokens: int,
         temperature: float,
         top_p: float,
-        stop_ids: List[List[int]],
+        stop_ids: list[list[int]],
         eos_id: int,
-    ) -> Iterator[Tuple[str, Optional[str]]]:
+    ) -> Iterator[tuple[str, str | None]]:
         """Plain auto-regressive sampling — used when no draft model is available."""
         context    = list(ids)
-        stop_buf   : List[int] = []
+        stop_buf   : list[int] = []
         generated  = 0
 
         for _ in range(max_tokens):

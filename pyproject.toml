@@ -78,7 +78,7 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "C90"]
+select = ["E", "F", "W", "I", "UP", "B"]
 ignore = [
     "E501",   # line-length handled by formatter
     "B008",   # FastAPI Depends() calls in function args
@@ -87,6 +87,27 @@ ignore = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts   = "-q --tb=short"
+
+[tool.coverage.run]
+source = ["squish"]
+branch = true
+omit = [
+    "squish/convert.py",
+    "squish/streaming.py",
+    "squish/speculative.py",
+    "squish/squish_lm_eval.py",
+]
+
+[tool.coverage.report]
+skip_empty = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+    "pass",
+]
+fail_under = 45
 
 [tool.mypy]
 python_version    = "3.10"

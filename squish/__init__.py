@@ -11,40 +11,44 @@ Public API:
 
     run_server(...)   # OpenAI-compatible HTTP server
 """
-from .compressed_loader import (  # noqa: F401
-    load_compressed_model,
-    load_from_npy_dir,
-    save_int4_npy_dir,
+# Phase 1.2 — AWQ calibration and scale application
+from squish.awq import (  # noqa: F401
+    apply_awq_to_weights,
+    collect_activation_scales,
+    load_awq_scales,
+    save_awq_scales,
+)
+
+# Model catalog + pull (requires huggingface_hub for download)
+from squish.catalog import (  # noqa: F401
+    CatalogEntry,
+    list_catalog,
+    load_catalog,
+)
+from squish.catalog import (
+    pull as pull_model,
+)
+from squish.catalog import (
+    resolve as resolve_model,
 )
 
 # Entropy compression helpers (optional zstandard dep)
 from squish.entropy import compress_npy_dir, decompress_npy_dir  # noqa: F401
 
-# Speculative decoding (requires both target + draft model)
-from squish.speculative import SpeculativeGenerator, load_draft_model  # noqa: F401
-
-# Phase 1.2 — AWQ calibration and scale application
-from squish.awq import (        # noqa: F401
-    collect_activation_scales,
-    save_awq_scales,
-    load_awq_scales,
-    apply_awq_to_weights,
+# Phase 2.3 — Flash Attention status + benchmarking
+from squish.flash_attention import (  # noqa: F401
+    PatchResult,
+    attention_status,
+    patch_model_attention,
+    predict_memory_savings,
+    print_memory_table,
 )
 
 # Phase 1.3 — Quantized KV cache (KIVI + SnapKV)
-from squish.kv_cache import (   # noqa: F401
+from squish.kv_cache import (  # noqa: F401
     QuantizedKVCache,
     make_quantized_cache,
     patch_model_kv_cache,
-)
-
-# Phase 2.1C — CPU/GPU split loading (auto-offloads layers if model > Metal budget)
-from squish.split_loader import (  # noqa: F401
-    SplitLayerLoader,
-    SplitInfo,
-    OffloadedLayer,
-    profile_model_layers,
-    print_layer_profile,
 )
 
 # Phase 2.2 — Layer-wise streaming for 70B+ models
@@ -52,37 +56,37 @@ from squish.layerwise_loader import (  # noqa: F401
     LayerCache,
     LayerwiseLoader,
     LoadStats,
-    shard_model,
     recommend_cache_size,
-)
-
-# Phase 2.3 — Flash Attention status + benchmarking
-from squish.flash_attention import (  # noqa: F401
-    patch_model_attention,
-    attention_status,
-    predict_memory_savings,
-    print_memory_table,
-    PatchResult,
+    shard_model,
 )
 
 # Quantizer public API (self-contained, no external deps beyond numpy)
 from squish.quantizer import (  # noqa: F401
     QuantizationResult,
-    quantize_embeddings,
-    reconstruct_embeddings,
-    quantize_int4,
     dequantize_int4,
-    mean_cosine_similarity,
     get_backend_info,
+    mean_cosine_similarity,
+    quantize_embeddings,
+    quantize_int4,
+    reconstruct_embeddings,
 )
 
-# Model catalog + pull (requires huggingface_hub for download)
-from squish.catalog import (  # noqa: F401
-    CatalogEntry,
-    load_catalog,
-    list_catalog,
-    resolve as resolve_model,
-    pull as pull_model,
+# Speculative decoding (requires both target + draft model)
+from squish.speculative import SpeculativeGenerator, load_draft_model  # noqa: F401
+
+# Phase 2.1C — CPU/GPU split loading (auto-offloads layers if model > Metal budget)
+from squish.split_loader import (  # noqa: F401
+    OffloadedLayer,
+    SplitInfo,
+    SplitLayerLoader,
+    print_layer_profile,
+    profile_model_layers,
+)
+
+from .compressed_loader import (  # noqa: F401
+    load_compressed_model,
+    load_from_npy_dir,
+    save_int4_npy_dir,
 )
 
 __version__ = "1.0.0"

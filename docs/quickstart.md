@@ -123,7 +123,7 @@ curl http://localhost:11435/v1/completions \
 ## 7. Manage local models
 
 ```bash
-squish list          # show downloaded models
+squish models        # show downloaded models
 squish rm llama3.1:8b   # delete a model
 ```
 

@@ -41,20 +41,16 @@ Architecture:
     eval — only the MLX graph.  Token-level log probabilities are computed by
     slicing the logit tensor and applying log-softmax in-graph.
 """
-import sys
-import os
-import math
-import time
 import logging
+import time
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import numpy as np
 
 # ── lm-eval base class ───────────────────────────────────────────────────────
 try:
-    from lm_eval.api.model import LM
     from lm_eval.api.instance import Instance
+    from lm_eval.api.model import LM
     from lm_eval.api.registry import register_model
     _HAVE_LM_EVAL = True
 except ImportError:
@@ -70,9 +66,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # ── Import MLX early so we fail loudly if it's missing ───────────────────────
-import mlx.core as mx
-import mlx.nn as mx_nn
-
+import mlx.core as mx  # noqa: E402
+import mlx.nn as mx_nn  # noqa: E402
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -94,7 +89,7 @@ class SquishCompressedLM(LM):
         model_dir: str                   = "",
         compressed_dir: str              = "",
         batch_size: int                  = 4,   # padded batch inference — 4 is efficient
-        max_length: Optional[int]        = None,
+        max_length: int | None        = None,
         verbose: bool                    = False,
         trust_remote_code: bool          = True,
     ):
@@ -181,7 +176,7 @@ class SquishCompressedLM(LM):
 
     # ── tokeniser helpers ─────────────────────────────────────────────────────
 
-    def tok_encode(self, string: str) -> List[int]:
+    def tok_encode(self, string: str) -> list[int]:
         return self._tokenizer.encode(string, add_special_tokens=False)
 
     def tok_decode(self, tokens) -> str:
@@ -190,7 +185,7 @@ class SquishCompressedLM(LM):
     # ── core MLX forward pass ─────────────────────────────────────────────────
 
     def _forward_logprobs(
-        self, token_ids: List[int]
+        self, token_ids: list[int]
     ) -> np.ndarray:
         """
         Legacy: Run one forward pass and return full (seq_len, vocab_size) log-probs.
@@ -204,9 +199,9 @@ class SquishCompressedLM(LM):
 
     def _forward_selected_logprobs(
         self,
-        token_ids: List[int],
-        cont_tokens: List[int],
-    ) -> Tuple[List[float], List[bool]]:
+        token_ids: list[int],
+        cont_tokens: list[int],
+    ) -> tuple[list[float], list[bool]]:
         """
         Optimised single forward pass for loglikelihood evaluation.
 
@@ -250,8 +245,8 @@ class SquishCompressedLM(LM):
     # ── loglikelihood ─────────────────────────────────────────────────────────
 
     def loglikelihood(
-        self, requests: List[Instance]
-    ) -> List[Tuple[float, bool]]:
+        self, requests: list[Instance]
+    ) -> list[tuple[float, bool]]:
         """
         Compute P(continuation | context) for every (context, continuation) pair.
 
@@ -263,10 +258,10 @@ class SquishCompressedLM(LM):
         Uses _forward_selected_logprobs to avoid materialising the full
         (seq_len × vocab_size) tensor — critical for large vocab models.
         """
-        results: List[Tuple[float, bool]] = []
+        results: list[tuple[float, bool]] = []
 
-        batch: List[Tuple[List[int], List[int]]] = []
-        batch_indices: List[int] = []
+        batch: list[tuple[list[int], list[int]]] = []
+        batch_indices: list[int] = []
         _n_done = 0
         _n_total = len(requests)
         _t_start = time.perf_counter()
@@ -349,8 +344,8 @@ class SquishCompressedLM(LM):
 
 
     def loglikelihood_rolling(
-        self, requests: List[Instance]
-    ) -> List[float]:
+        self, requests: list[Instance]
+    ) -> list[float]:
         """Compute unconditional log-likelihood of a string (used by BPB/PPL tasks)."""
         results = []
         for req in requests:
@@ -370,8 +365,8 @@ class SquishCompressedLM(LM):
     # ── generate_until ────────────────────────────────────────────────────────
 
     def generate_until(
-        self, requests: List[Instance]
-    ) -> List[str]:
+        self, requests: list[Instance]
+    ) -> list[str]:
         """
         Generate up to max_gen_toks tokens for each context, stopping at any
         of the provided stop strings.  Used by open-ended tasks (GSM8K, etc.).
@@ -421,7 +416,7 @@ class SquishReferenceLM(SquishCompressedLM):
         self,
         model_dir: str                   = "",
         batch_size: int                  = 1,
-        max_length: Optional[int]        = None,
+        max_length: int | None        = None,
         verbose: bool                    = False,
         trust_remote_code: bool          = True,
         **kwargs,

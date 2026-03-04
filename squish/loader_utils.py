@@ -19,14 +19,14 @@ from __future__ import annotations
 
 import dataclasses
 import importlib
-import json
 import io
+import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from squish.quantizer import reconstruct_embeddings, QuantizationResult, dequantize_int4
+from squish.quantizer import QuantizationResult, dequantize_int4, reconstruct_embeddings
 
 # ---------------------------------------------------------------------------
 # Optional zstd decompression

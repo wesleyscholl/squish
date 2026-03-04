@@ -33,7 +33,6 @@ import sys
 import time
 from pathlib import Path
 
-
 # ── zstandard availability ───────────────────────────────────────────────────
 
 def _require_zstd():
@@ -73,7 +72,7 @@ def compress_npy_dir(
     sentinel = tensors_dir.parent / ".squish_zst_ready"
     if sentinel.exists():
         if verbose:
-            print(f"  Already compressed (.squish_zst_ready present) — skipping")
+            print("  Already compressed (.squish_zst_ready present) — skipping")
         return {}
 
     cctx = zstd.ZstdCompressor(level=level, threads=threads)
@@ -167,6 +166,7 @@ def load_npy_zst(path: Path, dctx=None):
     Decompresses into a BytesIO buffer then calls np.load — no temp files.
     """
     import io
+
     import numpy as np
 
     if dctx is None:
@@ -187,7 +187,6 @@ def benchmark_compression(tensors_dir: Path) -> None:
     Measure compression ratios without modifying files.
     Samples up to 20 tensors, reports per-tensor and aggregate stats.
     """
-    import numpy as np
     zstd = _require_zstd()
 
     cctx = zstd.ZstdCompressor(level=3)
@@ -235,7 +234,7 @@ def benchmark_compression(tensors_dir: Path) -> None:
     print(f"  {'-'*100}")
     print(f"  {'TOTAL (sample)':55s}  {total_orig/1e6:8.2f}  {total_comp/1e6:8.2f}  {overall:6.2f}×")
     print()
-    print(f"  Extrapolated full-model savings:")
+    print("  Extrapolated full-model savings:")
     model_gb_estimate = total_orig / 1e9 * (len(sorted(Path(tensors_dir).glob("*.npy"))) / max(len(npy_files), 1))
     savings_estimate  = model_gb_estimate * (1.0 - 1.0 / overall)
     print(f"    Model dir size (est): {model_gb_estimate:.1f} GB")

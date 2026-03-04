@@ -47,7 +47,6 @@ import argparse
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -128,7 +127,7 @@ class _ActivationHook:
 def collect_activation_scales(
     model,
     tokenizer,
-    texts: Optional[list] = None,
+    texts: list | None = None,
     n_samples: int = 64,
     alpha: float = 0.5,
     seq_len: int = 512,
@@ -166,7 +165,6 @@ def collect_activation_scales(
 
     # Collect all nn.Linear modules and attach hooks
     hooks   = {}      # layer_name → _ActivationHook
-    handles = {}
 
     # MLX modules don't have PyTorch-style forward hooks; instead we monkey-
     # patch __call__ temporarily on each nn.Linear.
@@ -406,15 +404,15 @@ def apply_awq_to_weights(
         n_applied += 1
 
     if n_applied == 0 and awq_scales:
-        print(f"  [AWQ] Warning: no scales matched any weight tensors. "
-              f"Check that layer names in awq_scales match model weight names.")
+        print("  [AWQ] Warning: no scales matched any weight tensors. "
+              "Check that layer names in awq_scales match model weight names.")
     elif verbose or n_applied > 0:
         print(f"  [AWQ] Applied scales to {n_applied} weight tensors")
 
     return weights
 
 
-def _preceding_norm_name(weight_name: str, weights: dict) -> Optional[str]:
+def _preceding_norm_name(weight_name: str, weights: dict) -> str | None:
     """
     Guess the name of the LayerNorm whose output feeds this linear weight.
 
@@ -480,7 +478,7 @@ def main():
     ap.add_argument("--verbose",    action="store_true")
     args = ap.parse_args()
 
-    print(f"\nSquish AWQ Calibration")
+    print("\nSquish AWQ Calibration")
     print(f"  Model:     {args.model_dir}")
     print(f"  Output:    {args.output}")
     print(f"  n_samples: {args.n_samples}")

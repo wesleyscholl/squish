@@ -191,7 +191,7 @@
     <button id="new-chat" onclick="newChat()">＋ New chat</button>
     <div id="history-list"></div>
     <div id="sb-meta">
-      Squish v0.2 · <a href="/v1/metrics" target="_blank">metrics</a>
+      <span id="squish-ver">Squish</span> · <a href="/v1/metrics" target="_blank">metrics</a>
     </div>
   </aside>
 
@@ -304,6 +304,19 @@ let isStreaming = false;
 function curSession() { return sessions[activeIdx] ?? null; }
 function saveLocal()  { localStorage.setItem("squish_sessions", JSON.stringify(sessions)); }
 
+async function loadVersion() {
+  try {
+    const r = await fetch(`${BASE_URL}/health`);
+    if (!r.ok) return;
+    const d = await r.json();
+    const ver = d.version || d.squish_version || "";
+    if (ver) {
+      const el = document.getElementById("squish-ver");
+      if (el) el.textContent = `Squish v${ver}`;
+    }
+  } catch { /* server offline — version label stays as-is */ }
+}
+
 // ── Model loading ─────────────────────────────────────────────────────────── 
 async function loadModels() {
   const dot = document.getElementById("status-dot");
@@ -322,7 +335,24 @@ async function loadModels() {
   } catch {
     dot.className = "err";
     sel.innerHTML = `<option value="">Offline</option>`;
+    showOfflineBanner();
   }
+}
+
+function showOfflineBanner() {
+  if (document.getElementById("offline-banner")) return;
+  const banner = document.createElement("div");
+  banner.id = "offline-banner";
+  banner.style.cssText = "position:fixed;top:0;left:0;right:0;background:#b91c1c;color:#fff;"
+    + "text-align:center;padding:8px 12px;font-size:13px;z-index:9999;";
+  banner.innerHTML = `⚠️&nbsp;Server offline &mdash; start it with: &nbsp;<code style="background:rgba(0,0,0,.25);padding:1px 6px;border-radius:4px;">squish run &lt;model&gt;</code>
+    <button onclick="dismissOfflineBanner()" style="margin-left:16px;background:none;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:4px;padding:1px 8px;cursor:pointer;">✕</button>`;
+  document.body.prepend(banner);
+}
+
+function dismissOfflineBanner() {
+  const b = document.getElementById("offline-banner");
+  if (b) b.remove();
 }
 
 function onModelChange(val) {
@@ -605,6 +635,7 @@ document.getElementById("settings-panel").addEventListener("click", e => {
 // ── Init ──────────────────────────────────────────────────────────────────── 
 (async () => {
   await loadModels();
+  loadVersion();   // non-blocking — updates sidebar version tag
   // Restore last session
   if (sessions.length > 0) {
     activeIdx = 0;

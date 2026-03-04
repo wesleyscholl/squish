@@ -49,7 +49,6 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -106,7 +105,6 @@ def _layer_weight_bytes(layer) -> int:
     Walks the parameter tree returned by ``layer.parameters()``, handling
     nested dicts (e.g. {"self_attn": {"q_proj": {"weight": arr}}}).
     """
-    total = 0
     try:
         import mlx.core as mx
         params = layer.parameters()
@@ -125,7 +123,7 @@ def _layer_weight_bytes(layer) -> int:
     return _walk(params)
 
 
-def _flatten_params(layer) -> list[tuple[str, "np.ndarray"]]:
+def _flatten_params(layer) -> list[tuple[str, np.ndarray]]:
     """
     Flatten all MLX parameters of ``layer`` into (dotted_name, numpy_array)
     pairs — ready for CPU storage.
@@ -340,7 +338,7 @@ class SplitLayerLoader:
 
         # Profile layer sizes
         sizes = [_layer_weight_bytes(layers[i]) for i in range(n)]
-        total = sum(sizes)
+        sum(sizes)
 
         info = SplitInfo(metal_limit=metal_limit, target_bytes=target_bytes)
 
@@ -424,7 +422,7 @@ class SplitLayerLoader:
         target_bytes = int(metal_limit * target_fraction)
 
         layers = getattr(model, "layers", [])
-        total  = sum(_layer_weight_bytes(l) for l in layers)
+        total  = sum(_layer_weight_bytes(lyr) for lyr in layers)
 
         if total <= target_bytes:
             if verbose:

@@ -8,9 +8,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import numpy as np
 import tempfile
 
+import numpy as np
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 1.2 — AWQ
@@ -46,8 +46,7 @@ def test_awq_apply_weights():
 
 def test_awq_save_load(tmp_path=None):
     """Round-trip: save_awq_scales then load_awq_scales returns identical arrays."""
-    import tempfile
-    from squish.awq import save_awq_scales, load_awq_scales
+    from squish.awq import load_awq_scales, save_awq_scales
 
     scales_in = {
         "model.layers.0.self_attn.q_proj": np.array([1.2, 0.8, 1.5], dtype=np.float32),
@@ -79,7 +78,7 @@ def test_awq_no_match_counts_applied():
 
 def test_kv_int8_round_trip():
     """INT8 quantize → dequantize max error < 1% of signal range."""
-    from squish.kv_cache import _quantize_int8_per_channel, _dequantize_int8_per_channel
+    from squish.kv_cache import _dequantize_int8_per_channel, _quantize_int8_per_channel
 
     rng = np.random.default_rng(42)
     x = rng.standard_normal((32, 128)).astype(np.float16)
@@ -102,7 +101,7 @@ def test_kv_layer_cache_append():
     cache = KVLayerCache(window=4)
     n_heads, head_dim = 8, 64
 
-    for i in range(10):
+    for _i in range(10):
         k = np.random.randn(n_heads, head_dim).astype(np.float16)
         v = np.random.randn(n_heads, head_dim).astype(np.float16)
         cache.append(k, v)
@@ -177,7 +176,7 @@ def test_snapkv_mode_auto_evict():
     # Then 20-13 = 7 more tokens are appended → final n_tokens ≤ budget + 7
     qkv = QuantizedKVCache(n_layers=1, window=4, mode="snap",
                            budget=budget, snap_window=4)
-    for i in range(20):
+    for _i in range(20):
         qkv.update(0, np.random.randn(4, 64).astype(np.float16),
                       np.random.randn(4, 64).astype(np.float16))
 

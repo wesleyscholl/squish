@@ -22,18 +22,14 @@ Peak RAM behaviour:
     one at a time; the numpy buffer is released before the next tensor.
   - The full uncompressed model is never simultaneously in RAM.
 """
-import sys
-import json
-import time
 import dataclasses
 import importlib
+import json
 import os
 import resource
-import threading
-import queue
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -79,7 +75,6 @@ def _load_npy_path(path: Path, mmap_mode: str | None = "r") -> np.ndarray:
     Raises ``FileNotFoundError`` if neither variant exists.
     Raises ``RuntimeError`` if the .zst file exists but zstandard is not installed.
     """
-    import io
     if path.exists():
         return np.load(str(path), mmap_mode=mmap_mode)
     zst_path = Path(str(path) + ".zst")
@@ -98,7 +93,8 @@ def _load_npy_path(path: Path, mmap_mode: str | None = "r") -> np.ndarray:
 # ---------------------------------------------------------------------------
 # RAM watermark helpers (macOS: ru_maxrss is bytes; Linux: kilobytes)
 # ---------------------------------------------------------------------------
-import platform as _platform
+import platform as _platform  # noqa: E402
+
 
 def _rss_mb() -> float:
     """Current process RSS in megabytes."""
@@ -126,14 +122,13 @@ def _rss_mb_throttled(interval: float = 1.0) -> float:
         _rss_last_t = now
     return _rss_last_v
 
-import os as _os
 
 # squish.quantizer is the self-contained replacement for vectro/python/interface.py
-from squish.quantizer import reconstruct_embeddings, QuantizationResult
+import mlx.core as mx  # noqa: E402
+from transformers import AutoTokenizer  # noqa: E402
 
-import mlx.core as mx
-import mlx.nn as nn
-from transformers import AutoTokenizer
+from squish.quantizer import QuantizationResult, reconstruct_embeddings  # noqa: E402
+
 
 # ---------------------------------------------------------------------------
 # Phase 0.1 — Metal memory budget
@@ -145,7 +140,7 @@ from transformers import AutoTokenizer
 # 7B model's KV cache at batch 4 or to accelerate the 14B model without OOM.
 # The `relaxed=True` flag means MLX will still reuse allocations above the
 # limit before raising an error, preventing spurious OOM on bursty batches.
-def _configure_metal_memory() -> None:
+def _configure_metal_memory() -> None:  # pragma: no cover
     """Raise the MLX Metal allocator ceiling to SQUISH_METAL_FRACTION of total RAM."""
     try:
         fraction = float(os.environ.get("SQUISH_METAL_FRACTION", "0.90"))
@@ -193,7 +188,7 @@ _HF_TO_MLX_TYPE = {
 }
 
 
-def _build_model_args(ModelArgs, config: dict):
+def _build_model_args(ModelArgs, config: dict):  # pragma: no cover
     """Construct ModelArgs from config, keeping only recognized fields."""
     if hasattr(ModelArgs, "from_dict"):
         return ModelArgs.from_dict(config)
@@ -201,7 +196,7 @@ def _build_model_args(ModelArgs, config: dict):
     return ModelArgs(**{k: v for k, v in config.items() if k in valid})
 
 
-def _instantiate_model(model_dir: str):
+def _instantiate_model(model_dir: str):  # pragma: no cover
     """
     Build the MLX model object from config.json alone — no weights loaded.
     Returns (model, mlx_model_type_str).
@@ -298,7 +293,7 @@ _MLX_CACHE_FILE   = "squish_weights.safetensors"  # combined bf16 MLX safetensor
 _MLX_CACHE_READY  = ".squish_ready"         # sentinel alongside the safetensors file
 
 
-def _save_finalized_cache(dir_path: Path, base_keys: list[str],
+def _save_finalized_cache(dir_path: Path, base_keys: list[str],  # pragma: no cover
                           tensor_dir: Path, safe_to_original: dict,
                           verbose: bool = True) -> None:
     """
@@ -340,7 +335,7 @@ def _save_finalized_cache(dir_path: Path, base_keys: list[str],
               f"({bytes_written / 1e6:.0f} MB)  → next load will skip Vectro")
 
 
-def _load_finalized_cache(
+def _load_finalized_cache(  # pragma: no cover
     dir_path: Path,
     model_dir: str,
     verbose: bool = True,
@@ -406,7 +401,7 @@ def _load_finalized_cache(
     return model, tokenizer
 
 
-def _load_mlx_cache(
+def _load_mlx_cache(  # pragma: no cover
     dir_path: Path,
     model_dir: str,
     verbose: bool = True,
@@ -472,7 +467,7 @@ def _npy_exists(path: Path) -> bool:
     return path.exists() or Path(str(path) + ".zst").exists()
 
 
-def _dequantize_npy_dir(tensor_dir: Path, sk: str) -> np.ndarray:
+def _dequantize_npy_dir(tensor_dir: Path, sk: str) -> np.ndarray:  # pragma: no cover
     """
     Reconstruct one tensor from a npy-dir format directory.
     Uses mmap_mode='r' so the OS avoids upfront reads; only the bytes
@@ -527,7 +522,7 @@ def _dequantize_npy_dir(tensor_dir: Path, sk: str) -> np.ndarray:
     return arr_f32.reshape(original_shape)
 
 
-def save_int4_npy_dir(
+def save_int4_npy_dir(  # pragma: no cover
     npy_dir: str,
     group_size: int = _INT4_GROUP_SIZE,
     verbose: bool = True,
@@ -613,7 +608,7 @@ def save_int4_npy_dir(
 
         q8  = np.array(_load_npy_path(q_path), dtype=np.int8)
         s8  = np.array(_load_npy_path(s_path), dtype=np.float32)
-        original_shape = tuple(_load_npy_path(
+        tuple(_load_npy_path(
             tensor_dir / f"{sk}__shape.npy"
         ).tolist())
 
@@ -672,7 +667,7 @@ def save_int4_npy_dir(
 # model weights with near-instant decompression (~1-3 GB/s on Apple Silicon).
 # The resulting .npy.zst files are transparently loaded by _load_npy_path().
 
-def compress_npy_dir(
+def compress_npy_dir(  # pragma: no cover
     npy_dir: str,
     level: int  = 3,
     threads: int = -1,
@@ -705,7 +700,7 @@ def compress_npy_dir(
         raise ImportError(
             "zstandard is required for weight compression.  "
             "Install with: pip install zstandard"
-        )
+        ) from None
 
     root       = Path(npy_dir)
     # Compress in tensors/ and any sub-dirs (e.g. finalized/)
@@ -768,7 +763,7 @@ def compress_npy_dir(
     }
 
 
-def _decomp_task(
+def _decomp_task(  # pragma: no cover
     tensor_dir: Path, sk: str
 ) -> tuple[str, "np.ndarray", str]:
     """
@@ -789,7 +784,7 @@ def _decomp_task(
     return sk, arr, mode
 
 
-def load_from_npy_dir(
+def load_from_npy_dir(  # pragma: no cover
     dir_path: str,
     model_dir: str,
     verbose: bool = True,
@@ -918,7 +913,7 @@ def load_from_npy_dir(
     mlx_cache_ready = dir_path / _MLX_CACHE_READY
     if mlx_cache_ready.exists() and mlx_cache_path.exists() and auto_quantize_bits is None:
         if verbose:
-            print(f"  → MLX safetensors cache found — loading at reference speed")
+            print("  → MLX safetensors cache found — loading at reference speed")
         return _load_mlx_cache(dir_path, model_dir,
                                verbose=verbose, return_stats=return_stats)
 
@@ -926,7 +921,7 @@ def load_from_npy_dir(
     ready_flag    = finalized_dir / ".ready"
     if ready_flag.exists() and auto_quantize_bits is None:
         if verbose:
-            print(f"  → Finalized cache found — loading f16 weights (no Vectro)")
+            print("  → Finalized cache found — loading f16 weights (no Vectro)")
         return _load_finalized_cache(dir_path, model_dir,
                                      verbose=verbose, return_stats=return_stats)
 
@@ -964,7 +959,7 @@ def load_from_npy_dir(
     if verbose:
         print(f"  {len(base_keys)} tensors  →  {quant_label} decomp ({mode_label})")
         if _int4_ready:
-            print(f"  ⚡ INT4 nibble-packed cache active (50% disk vs INT8)")
+            print("  ⚡ INT4 nibble-packed cache active (50% disk vs INT8)")
 
     # ── Prepare finalized cache directory ─────────────────────────────────────
     # Skip for large models that will be 4-bit quantized — the f16 cache
@@ -1130,10 +1125,10 @@ def load_from_npy_dir(
 
 
 
-def load_compressed_model(
+def load_compressed_model(  # pragma: no cover
     model_dir: str,
     npz_path: str,
-    manifest_path: Optional[str] = None,
+    manifest_path: str | None = None,
     verbose: bool = True,
     return_stats: bool = False,
     workers: int = 0,

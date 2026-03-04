@@ -86,10 +86,10 @@ def _extract_commit_message(stdout: str) -> str:
     """
     import re
     ansi_escape = re.compile(r"\x1b\[[0-9;]*m")
-    lines = [ansi_escape.sub("", l).strip() for l in stdout.splitlines()]
+    lines = [ansi_escape.sub("", ln).strip() for ln in stdout.splitlines()]
     # Skip status lines that start with known prefixes
-    skip_prefixes = ("▸", "✓", "→", "[", "squish", "Server", "waiting", ".")
-    msg_lines = [l for l in lines if l and not any(l.startswith(p) for p in skip_prefixes)]
+    skip_prefixes = ("\u25b8", "\u2713", "\u2192", "[", "squish", "Server", "waiting", ".")
+    msg_lines = [ln for ln in lines if ln and not any(ln.startswith(p) for p in skip_prefixes)]
     return msg_lines[0] if msg_lines else ""
 
 

@@ -32,11 +32,12 @@ References:
 
 import json
 import time
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator, Callable, Dict, Any, Optional
+from typing import Any
 
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 
 
 def mount_ollama(
@@ -122,10 +123,14 @@ def mount_ollama(
 
     def _guess_family(name: str) -> str:
         name_lower = name.lower()
-        if "qwen" in name_lower:     return "qwen2"
-        if "llama" in name_lower:    return "llama"
-        if "mistral" in name_lower:  return "mistral"
-        if "gemma" in name_lower:    return "gemma"
+        if "qwen" in name_lower:
+            return "qwen2"
+        if "llama" in name_lower:
+            return "llama"
+        if "mistral" in name_lower:
+            return "mistral"
+        if "gemma" in name_lower:
+            return "gemma"
         return "unknown"
 
     def _guess_params(name: str) -> str:
@@ -200,9 +205,9 @@ def mount_ollama(
         name = body.get("name", "")
 
         async def _stream():
-            yield _ndjson({"status": f"Squish manages models locally."})
+            yield _ndjson({"status": "Squish manages models locally."})
             yield _ndjson({"status": f"To add '{name}', use mlx_lm to download + convert:"})
-            yield _ndjson({"status": f"  python3 -m mlx_lm.convert --hf-path <HF_MODEL_ID> -q --q-bits 4"})
+            yield _ndjson({"status": "  python3 -m mlx_lm.convert --hf-path <HF_MODEL_ID> -q --q-bits 4"})
             yield _ndjson({"status": "done", "completed": 0, "total": 0})
 
         return StreamingResponse(_stream(), media_type="application/x-ndjson")
@@ -224,7 +229,7 @@ def mount_ollama(
         if state.model is None:
             raise HTTPException(503, "Model not loaded")
 
-        body: Dict[str, Any] = await request.json()
+        body: dict[str, Any] = await request.json()
         prompt      = body.get("prompt", "")
         options     = body.get("options", {})
         stream      = body.get("stream", True)
@@ -312,7 +317,7 @@ def mount_ollama(
         if state.model is None:
             raise HTTPException(503, "Model not loaded")
 
-        body: Dict[str, Any] = await request.json()
+        body: dict[str, Any] = await request.json()
         messages    = body.get("messages", [])
         options     = body.get("options", {})
         stream      = body.get("stream", True)

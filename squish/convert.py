@@ -22,14 +22,15 @@ Usage:
         [--outlier-threshold 20.0] \\
         [--verbose]
 """
-import sys
-import json
-import time
-import threading
 import argparse
+import json
+import sys
+import threading
+import time
 from pathlib import Path
 
 import numpy as np
+
 
 # ---------------------------------------------------------------------------
 # AWQ scale application (imported lazily so convert.py works without awq.py)
@@ -50,7 +51,7 @@ def _apply_awq_single(name: str, arr_f32: np.ndarray, awq_scales: dict) -> np.nd
         return arr_f32
 
 
-from squish.quantizer import quantize_embeddings, quantize_int4, QuantizationResult
+from squish.quantizer import QuantizationResult, quantize_embeddings, quantize_int4  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +432,7 @@ def main():
         # model into GPU memory all at once (which triggers Metal GPU timeout on
         # 16 GB unified-memory machines like M3 MacBook Pro).
         print(f"\nStreaming quantization → {output_path}/tensors/")
-        print(f"  (CPU-only shard loading — no Metal GPU, works for any model size)")
+        print("  (CPU-only shard loading — no Metal GPU, works for any model size)")
 
         # ── Load AWQ scales if provided ────────────────────────────────────
         awq_scales: dict = {}
@@ -466,7 +467,7 @@ def main():
         n_total = stats["n_quantized"] + stats["n_passthrough"]
 
         print(f"\n{'='*50}")
-        print(f"  Format:           npy-dir (streaming)")
+        print("  Format:           npy-dir (streaming)")
         print(f"  Quantization:     {'INT4 nibble-packed (group-64)' if args.int4 else 'INT8 per-group-64'}")
         print(f"  Tensors:          {n_total} total")
         print(f"    Quantized (Q8): {stats['n_quantized']}")
@@ -527,7 +528,7 @@ def main():
 
         t1 = time.time()
         print(f"\nWriting {output_path} ...")
-        print(f"  (this is the slow step — zlib single-threaded compression)")
+        print("  (this is the slow step — zlib single-threaded compression)")
         with Spinner(f"savez_compressed  →  {output_path.name}"):
             np.savez_compressed(str(output_path), **npz_dict)
         write_time = time.time() - t1
@@ -544,7 +545,7 @@ def main():
         disk_ratio = stats["orig_f32_bytes"] / max(disk_bytes, 1)
 
         print(f"\n{'='*50}")
-        print(f"  Format:           npz")
+        print("  Format:           npz")
         print(f"  Tensors:          {len(weights)} total")
         print(f"    Quantized (Q8): {stats['n_quantized']}")
         print(f"    Passthrough (f16 on disk): {stats['n_passthrough']}")

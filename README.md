@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PyPI version](https://img.shields.io/pypi/v/squish.svg)](https://pypi.org/project/squish/)
+[![CI](https://github.com/wesleyscholl/squish/actions/workflows/ci.yml/badge.svg)](https://github.com/wesleyscholl/squish/actions/workflows/ci.yml)
 [![Platform](https://img.shields.io/badge/platform-Apple%20Silicon-lightgrey.svg)](https://github.com/wesleyscholl/squish)
 [![Discord](https://img.shields.io/badge/Discord-join%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/squish)
 [![HuggingFace](https://img.shields.io/badge/🤗%20Models-squish--community-yellow)](https://huggingface.co/squish-community)

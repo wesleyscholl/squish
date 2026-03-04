@@ -16,15 +16,14 @@ Then upload everything to your CDN:
 """
 
 from __future__ import annotations
+
 import argparse
 import hashlib
 import json
-import os
 import struct
 import sys
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
-
 
 # ─── safetensors header parsing ──────────────────────────────────────────────
 

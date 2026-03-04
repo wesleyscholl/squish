@@ -73,7 +73,7 @@ import logging
 import queue
 import threading
 import time
-from typing import AsyncIterator, Callable, Dict, List, Optional, Tuple
+from collections.abc import AsyncIterator
 
 import numpy as np
 
@@ -91,20 +91,20 @@ _DONE = object()
 class _Request:
     """Internal representation of one pending / active generation request."""
     request_id:  str
-    input_ids:   List[int]            # tokenised prompt
+    input_ids:   list[int]            # tokenised prompt
     max_tokens:  int
     temperature: float
     top_p:       float
-    stop_ids:    List[List[int]]
-    seed:        Optional[int]
+    stop_ids:    list[list[int]]
+    seed:        int | None
 
     # Output: tokens are placed here by the worker thread
     # Items are (token_text: str, finish_reason: str | None)
     out_queue: queue.SimpleQueue = dataclasses.field(default_factory=queue.SimpleQueue)
 
     # Mutable state during generation
-    generated_ids: List[int] = dataclasses.field(default_factory=list)
-    stop_buf:      List[int] = dataclasses.field(default_factory=list)
+    generated_ids: list[int] = dataclasses.field(default_factory=list)
+    stop_buf:      list[int] = dataclasses.field(default_factory=list)
     done:          bool      = False
     finish_reason: str       = "stop"
 
@@ -198,7 +198,7 @@ class BatchScheduler:
         tokenizer,
         max_batch_size:  int   = 8,
         batch_window_ms: float = 20.0,
-        pad_token_id:    Optional[int] = None,
+        pad_token_id:    int | None = None,
         max_pending:     int   = 64,
     ):
         import mlx.core as mx  # noqa: F401 (validate import on init)
@@ -218,7 +218,7 @@ class BatchScheduler:
         self._pending: queue.Queue = queue.Queue()
 
         # Worker thread
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
         # Per-request RNG (seeded lazily)
@@ -263,8 +263,8 @@ class BatchScheduler:
         max_tokens:  int,
         temperature: float,
         top_p:       float,
-        stop_ids:    List[List[int]],
-        seed:        Optional[int],
+        stop_ids:    list[list[int]],
+        seed:        int | None,
     ) -> _Request:
         """Tokenise prompt and build a _Request object."""
         try:
@@ -287,9 +287,9 @@ class BatchScheduler:
         max_tokens:  int   = 512,
         temperature: float = 0.7,
         top_p:       float = 0.9,
-        stop_ids:    Optional[List[List[int]]] = None,
-        seed:        Optional[int] = None,
-        request_id:  Optional[str] = None,
+        stop_ids:    list[list[int]] | None = None,
+        seed:        int | None = None,
+        request_id:  str | None = None,
     ):
         """
         Submit a generation request and iterate over (token_text, finish_reason).
@@ -318,10 +318,10 @@ class BatchScheduler:
         max_tokens:  int   = 512,
         temperature: float = 0.7,
         top_p:       float = 0.9,
-        stop_ids:    Optional[List[List[int]]] = None,
-        seed:        Optional[int] = None,
-        request_id:  Optional[str] = None,
-    ) -> AsyncIterator[Tuple[str, Optional[str]]]:
+        stop_ids:    list[list[int]] | None = None,
+        seed:        int | None = None,
+        request_id:  str | None = None,
+    ) -> AsyncIterator[tuple[str, str | None]]:
         """
         Submit a generation request and async-iterate (token_text, finish_reason).
 
@@ -397,12 +397,12 @@ class BatchScheduler:
 
         log.debug("BatchScheduler worker stopped")
 
-    def _collect_batch(self) -> List[_Request]:
+    def _collect_batch(self) -> list[_Request]:
         """
         Block until at least one request arrives, then wait up to
         ``batch_window_ms`` for more — up to ``max_batch_size``.
         """
-        batch: List[_Request] = []
+        batch: list[_Request] = []
         deadline = None
 
         # Block waiting for the first request (with a short timeout so we can
@@ -432,7 +432,7 @@ class BatchScheduler:
 
         return batch
 
-    def _generate_batch(self, batch: List[_Request], mx) -> None:
+    def _generate_batch(self, batch: list[_Request], mx) -> None:
         """
         Run the autoregressive generation loop for a batch of requests.
 
@@ -468,7 +468,7 @@ class BatchScheduler:
             logits_np = np.array(logits_all.astype(mx.float32))  # CPU numpy
 
             # ── Sample + stream per request ──────────────────────────────────
-            still_active: List[_Request] = []
+            still_active: list[_Request] = []
             for i, req in enumerate(active):
                 # Logits at the position of the LAST real token for this request
                 last_pos      = lengths[i] - 1
@@ -583,6 +583,6 @@ def _demo():
 
 
 if __name__ == "__main__":
-    import numpy as np   # ensure available for _demo
+    import numpy as np  # ensure available for _demo
     logging.basicConfig(level=logging.INFO)
     _demo()

@@ -46,18 +46,41 @@ from pathlib import Path
 
 try:
     from squish.catalog import (
-        resolve as _catalog_resolve,
         list_catalog,
+    )
+    from squish.catalog import (
         pull as _catalog_pull,
+    )
+    from squish.catalog import (
+        resolve as _catalog_resolve,
     )
     _CATALOG_AVAILABLE = True
 except Exception:  # pragma: no cover
     _CATALOG_AVAILABLE = False
 
 
-# ── Model registry ─────────────────────────────────────────────────────────── 
+# ── Model registry ───────────────────────────────────────────────────────────
 
-_MODELS_DIR = Path.home() / ".squish" / "models"
+# Resolve models directory: SQUISH_MODELS_DIR env var → ~/.squish/models → <repo>/models → ~/models (legacy)
+def _resolve_models_dir() -> Path:
+    env_override = os.environ.get("SQUISH_MODELS_DIR", "").strip()
+    if env_override:
+        return Path(env_override).expanduser()
+    # Check ~/.squish/models (canonical install location)
+    primary = Path.home() / ".squish" / "models"
+    if primary.exists():
+        return primary
+    # Check <squish repo root>/models/ — works when running directly from the repo
+    repo_models = Path(__file__).resolve().parent.parent / "models"
+    if repo_models.exists():
+        return repo_models
+    # Check ~/models (legacy location)
+    legacy = Path.home() / "models"
+    if legacy.exists():
+        return legacy
+    return primary  # default even if absent — gives a consistent error path
+
+_MODELS_DIR = _resolve_models_dir()
 
 # Legacy shorthand → directory name (kept for backward compatibility).
 # New models should be added to squish/catalog.py instead.
@@ -137,8 +160,12 @@ def _resolve_model(name: str | None) -> tuple[Path, Path]:
         model_dir = Path(name).expanduser()
 
     if not model_dir.exists():
-        _die(f"Model directory not found: {model_dir}\n"
-             f"Run `squish models` to list available models.")
+        hint = name if (name and "/" not in str(name)) else "qwen3:8b"
+        _die(
+            f"Model directory not found: {model_dir}\n"
+            f"  Run:  squish pull {hint}  to download it.\n"
+            f"  Browse available models: squish catalog"
+        )
 
     compressed_dir = Path(str(model_dir) + _COMPRESSED_SUFFIX)
     if not compressed_dir.exists():
@@ -149,7 +176,7 @@ def _resolve_model(name: str | None) -> tuple[Path, Path]:
         else:
             print(f"  ⚠  No compressed dir found at {compressed_dir}")
             print(f"     To compress: python3 -m squish.convert --model-dir {model_dir} --output {compressed_dir}")
-            print(f"     Starting with uncompressed model (slower load)…")
+            print("     Starting with uncompressed model (slower load)…")
             compressed_dir = model_dir
 
     return model_dir, compressed_dir
@@ -162,10 +189,10 @@ def _die(msg: str) -> None:
 
 def _box(lines: list[str]) -> None:
     """Print a simple box around lines."""
-    width = max(len(l) for l in lines) + 4
+    width = max(len(ln) for ln in lines) + 4
     print("┌" + "─" * width + "┐")
-    for l in lines:
-        print(f"│  {l:<{width-2}}│")
+    for ln in lines:
+        print(f"│  {ln:<{width-2}}│")
     print("└" + "─" * width + "┘")
 
 
@@ -198,8 +225,8 @@ def cmd_models(args):
 
     if not rows:
         print("  No model directories found.")
-        print(f"  Download a model with: squish pull qwen3:8b")
-        print(f"  Browse all models    : squish catalog")
+        print("  Download a model with: squish pull qwen3:8b")
+        print("  Browse all models    : squish catalog")
         return
 
     # Column widths
@@ -328,7 +355,7 @@ def cmd_search(args):
         params   = str(getattr(e, "params", "—"))
         print(f"  {e.id:<{w_id}} {params:>{w_para}}  {tags_str}")
     print()
-    print(f"  Pull a model: squish pull <id>")
+    print("  Pull a model: squish pull <id>")
     print()
 
 
@@ -376,7 +403,7 @@ def cmd_info(args):
         import mlx.core as mx
         print(f"  MLX           : v{mx.__version__}  (Metal backend active)")
     except Exception:
-        print(f"  MLX           : not installed")
+        print("  MLX           : not installed")
     print(f"  Python        : {sys.version.split()[0]}")
 
     # Models available
@@ -393,7 +420,7 @@ def cmd_info(args):
         s.connect(("127.0.0.1", _DEFAULT_PORT))
         print(f"  Server        : ✓ running on :{_DEFAULT_PORT}")
     except Exception:
-        print(f"  Server        : not running  (start with: squish run 7b)")
+        print("  Server        : not running  (start with: squish run 7b)")
     finally:
         s.close()
     print()
@@ -401,7 +428,7 @@ def cmd_info(args):
 
 # ── squish run ────────────────────────────────────────────────────────────────
 
-def cmd_run(args):
+def cmd_run(args):  # pragma: no cover
     """Start the Squish inference server."""
     model_dir, compressed_dir = _resolve_model(args.model)
 
@@ -469,7 +496,7 @@ def cmd_run(args):
 
 # ── squish chat ───────────────────────────────────────────────────────────────
 
-def cmd_chat(args):
+def cmd_chat(args):  # pragma: no cover
     """
     Interactive terminal chat against a running (or auto-started) server.
 
@@ -477,9 +504,8 @@ def cmd_chat(args):
     Uses Server-Sent Events streaming for real-time token display.
     """
     import socket
-    import threading
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     port    = args.port or _DEFAULT_PORT
     host    = args.host or "127.0.0.1"
@@ -520,7 +546,7 @@ def cmd_chat(args):
                 break
         else:
             _server_proc.terminate()
-            _die(f"Server did not start within 30s. Check logs above.")
+            _die("Server did not start within 30s. Check logs above.")
 
         print(f"  ✓ Server ready on {base_url}")
 
@@ -600,14 +626,14 @@ def cmd_chat(args):
                 new_sys = user_input[8:].strip()
                 messages = [m for m in messages if m["role"] != "system"]
                 messages.insert(0, {"role": "system", "content": new_sys})
-                print(f"  ✓ System prompt updated.")
+                print("  ✓ System prompt updated.")
                 continue
             if user_input.lower() == "/help":
                 print("  Commands: /quit  /clear  /system <text>  /help")
                 continue
 
             messages.append({"role": "user", "content": user_input})
-            print(f"\n  Assistant: ", end="", flush=True)
+            print("\n  Assistant: ", end="", flush=True)
             reply = _stream_chat(messages)
             if reply:
                 messages.append({"role": "assistant", "content": reply})
@@ -626,7 +652,7 @@ def cmd_chat(args):
 
 # ── squish bench ──────────────────────────────────────────────────────────────
 
-def cmd_bench(args):
+def cmd_bench(args):  # pragma: no cover
     """Quick throughput benchmark against a running server."""
     import socket
     import urllib.request
@@ -637,13 +663,33 @@ def cmd_bench(args):
     base_url = f"http://{host}:{port}/v1"
 
     # Check server up
-    s = socket.socket(); s.settimeout(1.0)
+    s = socket.socket()
+    s.settimeout(1.0)
     try:
         s.connect((host, port))
     except Exception:
         _die(f"No server running on {host}:{port}. Start with: squish run 7b")
     finally:
         s.close()
+
+    # ── Optional cold-start timing ─────────────────────────────────────────
+    if getattr(args, "cold_start", False):
+        print("  \u23f1  Cold-start: timing model load via /v1/models (may take up to 2 min) \u2026")
+        sys.stdout.flush()
+        t_cs = time.perf_counter()
+        try:
+            req_cs = urllib.request.Request(
+                f"{base_url}/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            with urllib.request.urlopen(req_cs, timeout=120) as _r:
+                _r.read()
+            cold_ms = (time.perf_counter() - t_cs) * 1000
+            print(f"  Cold-start load time : {cold_ms:,.0f} ms  ({cold_ms/1000:.2f}s)")
+            print("  Tip: restart the server before running --cold-start for a true cold measurement.")
+        except Exception as _e:
+            print(f"  Cold-start check failed: {_e}")
+        print()
 
     prompts = [
         "Explain quantum entanglement in two sentences.",
@@ -728,22 +774,22 @@ def cmd_bench(args):
                 mem_gb = "?"
             lines = [
                 f"## Squish Benchmark — {time.strftime('%Y-%m-%d')}",
-                f"",
+                "",
                 f"> Hardware: {chip} · {mem_gb} unified memory",
                 f"> Server: {base_url} · {args.max_tokens} max tokens",
-                f"",
-                f"| Prompt | TTFT (ms) | Tokens | Tok/s |",
-                f"|--------|----------:|-------:|------:|",
+                "",
+                "| Prompt | TTFT (ms) | Tokens | Tok/s |",
+                "|--------|----------:|-------:|------:|",
             ]
-            for prompt, r in zip(prompted, results):
+            for prompt, r in zip(prompted, results, strict=False):
                 lines.append(
                     f"| {prompt[:55]:<55} | "
                     f"{r['ttft']*1000:.0f} | {r['n_toks']} | {r['tps']:.1f} |"
                 )
             lines += [
                 f"| **Average** | **{avg_ttft*1000:.0f}** | — | **{avg_tps:.1f}** |",
-                f"",
-                f"_Reproduced with: `squish bench --markdown`_",
+                "",
+                "_Reproduced with: `squish bench --markdown`_",
             ]
             md = "\n".join(lines)
             save_path = Path(getattr(args, "save", None) or "squish_bench.md")
@@ -836,7 +882,7 @@ def cmd_doctor(args):
 
     # squish_quant Rust extension
     try:
-        import squish_quant
+        import squish_quant  # noqa: F401
         _check("squish_quant Rust extension (6 GB/s quantizer)", True)
     except ImportError:
         _check("squish_quant Rust extension (optional — 4× faster quantization)", False,
@@ -845,7 +891,12 @@ def cmd_doctor(args):
     # squish.quantizer self-test
     try:
         import numpy as np
-        from squish.quantizer import quantize_embeddings, reconstruct_embeddings, mean_cosine_similarity
+
+        from squish.quantizer import (
+            mean_cosine_similarity,
+            quantize_embeddings,
+            reconstruct_embeddings,
+        )
         rng = np.random.default_rng(0)
         emb = rng.standard_normal((32, 128)).astype(np.float32)
         r   = quantize_embeddings(emb, group_size=64)
@@ -865,6 +916,20 @@ def cmd_doctor(args):
         _check(f"models dir {models_dir}", False,
                f"mkdir -p {models_dir}")
 
+    # Disk space in models dir
+    try:
+        import shutil as _shutil
+        _disk_path = _MODELS_DIR if _MODELS_DIR.exists() else Path.home()
+        _stat = _shutil.disk_usage(_disk_path)
+        _free_gb = _stat.free / 1e9
+        _check(
+            f"Disk free: {_free_gb:.1f} GB  (\u2265 5 GB recommended for small models)",
+            _free_gb >= 5.0,
+            "Free at least 5 GB of disk space before pulling a model",
+        )
+    except Exception:
+        pass  # non-fatal
+
     # Server status
     s = socket.socket()
     s.settimeout(0.5)
@@ -872,7 +937,7 @@ def cmd_doctor(args):
         s.connect(("127.0.0.1", _DEFAULT_PORT))
         _check(f"server running on :{_DEFAULT_PORT}", True)
     except Exception:
-        _check(f"server not running (optional)", True)  # not an error
+        _check("server not running (optional)", True)  # not an error
     finally:
         s.close()
 
@@ -883,9 +948,8 @@ def cmd_doctor(args):
         print("  Some checks failed. See fixes above.\n")
 
 
-def cmd_daemon(args):
+def cmd_daemon(args):  # pragma: no cover
     """Start, stop, or check the Squish daemon (persistent background server)."""
-    import platform
     import signal
 
     pid_file = Path.home() / ".squish" / "daemon.pid"
@@ -914,7 +978,7 @@ def cmd_daemon(args):
             print(f"     Endpoint : http://{args.host}:{args.port}/v1")
             print(f"     Log      : {log_file}\n")
         else:
-            print(f"\n  ✗  Squish daemon not running  (start with: squish daemon start)\n")
+            print("\n  ✗  Squish daemon not running  (start with: squish daemon start)\n")
         return
 
     if action == "stop":
@@ -938,7 +1002,7 @@ def cmd_daemon(args):
         pid = _read_pid()
         if pid and _is_running(pid):
             print(f"\n  Daemon already running  (pid {pid}).")
-            print(f"  Stop first with: squish daemon stop\n")
+            print("  Stop first with: squish daemon stop\n")
             return
 
         model_dir, compressed_dir = _resolve_model(args.model)
@@ -990,7 +1054,7 @@ def cmd_daemon(args):
         print(f"     Check logs: tail -f {log_file}\n")
 
 
-def cmd_compress(args):
+def cmd_compress(args):  # pragma: no cover
     """Compress a model directory to Squish npy-dir format (INT8 or INT4)."""
     # Resolve model path (accept shorthand or full path)
     if args.model in _MODEL_SHORTHAND:
@@ -1019,10 +1083,11 @@ def cmd_compress(args):
     if getattr(args, "awq", False):
         n_samples = getattr(args, "awq_samples", 20)
         print(f"  Running AWQ calibration ({n_samples} samples)...")
-        print(f"  Note: loads full model in memory — may take 2–5 min for large models.")
+        print("  Note: loads full model in memory — may take 2–5 min for large models.")
         try:
-            import mlx_lm
             import tempfile
+
+            import mlx_lm
             model_awq, tokenizer_awq = mlx_lm.load(str(model_dir))
             from squish.awq import collect_activation_scales, save_awq_scales
             scales = collect_activation_scales(
@@ -1060,7 +1125,27 @@ def cmd_compress(args):
     if args.verbose:
         cmd.append("--verbose")
 
-    result = subprocess.run(cmd, cwd=Path(__file__).parent.parent)
+    print("  Compressing weights — this may take 3–8 min for large models …")
+    sys.stdout.flush()
+    import threading as _threading
+
+    _compress_done = False
+
+    def _heartbeat():
+        elapsed = 0
+        while not _compress_done:
+            time.sleep(15)
+            elapsed += 15
+            if not _compress_done:
+                print(f"  … still compressing ({elapsed}s elapsed) — please wait", flush=True)
+
+    _hb_thread = _threading.Thread(target=_heartbeat, daemon=True)
+    _hb_thread.start()
+    try:
+        result = subprocess.run(cmd, cwd=Path(__file__).parent.parent)
+    finally:
+        _compress_done = True
+
     if result.returncode != 0:
         _die("Compression failed — see output above.")
     print(f"\n  ✓  Compressed model saved to {output_dir}")
@@ -1074,7 +1159,7 @@ def cmd_compress(args):
             try:
                 from squish.entropy import compress_npy_dir
                 compress_npy_dir(tensors_dir, level=zstd_level, verbose=True)
-                print(f"  ✓  Entropy compression complete.")
+                print("  ✓  Entropy compression complete.")
             except ImportError:
                 print("  Warning: zstandard not installed — skipping entropy pass.")
                 print("  Install with: pip install zstandard")
@@ -1249,7 +1334,7 @@ Ollama drop-in:
 
     ap.add_argument(
         "--version", action="version",
-        version=f"squish 1.0.0",
+        version="squish 1.0.0",
         help="Show squish version and exit",
     )
 
@@ -1325,6 +1410,8 @@ Ollama drop-in:
     p_bench.add_argument("--save",       default="", metavar="FILE",
                          help="Save markdown table to FILE (implies --markdown; "
                               "default: squish_bench.md)")
+    p_bench.add_argument("--cold-start",  action="store_true",
+                         help="Time model load (first-request latency) before the benchmark prompts")
     p_bench.set_defaults(func=cmd_bench)
 
     # ── doctor ──

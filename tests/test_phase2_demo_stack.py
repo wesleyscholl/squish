@@ -11,20 +11,18 @@ Run with:
 """
 import json
 import queue
-import threading
-import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
 import pytest
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1.  squish.tool_calling — format + parse + build
 # ─────────────────────────────────────────────────────────────────────────────
-
 from squish.tool_calling import (
+    build_tool_calls_response,
     format_tools_prompt,
     parse_tool_calls,
-    build_tool_calls_response,
 )
 
 WEATHER_TOOL = {
@@ -191,9 +189,10 @@ class TestBuildToolCallsResponse:
 # 2.  squish.ollama_compat — endpoint shape tests (no real model)
 # ─────────────────────────────────────────────────────────────────────────────
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from squish.ollama_compat import mount_ollama
+from fastapi import FastAPI  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from squish.ollama_compat import mount_ollama  # noqa: E402
 
 
 def _make_mock_state(loaded: bool = False):
@@ -300,7 +299,7 @@ class TestOllamaGenerate:
             "model": "squish-test", "prompt": "hi", "stream": True,
         })
         assert r.status_code == 200
-        lines = [l for l in r.text.strip().splitlines() if l.strip()]
+        lines = [ln for ln in r.text.strip().splitlines() if ln.strip()]
         assert len(lines) >= 2
         # All lines after first should parse cleanly
         for line in lines:
@@ -344,7 +343,7 @@ class TestOllamaChat:
             "stream": True,
         })
         assert r.status_code == 200
-        lines = [l for l in r.text.strip().splitlines() if l.strip()]
+        lines = [ln for ln in r.text.strip().splitlines() if ln.strip()]
         for line in lines:
             obj = json.loads(line)
             if not obj.get("done"):
@@ -361,7 +360,7 @@ class TestOllamaChat:
 # 3.  squish.scheduler — data path (no model inference)
 # ─────────────────────────────────────────────────────────────────────────────
 
-from squish.scheduler import _Request
+from squish.scheduler import _Request  # noqa: E402
 
 
 class TestRequestDataclass:
@@ -383,7 +382,7 @@ class TestRequestDataclass:
     def test_out_queue_get_put(self):
         """Verify the output queue mechanism works end-to-end without a model."""
         q = queue.SimpleQueue()
-        r = _Request(
+        _Request(
             request_id="req-002",
             input_ids=[1, 2, 3], max_tokens=8, temperature=0.7, top_p=0.9,
             stop_ids=[], seed=None, out_queue=q,
@@ -457,8 +456,9 @@ class TestEmbeddingsEndpoint:
 
     def test_happy_path_shape_and_normalization(self):
         """Preferred path: last hidden state → normalized embedding of correct dim."""
-        import squish.server as _srv
         from fastapi.testclient import TestClient
+
+        import squish.server as _srv
 
         mock_model, mock_tok = self._make_server_state(hidden_dim=64)
         orig = _srv._state
@@ -479,7 +479,6 @@ class TestEmbeddingsEndpoint:
             emb = data["data"][0]["embedding"]
             assert len(emb) == 64, f"Expected dim=64, got {len(emb)}"
             # L2-normalized: sum of squares ≈ 1.0
-            import math
             norm_sq = sum(v * v for v in emb)
             assert abs(norm_sq - 1.0) < 1e-4, f"Embedding not L2-normalized: norm²={norm_sq:.6f}"
         finally:
@@ -487,8 +486,9 @@ class TestEmbeddingsEndpoint:
 
     def test_batch_input(self):
         """Multiple strings in input → multiple embeddings returned."""
-        import squish.server as _srv
         from fastapi.testclient import TestClient
+
+        import squish.server as _srv
 
         mock_model, mock_tok = self._make_server_state(hidden_dim=32)
         orig = _srv._state
@@ -512,8 +512,9 @@ class TestEmbeddingsEndpoint:
 
     def test_no_model_returns_503(self):
         """Endpoint returns 503 when no model is loaded."""
-        import squish.server as _srv
         from fastapi.testclient import TestClient
+
+        import squish.server as _srv
 
         orig = _srv._state
         _srv._state = _srv._ModelState()   # model=None

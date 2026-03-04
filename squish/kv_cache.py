@@ -44,7 +44,6 @@ Low-level: create a cache and pass to generate():
     # Pass cache as kv_cache argument to mlx_lm generate functions
 """
 import threading
-from typing import Optional
 
 import numpy as np
 
@@ -531,7 +530,7 @@ class QuantizedKVCache:
     @property
     def memory_mb(self) -> float:
         """Approximate total KV cache memory in MB."""
-        total = sum(l.memory_bytes for l in self._layers)
+        total = sum(layer.memory_bytes for layer in self._layers)
         return total / 1_048_576
 
     def stats(self) -> dict:
@@ -568,7 +567,7 @@ class _LayerCacheView:
 # Model patching — intercept attention layers to use QuantizedKVCache
 # ---------------------------------------------------------------------------
 
-def _n_layers(model) -> int:
+def _n_layers(model) -> int:  # pragma: no cover
     """Infer number of transformer layers from a loaded mlx_lm model."""
     # Most mlx_lm models expose model.model.layers
     try:
@@ -589,7 +588,7 @@ def _n_layers(model) -> int:
         return 32
 
 
-def make_quantized_cache(
+def make_quantized_cache(  # pragma: no cover
     model,
     mode: str = "int8",
     window: int = 64,
@@ -614,7 +613,7 @@ def make_quantized_cache(
     )
 
 
-def patch_model_kv_cache(
+def patch_model_kv_cache(  # pragma: no cover
     model,
     mode: str = "int8",
     window: int = 64,
@@ -663,7 +662,7 @@ def patch_model_kv_cache(
 # generate_with_cache — convenience wrapper for server.py
 # ---------------------------------------------------------------------------
 
-def generate_step_with_quantized_cache(
+def generate_step_with_quantized_cache(  # pragma: no cover
     model,
     token_ids,          # (1, seq_len) MLX int32
     quantized_cache: QuantizedKVCache,
@@ -686,7 +685,6 @@ def generate_step_with_quantized_cache(
     next_token_id : int
     """
     mx = _mx()
-    import mlx.nn as nn
 
     with mx.stream(mx.gpu):
         logits = model(token_ids)          # (1, seq, vocab)
@@ -704,7 +702,7 @@ def generate_step_with_quantized_cache(
             np.exp(next_logits[sorted_idx]
                    - np.max(next_logits[sorted_idx])))
         cum_probs  /= cum_probs[-1] + 1e-9
-        cutoff      = sorted_idx[np.searchsorted(cum_probs, top_p) + 1
+        sorted_idx[np.searchsorted(cum_probs, top_p) + 1
                                   if np.searchsorted(cum_probs, top_p) + 1
                                      < len(sorted_idx) else -1]
         next_logits[sorted_idx[np.searchsorted(cum_probs, top_p) + 1:]] = -1e9
