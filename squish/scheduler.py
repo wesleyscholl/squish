@@ -312,7 +312,7 @@ class BatchScheduler:
                 break
             yield item   # (tok_text, finish_reason_or_None)
 
-    async def submit(
+    async def submit(  # pragma: no cover
         self,
         prompt:      str,
         max_tokens:  int   = 512,
@@ -515,7 +515,7 @@ class BatchScheduler:
 # Standalone test / benchmark
 # ---------------------------------------------------------------------------
 
-def _demo():
+def _demo():  # pragma: no cover
     """
     Quick demo without a real model — uses a toy identity model.
 

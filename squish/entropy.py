@@ -244,7 +244,7 @@ def benchmark_compression(tensors_dir: Path) -> None:
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
 
-def main():
+def main():  # pragma: no cover
     ap = argparse.ArgumentParser(description="Squish entropy coding for npy-dir")
     ap.add_argument("command", choices=["compress", "decompress", "bench"])
     ap.add_argument("tensors_dir", help="Path to tensors/ directory")

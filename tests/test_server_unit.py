@@ -556,4 +556,19 @@ class TestAuthOnEndpoints:
         finally:
             _srv._API_KEY = orig_key
             _srv._state   = orig_state
-            
+
+    def test_models_with_correct_bearer_passes(self):
+        orig_key   = _srv._API_KEY
+        orig_state = _srv._state
+        _srv._API_KEY = "secret-key"
+        _srv._state   = _srv._ModelState()
+        try:
+            c = TestClient(_srv.app, raise_server_exceptions=False)
+            r = c.get(
+                "/v1/models",
+                headers={"Authorization": "Bearer secret-key"},
+            )
+            assert r.status_code == 200
+        finally:
+            _srv._API_KEY = orig_key
+            _srv._state   = orig_state
