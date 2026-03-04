@@ -428,7 +428,7 @@ squish info
 # Benchmark load times
 squish bench --markdown --save bench_results.md
 ```
-this is a test
+
 ---
 
 ## Files

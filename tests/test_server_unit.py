@@ -538,3 +538,22 @@ class TestAuthOnEndpoints:
         finally:
             _srv._API_KEY = orig_key
             _srv._state   = orig_state
+
+    def test_chat_with_correct_bearer_passes(self):
+        orig_key   = _srv._API_KEY
+        orig_state = _srv._state
+        _srv._API_KEY = "secret-key"
+        _srv._state   = _srv._ModelState()
+        try:
+            c = TestClient(_srv.app, raise_server_exceptions=False)
+            r = c.post(
+                "/v1/chat/completions",
+                json={"messages": [{"role": "user", "content": "hi"}]},
+                headers={"Authorization": "Bearer secret-key"},
+            )
+            # 503 expected since no model, but auth should pass
+            assert r.status_code in (200, 503)
+        finally:
+            _srv._API_KEY = orig_key
+            _srv._state   = orig_state
+            

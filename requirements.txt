@@ -6,8 +6,6 @@ numpy>=1.26
 transformers>=4.40
 huggingface-hub>=0.23
 
-# Testing changes
-
 # ── OpenAI-compatible API server (server.py) ──────────────────────────────────
 fastapi>=0.111
 uvicorn[standard]>=0.29.0
