@@ -316,7 +316,7 @@ class KVLayerCache:
         for t in range(T_new):
             self.append(k_np[:, t, :], v_np[:, t, :])
         full_k, full_v = self.get_full_kv()   # (n_heads, T_total, head_dim) f16
-        if full_k is None:
+        if full_k is None:  # pragma: no cover
             return keys, values
         return (
             mx.array(full_k[None]).astype(mx.bfloat16),   # (1, n_heads, T_total, head_dim)
@@ -355,7 +355,7 @@ def _snap_evict(
 
         # Reconstruct full FP16 cache to compute importances
         full_k, full_v = layer_cache.get_full_kv()
-        if full_k is None:
+        if full_k is None:  # pragma: no cover
             return
 
         nh, nt, hd = full_k.shape

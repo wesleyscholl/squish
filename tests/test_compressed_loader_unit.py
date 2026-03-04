@@ -236,3 +236,14 @@ class TestDequantize:
         result = _dequantize(npz, sk)
         from squish.quantizer import mean_cosine_similarity
         assert mean_cosine_similarity(arr, result) > 0.95
+
+    def test_pt_without_shape_key(self, tmp_path: Path):
+        """__pt key present but no __shape: original_shape = pt.shape (line 271)."""
+        path = tmp_path / "no_shape.npz"
+        sk = "model.weight"
+        arr = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        np.savez(str(path), **{f"{sk}__pt": arr})  # no __shape key
+        npz = np.load(str(path))
+        result = _dequantize(npz, sk)
+        assert result.shape == (2, 2)
+        np.testing.assert_allclose(result, arr, rtol=1e-5)

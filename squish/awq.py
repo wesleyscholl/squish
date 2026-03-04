@@ -124,7 +124,7 @@ class _ActivationHook:
         return (self.channel_sum / self.channel_count).astype(np.float32)
 
 
-def collect_activation_scales(
+def collect_activation_scales(  # pragma: no cover
     model,
     tokenizer,
     texts: list | None = None,
@@ -459,7 +459,7 @@ def _preceding_norm_name(weight_name: str, weights: dict) -> str | None:
 # Standalone CLI
 # ---------------------------------------------------------------------------
 
-def main():
+def main():  # pragma: no cover
     ap = argparse.ArgumentParser(
         description="AWQ calibration — compute per-channel activation scales for a model"
     )

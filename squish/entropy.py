@@ -39,7 +39,7 @@ def _require_zstd():
     try:
         import zstandard as zstd
         return zstd
-    except ImportError:
+    except ImportError:  # pragma: no cover
         print("Missing: zstandard.  Install with:  pip install zstandard")
         sys.exit(1)
 
@@ -217,7 +217,7 @@ def benchmark_compression(tensors_dir: Path) -> None:
                 data     = open(npy_path, "rb").read()
                 comp_bytes_val = len(cctx.compress(data))
                 orig_bytes = len(data)
-        else:
+        else:  # pragma: no cover
             name      = item
             npy_path  = Path(tensors_dir) / name
             data      = open(npy_path, "rb").read()

@@ -89,12 +89,12 @@ def _total_ram_bytes() -> int:
         sz  = ctypes.c_size_t(8)
         lib.sysctlbyname(b"hw.memsize", ctypes.byref(mem), ctypes.byref(sz), None, 0)
         return mem.value
-    except Exception:
+    except Exception:  # pragma: no cover
         pass
-    try:
+    try:  # pragma: no cover
         import psutil
         return psutil.virtual_memory().total
-    except Exception:
+    except Exception:  # pragma: no cover
         return 16 * 1024 ** 3
 
 

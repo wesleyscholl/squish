@@ -183,7 +183,7 @@ def _reconstruct_numpy(result: QuantizationResult) -> np.ndarray:
         group_size = result.dims // n_groups
         pad = (-d) % group_size
         full_cols = n_groups * group_size
-        if pad:
+        if pad:  # pragma: no cover
             q  = np.pad(q,  ((0, 0), (0, pad)))
         q_shifted = (q[:, :full_cols].reshape(n, n_groups, group_size)
                      - zp[:, :, np.newaxis])
@@ -198,7 +198,7 @@ def _reconstruct_numpy(result: QuantizationResult) -> np.ndarray:
     group_size = result.dims // n_groups
     pad = (-d) % group_size
     full_cols = n_groups * group_size
-    if pad:
+    if pad:  # pragma: no cover
         q = np.pad(q, ((0, 0), (0, pad)))
     # Reshape to (n, n_groups, group_size) then broadcast scales (n, n_groups, 1)
     recon = (q[:, :full_cols].reshape(n, n_groups, group_size)

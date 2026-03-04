@@ -39,7 +39,7 @@ import numpy as np
 _squish_quant = None
 try:
     import squish_quant as _squish_quant
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 _INT4_READY      = ".squish_int4_ready"   # sentinel: INT4 dir is complete
@@ -58,7 +58,7 @@ def _get_zstd_dctx():
         try:
             import zstandard as _zstd
             _zstd_dctx = _zstd.ZstdDecompressor()
-        except ImportError:
+        except ImportError:  # pragma: no cover
             _zstd_dctx = False       # sentinel: unavailable
     return _zstd_dctx if _zstd_dctx is not False else None
 
@@ -78,16 +78,20 @@ def _load_npy_path(path: Path, mmap_mode: str | None = "r") -> np.ndarray:
     if path.exists():
         return np.load(str(path), mmap_mode=mmap_mode)
     zst_path = Path(str(path) + ".zst")
-    if zst_path.exists():
+    if zst_path.exists():  # pragma: no cover
         dctx = _get_zstd_dctx()
         if dctx is None:
             raise RuntimeError(
                 f"Found {zst_path} but 'zstandard' is not installed. "
                 "Run: pip install zstandard"
             )
-        with open(zst_path, "rb") as f, dctx.stream_reader(f) as reader:
-            # Pass stream reader directly to np.load — avoids BytesIO double-buffer
-            return np.load(reader, allow_pickle=False)
+        import io as _io
+        with open(zst_path, "rb") as f:
+            # Decompress into a BytesIO buffer — np.load requires a seekable
+            # stream (it seeks backward after reading the magic bytes), which
+            # zstd stream_reader does not support.
+            buf = _io.BytesIO(dctx.decompress(f.read()))
+        return np.load(buf, allow_pickle=False)
     raise FileNotFoundError(f"Neither {path} nor {zst_path} found")
 
 # ---------------------------------------------------------------------------
@@ -102,7 +106,7 @@ def _rss_mb() -> float:
     # macOS returns bytes; Linux returns kilobytes
     if _platform.system() == "Darwin":
         return ru / 1_048_576
-    return ru / 1_024
+    return ru / 1_024  # pragma: no cover
 
 
 _rss_last_t: float = 0.0

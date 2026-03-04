@@ -215,13 +215,20 @@ def load_mlx_weights_shard(shard_path: Path) -> dict:
             out[name] = arr.astype(np.float32)
         return out
     except Exception:
-        # Fallback: use mlx but only for this one shard, never the whole model
+        # Fallback: use mlx on CPU (not Metal) to handle bfloat16 and other dtypes
+        # that safetensors.numpy cannot parse.  Forcing mx.cpu avoids the
+        # Metal GPU command-buffer timeout that occurs on large shards.
         import mlx.core as mx
-        shard_weights = mx.load(str(shard_path))
-        return {
-            name: np.array(arr.astype(mx.float32))
-            for name, arr in shard_weights.items()
-        }
+        _prev_device = mx.default_device()
+        mx.set_default_device(mx.cpu)
+        try:
+            shard_weights = mx.load(str(shard_path))
+            return {
+                name: np.array(arr.astype(mx.float32))
+                for name, arr in shard_weights.items()
+            }
+        finally:
+            mx.set_default_device(_prev_device)
 
 
 def load_mlx_weights(model_dir: Path) -> dict:
