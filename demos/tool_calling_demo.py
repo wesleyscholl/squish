@@ -309,8 +309,7 @@ def main():
     # Load model
     # -----------------------------------------------------------------------
     if args.use_compressed:
-        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-        from compressed_loader import load_compressed_model
+        from squish.compressed_loader import load_compressed_model
         print(f"{CYAN}Loading compressed model ...{RESET}")
         model, tokenizer = load_compressed_model(
             model_dir=str(model_dir),

@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""Live monitor for the 7B eval process. Run: python3 monitor_eval.py"""
-import subprocess, time, os, sys, shutil
+"""Live monitor for a running eval process. Run: python3 monitor_eval.py [--pid PID]"""
+import subprocess, time, os, sys, shutil, argparse
+from pathlib import Path
 from datetime import datetime
 
-PID        = 16476
-LOG        = "/tmp/squish_7b_full.log"
-OUTPUT_DIR = "/Users/wscholl/poc/eval_output_7b_full"
+ap = argparse.ArgumentParser()
+ap.add_argument("--pid", type=int, default=0, help="PID of the eval process to monitor")
+ap.add_argument("--log", default="/tmp/squish_eval.log", help="Path to the log file")
+ap.add_argument("--output-dir", default=str(Path.home() / ".squish" / "eval_output"), help="Eval output directory")
+args = ap.parse_args()
+
+PID        = args.pid
+LOG        = args.log
+OUTPUT_DIR = args.output_dir
 INTERVAL   = 1
 
 # ── ANSI colours ────────────────────────────────────────────────────────────

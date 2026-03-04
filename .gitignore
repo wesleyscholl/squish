@@ -8,6 +8,17 @@ build/
 .venv/
 *.egg
 
+# Environment / secrets — never commit credentials
+.env
+.env.*
+*.env
+*.key
+*.pem
+.secrets
+
+# MkDocs build output
+site/
+
 # Rust
 squish_quant_rs/target/
 
@@ -30,6 +41,9 @@ nohup.out
 *.cast
 demos/squish_demo.cast
 
+# Paper drafts and unpublished writing in docs/final/
+docs/final/
+
 # IDE / OS
 .DS_Store
 .vscode/
@@ -38,5 +52,6 @@ eval_output_7b_full/
 
 # Old paper draft files
 docs/Squish_Paper_arXiv*.docx
+docs/Squish_Action_Plan*.docx
 "docs/Squish_Action_Plan*"
 docs/final/_media/

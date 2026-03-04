@@ -1,0 +1,50 @@
+name: Upload Squished Weights to HuggingFace
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_path:
+        description: "Local path to the model weights directory (relative to repo root)"
+        required: true
+        type: string
+      tag:
+        description: "Model size tag (e.g. 7b, 14b, 70b)"
+        required: false
+        default: ""
+        type: string
+      int4:
+        description: "Use INT4 quantisation instead of INT8"
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: "Dry run — skip actual upload"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  upload:
+    name: Compress & upload to squish-community
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install squish
+        run: pip install -e ".[dev]"
+
+      - name: Upload weights
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          ARGS="--path ${{ inputs.model_path }}"
+          [[ -n "${{ inputs.tag }}" ]] && ARGS="$ARGS --tag ${{ inputs.tag }}"
+          [[ "${{ inputs.int4 }}" == "true" ]] && ARGS="$ARGS --int4"
+          [[ "${{ inputs.dry_run }}" == "true" ]] && ARGS="$ARGS --dry-run"
+          python3 scripts/upload_to_hub.py $ARGS

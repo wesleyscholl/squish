@@ -1,0 +1,73 @@
+site_name: Squish
+site_description: "Run 70B language models on a MacBook. Squish compresses model weights into memory-mapped INT8 tensors that load in milliseconds."
+site_url: https://wesleyscholl.github.io/squish
+repo_url: https://github.com/wesleyscholl/squish
+repo_name: wesleyscholl/squish
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+  - exclude:
+      glob:
+        - "final/**"
+        - "*.docx"
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: .        # relative to mkdocs.yml (repo root)
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Installation: install.md
+  - Quickstart: quickstart.md
+  - API Reference: api.md
+  - Architecture: ARCHITECTURE.md
+  - Contributing: contributing.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/wesleyscholl/squish
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/squish
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/squish/
+
+extra_css:
+  - stylesheets/extra.css

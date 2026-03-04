@@ -428,6 +428,106 @@ class TestBatchSchedulerInit:
 # 4.  Integration smoke — tool_calling round-trip
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 5.  /v1/embeddings — last-hidden-state fix (pre-launch patch)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestEmbeddingsEndpoint:
+    """
+    Tests for the /v1/embeddings endpoint's last-hidden-state fix.
+
+    The fix changed the embedding extraction order to:
+      1. model.model(x)       — last hidden state (preferred)
+      2. model.model.embed_tokens(x) — input token embeddings (fallback)
+      3. model(x)             — logits mean-pool (last resort)
+    """
+
+    def _make_server_state(self, hidden_dim: int = 64, seq_len: int = 5):
+        """Return (mock_model, mock_tokenizer) that produce real MLX tensors."""
+        mx = pytest.importorskip("mlx.core")
+        from unittest.mock import MagicMock
+
+        mock_model = MagicMock()
+        # model.model(x) returns (1, seq, hidden_dim) — non-zero so norm > 0
+        mock_model.model.return_value = mx.ones([1, seq_len, hidden_dim])
+
+        mock_tok = MagicMock()
+        mock_tok.encode.return_value = list(range(1, seq_len + 1))
+        return mock_model, mock_tok
+
+    def test_happy_path_shape_and_normalization(self):
+        """Preferred path: last hidden state → normalized embedding of correct dim."""
+        import squish.server as _srv
+        from fastapi.testclient import TestClient
+
+        mock_model, mock_tok = self._make_server_state(hidden_dim=64)
+        orig = _srv._state
+        _srv._state = _srv._ModelState()
+        _srv._state.model      = mock_model
+        _srv._state.tokenizer  = mock_tok
+        _srv._state.model_name = "test-embed-model"
+        try:
+            client = TestClient(_srv.app, raise_server_exceptions=False)
+            resp = client.post(
+                "/v1/embeddings",
+                json={"input": "hello world", "model": "test"},
+            )
+            assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text[:200]}"
+            data = resp.json()
+            assert data["object"] == "list"
+            assert len(data["data"]) == 1
+            emb = data["data"][0]["embedding"]
+            assert len(emb) == 64, f"Expected dim=64, got {len(emb)}"
+            # L2-normalized: sum of squares ≈ 1.0
+            import math
+            norm_sq = sum(v * v for v in emb)
+            assert abs(norm_sq - 1.0) < 1e-4, f"Embedding not L2-normalized: norm²={norm_sq:.6f}"
+        finally:
+            _srv._state = orig
+
+    def test_batch_input(self):
+        """Multiple strings in input → multiple embeddings returned."""
+        import squish.server as _srv
+        from fastapi.testclient import TestClient
+
+        mock_model, mock_tok = self._make_server_state(hidden_dim=32)
+        orig = _srv._state
+        _srv._state = _srv._ModelState()
+        _srv._state.model      = mock_model
+        _srv._state.tokenizer  = mock_tok
+        _srv._state.model_name = "test-model"
+        try:
+            client = TestClient(_srv.app, raise_server_exceptions=False)
+            resp = client.post(
+                "/v1/embeddings",
+                json={"input": ["hello", "world", "foo"], "model": "test"},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert len(data["data"]) == 3
+            indices = [d["index"] for d in data["data"]]
+            assert indices == [0, 1, 2]
+        finally:
+            _srv._state = orig
+
+    def test_no_model_returns_503(self):
+        """Endpoint returns 503 when no model is loaded."""
+        import squish.server as _srv
+        from fastapi.testclient import TestClient
+
+        orig = _srv._state
+        _srv._state = _srv._ModelState()   # model=None
+        try:
+            client = TestClient(_srv.app, raise_server_exceptions=False)
+            resp = client.post(
+                "/v1/embeddings",
+                json={"input": "test", "model": "test"},
+            )
+            assert resp.status_code == 503
+        finally:
+            _srv._state = orig
+
+
 class TestToolCallingRoundTrip:
     """End-to-end: format → (simulated model output) → parse → build."""
 

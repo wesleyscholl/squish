@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "squish"
-version = "0.2.0"
+version = "1.0.0"
 description = "Fast compressed model loader and OpenAI-compatible inference server for Apple Silicon"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -36,7 +36,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-quant = []
+quant = []  # AWQ calibration uses only mlx+numpy (core deps); no extra packages needed.
+            # Rust quantizer (squish_quant_rs/) must be built separately: maturin build
 eval = [
     "lm-eval>=0.4",
     "datasets>=2.18",
@@ -52,12 +53,14 @@ dev = [
     "maturin>=1.5",
     "ruff>=0.4",
     "mypy>=1.10",
+    "mkdocs-material>=9.5",
+    "mkdocs-exclude>=1.0",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/wesleyscholl/squish"
 "Bug Tracker" = "https://github.com/wesleyscholl/squish/issues"
-"Documentation" = "https://github.com/wesleyscholl/squish#readme"
+"Documentation" = "https://wesleyscholl.github.io/squish"
 
 [project.scripts]
 squish        = "squish.cli:main"
@@ -69,7 +72,6 @@ where = ["."]
 include = ["squish*"]
 
 [tool.setuptools]
-py-modules = ["compressed_loader"]
 
 [tool.ruff]
 line-length = 100

@@ -4,6 +4,23 @@ Thank you for your interest in contributing!  Squish is an Apple Silicon–only
 local LLM inference library.  Contributions that improve load-time performance,
 accuracy fidelity, or API compatibility are especially welcome.
 
+Not sure where to start? Jump into [Discord](https://discord.gg/squish) or browse [GitHub Discussions](https://github.com/wesleyscholl/squish/discussions) — we're friendly and responsive.
+
+---
+
+## Good First Issues
+
+Look for issues tagged [`good first issue`](https://github.com/wesleyscholl/squish/labels/good%20first%20issue) on GitHub.  Common entry points:
+
+| Label | Examples |
+|---|---|
+| `good first issue` | Add a new CLI flag, improve an error message, add a test |
+| `docs` | Fix a typo, add an example, improve the quickstart |
+| `bench` | Run a new model through `squish bench` and submit results |
+| `model-card` | Compress a model and upload to `squish-community` on HuggingFace |
+
+If none of the open issues fit, open a [Discussion](https://github.com/wesleyscholl/squish/discussions/new?category=ideas) proposing your idea before you write code.
+
 ---
 
 ## Setting Up the Development Environment
@@ -70,6 +87,8 @@ Use [GitHub Issues](https://github.com/wesleyscholl/squish/issues) with the
 **Bug report** template.  Please include your chip generation (M1/M2/M3/M4),
 macOS version, and the model you were loading.
 
+For quick questions, [Discord #help](https://discord.gg/squish) is often faster.
+
 ---
 
 ## Branch Strategy
@@ -78,4 +97,17 @@ macOS version, and the model you were loading.
 |---|---|
 | `main` | Stable, tagged releases |
 | `research` | Eval scripts, benchmark notebooks, paper tooling |
-| Feature branches | `feat/<short-name>`, opened as PRs against `main` |
+
+---
+
+## Documentation
+
+The docs site is built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/):
+
+```bash
+pip install mkdocs-material
+mkdocs serve        # live preview at http://127.0.0.1:8000
+mkdocs build        # generate static site in site/
+```
+
+Docs source lives in `docs/`. The nav is configured in `mkdocs.yml`.

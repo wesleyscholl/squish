@@ -537,7 +537,7 @@ def pull(
     Parameters
     ----------
     name        : squish model id, e.g. ``"qwen3:8b"``
-    models_dir  : base directory for models (default: ``~/models``)
+    models_dir  : base directory for models (default: ``~/.squish/models``)
     int4        : use INT4 nibble-packed compression instead of INT8
     token       : HuggingFace user access token (for gated models)
     verbose     : pass ``--verbose`` to the underlying compress step
@@ -545,7 +545,7 @@ def pull(
     import subprocess  # noqa: PLC0415
 
     if models_dir is None:
-        models_dir = Path.home() / "models"
+        models_dir = Path.home() / ".squish" / "models"
     models_dir.mkdir(parents=True, exist_ok=True)
 
     entry = resolve(name, refresh=refresh_catalog)

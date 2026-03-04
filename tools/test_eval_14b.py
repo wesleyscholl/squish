@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 """Test if the 14B eval EPERM error occurs in a clean lm_eval call."""
 import sys
-sys.path.insert(0, '/Users/wscholl/poc')
+import argparse
+from pathlib import Path
+
+_MODELS_DIR = Path.home() / ".squish" / "models"
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--model", default=str(_MODELS_DIR / "Qwen2.5-14B-Instruct-bf16"))
+ap.add_argument("--compressed", default=None)
+args = ap.parse_args()
+
+MODEL_DIR = args.model
+COMP_DIR  = args.compressed or (MODEL_DIR + "-compressed")
 
 import traceback
-import lm_eval
-
-# Register squish model type 
-import squish_lm_eval  # noqa
-
+from squish.squish_lm_eval import SquishLM  # noqa — registers "squish" model type
 from lm_eval import simple_evaluate
-
-MODEL_DIR = '/Users/wscholl/models/Qwen2.5-14B-Instruct-bf16'
-COMP_DIR = '/Users/wscholl/models/Qwen2.5-14B-Instruct-bf16-compressed'
-
-print("Testing 14B eval with limit=5...")
 try:
     results = simple_evaluate(
         model='squish',

@@ -1,0 +1,11 @@
+/* Squish docs — minor style tweaks */
+
+/* Widen the content area on large screens */
+.md-grid {
+  max-width: 1200px;
+}
+
+/* Slightly larger code font */
+code {
+  font-size: 0.88em;
+}

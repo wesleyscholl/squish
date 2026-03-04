@@ -134,9 +134,7 @@ def load_draft_model(
     Returns (model, tokenizer).  Vocabulary must be compatible with the target
     (same tokeniser family — e.g. both Qwen2.5, both Llama…).
     """
-    poc_root = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(poc_root))
-    from compressed_loader import load_compressed_model
+    from .compressed_loader import load_compressed_model
 
     model_dir_p = Path(model_dir).expanduser()
     comp_dir_p  = Path(compressed_dir).expanduser() if compressed_dir else \
@@ -423,9 +421,7 @@ if __name__ == "__main__":
     ap.add_argument("--temperature",      type=float, default=0.0)
     args = ap.parse_args()
 
-    poc_root = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(poc_root))
-    from compressed_loader import load_compressed_model
+    from .compressed_loader import load_compressed_model
 
     print("Loading target model …")
     t0 = time.perf_counter()

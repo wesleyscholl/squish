@@ -283,6 +283,47 @@ class KVLayerCache:
             self.keys_old_q = self.keys_old_s = None
             self.values_old_q = self.values_old_s = None
 
+    # ── mlx_lm KVCache protocol (offset + update_and_fetch) ──────────────────
+
+    @property
+    def offset(self) -> int:
+        """Total tokens stored; used by mlx_lm for RoPE position encoding."""
+        return self.n_tokens
+
+    def update_and_fetch(self, keys, values):
+        """
+        mlx_lm attention-layer cache protocol.
+
+        Called by each model attention layer with the newly computed K/V
+        tensors (shape: batch=1, n_heads, T_new, head_dim).  Appends the
+        new tokens to the INT8-compressed ring buffer and returns the
+        *full* accumulated K/V sequence as MLX arrays so that the
+        attention computation uses the complete context.
+
+        Parameters
+        ----------
+        keys   : mx.array  shape (1, n_heads, T_new, head_dim)
+        values : mx.array  shape (1, n_heads, T_new, head_dim)
+
+        Returns
+        -------
+        (keys_full, values_full) as mx.array (1, n_heads, T_total, head_dim)
+        """
+        mx = _mx()
+        # Convert to numpy for storage: (n_heads, T_new, head_dim) float16
+        k_np = np.array(keys[0].astype(mx.float16))
+        v_np = np.array(values[0].astype(mx.float16))
+        T_new = k_np.shape[1]
+        for t in range(T_new):
+            self.append(k_np[:, t, :], v_np[:, t, :])
+        full_k, full_v = self.get_full_kv()   # (n_heads, T_total, head_dim) f16
+        if full_k is None:
+            return keys, values
+        return (
+            mx.array(full_k[None]).astype(mx.bfloat16),   # (1, n_heads, T_total, head_dim)
+            mx.array(full_v[None]).astype(mx.bfloat16),
+        )
+
 
 # ---------------------------------------------------------------------------
 # SnapKV eviction (importance-based position selection)
@@ -449,8 +490,8 @@ class QuantizedKVCache:
         return self.n_layers
 
     def __getitem__(self, idx):
-        """Return a dict-compatible view for layer idx."""
-        return _LayerCacheView(self._layers[idx], self)
+        """Return the KVLayerCache for layer idx (mlx_lm update_and_fetch protocol)."""
+        return self._layers[idx]
 
     def __iter__(self):
         for i in range(self.n_layers):

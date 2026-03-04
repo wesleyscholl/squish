@@ -42,7 +42,6 @@ def test_awq_apply_weights():
     gamma_awq = out["model.layers.0.input_layernorm.weight"]
     np.testing.assert_allclose(gamma_awq, gamma * s, rtol=1e-5,
                                err_msg="gamma awq scale absorption mismatch")
-    print("test_awq_apply_weights: PASS")
 
 
 def test_awq_save_load(tmp_path=None):
@@ -62,7 +61,6 @@ def test_awq_save_load(tmp_path=None):
         assert k in scales_out, f"Key {k!r} missing after round-trip"
         np.testing.assert_array_equal(scales_out[k], v,
                                       err_msg=f"Scale mismatch for {k}")
-    print("test_awq_save_load: PASS")
 
 
 def test_awq_no_match_counts_applied():
@@ -73,7 +71,6 @@ def test_awq_no_match_counts_applied():
     scales  = {"totally.different.path": np.ones(64, dtype=np.float32)}
     out = apply_awq_to_weights(weights, scales, verbose=False)
     assert out["embed_tokens.weight"].shape == (100, 64)
-    print("test_awq_no_match_counts_applied: PASS")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -96,7 +93,6 @@ def test_kv_int8_round_trip():
     x_range  = np.abs(x.astype(np.float32)).max()
     rel_err  = err.max() / (x_range + 1e-9)
     assert rel_err < 0.02, f"INT8 round-trip relative error too large: {rel_err:.4f}"
-    print(f"test_kv_int8_round_trip: PASS  (max-rel-err={rel_err:.5f})")
 
 
 def test_kv_layer_cache_append():
@@ -120,7 +116,6 @@ def test_kv_layer_cache_append():
     assert full_k.shape == (n_heads, 10, head_dim), \
         f"Expected ({n_heads}, 10, {head_dim}) got {full_k.shape}"
     assert full_v.shape == full_k.shape
-    print(f"test_kv_layer_cache_append: PASS  shape={full_k.shape}")
 
 
 def test_kv_layer_cache_reset():
@@ -135,7 +130,6 @@ def test_kv_layer_cache_reset():
     cache.reset()
     assert cache.n_tokens == 0
     assert cache.keys_old_q is None
-    print("test_kv_layer_cache_reset: PASS")
 
 
 def test_quantized_kv_cache_full():
@@ -151,7 +145,6 @@ def test_quantized_kv_cache_full():
     stats = qkv.stats()
     assert stats["mode"] == "int8"
     assert stats["n_tokens"] == 6
-    print(f"test_quantized_kv_cache_full: PASS  {stats}")
 
 
 def test_snapkv_eviction():
@@ -167,7 +160,6 @@ def test_snapkv_eviction():
     _snap_evict(cache, budget=8, snap_window=4)
     assert cache.n_tokens <= 8, \
         f"After eviction expected ≤8, got {cache.n_tokens}"
-    print(f"test_snapkv_eviction: PASS  {20} → {cache.n_tokens}")
 
 
 def test_snapkv_mode_auto_evict():
@@ -194,8 +186,83 @@ def test_snapkv_mode_auto_evict():
     # Final token count ≤ eviction_target + tokens_after_eviction ≤ budget + 7
     assert qkv._layers[0].n_tokens <= budget + 7, \
         f"After snap+append got {qkv._layers[0].n_tokens}, expected ≤{budget+7}"
-    print(f"test_snapkv_mode_auto_evict: PASS  n_tokens={qkv._layers[0].n_tokens}"
-          f"  (evicted at budget={budget}, then {20 - budget - 1} more appended)")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# mlx_lm cache protocol — update_and_fetch + offset
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_kv_layer_cache_update_and_fetch():
+    """
+    KVLayerCache.update_and_fetch implements the mlx_lm cache protocol:
+    - accepts (1, n_heads, T_new, head_dim) MLX arrays
+    - appends new tokens, returns full accumulated (1, n_heads, T_total, head_dim)
+    - .offset returns total token count for RoPE position encoding
+    """
+    import pytest
+    mx = pytest.importorskip("mlx.core")
+    from squish.kv_cache import KVLayerCache
+
+    n_heads, head_dim = 4, 32
+    cache = KVLayerCache(window=8)
+
+    # First call: 3 new tokens → full output is (1, 4, 3, 32)
+    keys1   = mx.zeros([1, n_heads, 3, head_dim])
+    values1 = mx.zeros([1, n_heads, 3, head_dim])
+    k_out, v_out = cache.update_and_fetch(keys1, values1)
+
+    assert k_out.shape == (1, n_heads, 3, head_dim), \
+        f"First call shape: {k_out.shape}"
+    assert v_out.shape == (1, n_heads, 3, head_dim)
+    assert cache.offset == 3, f"Expected offset=3, got {cache.offset}"
+
+    # Second call: 2 more tokens → accumulated output is (1, 4, 5, 32)
+    keys2   = mx.ones([1, n_heads, 2, head_dim])
+    values2 = mx.ones([1, n_heads, 2, head_dim])
+    k_out2, v_out2 = cache.update_and_fetch(keys2, values2)
+
+    assert k_out2.shape == (1, n_heads, 5, head_dim), \
+        f"Second call accumulated shape: {k_out2.shape}"
+    assert cache.offset == 5, f"Expected offset=5, got {cache.offset}"
+
+    # reset() clears offset to 0
+    cache.reset()
+    assert cache.offset == 0, "offset should be 0 after reset"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# _sample_mx — temperature and nucleus sampling
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_sample_mx():
+    """
+    squish.server._sample_mx:
+    - temp <= 0 → greedy argmax
+    - temp=1.0, top_p=1.0, uniform logits → diverse outcomes
+    - very peaked logits, top_p≈1.0 → always picks the top token
+    """
+    import pytest
+    mx = pytest.importorskip("mlx.core")
+    from squish.server import _sample_mx
+
+    # Greedy: largest logit at index 2
+    logits = mx.array([0.1, 0.5, 9.9, 0.2, 0.3])
+    assert _sample_mx(logits, temperature=0.0, top_p=1.0) == 2
+    assert _sample_mx(logits, temperature=-1.0, top_p=1.0) == 2   # negative → greedy
+
+    # Stochastic: uniform logits with temp=1.0 should produce diverse tokens
+    uniform = mx.zeros([10])  # all equal → uniform distribution
+    seen = set()
+    for _ in range(300):
+        seen.add(_sample_mx(uniform, temperature=1.0, top_p=1.0))
+    assert len(seen) > 5, \
+        f"Expected diverse token sampling from uniform dist, only saw {seen}"
+
+    # Nucleus: very peaked distribution always returns token 0 under tight top_p
+    peaked = mx.array([20.0] + [-100.0] * 9)  # token 0 overwhelmingly dominant
+    for _ in range(20):
+        assert _sample_mx(peaked, temperature=0.5, top_p=0.999) == 0, \
+            "Peaked distribution should always sample token 0"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -214,4 +281,8 @@ if __name__ == "__main__":
     test_snapkv_eviction()
     test_snapkv_mode_auto_evict()
 
-    print("\n✓ All Phase 1.2 + 1.3 unit tests PASSED\n")
+    print("\n── mlx_lm protocol ─────────────────────────────────────────────")
+    test_kv_layer_cache_update_and_fetch()
+    test_sample_mx()
+
+    print("\n✓ All Phase 1.2 + 1.3 + protocol unit tests PASSED\n")

@@ -330,7 +330,7 @@ def phase_build_cache(model_dir: Path, comp_dir: Path, skip: bool, prompt: str, 
     info("Loading compressed model (first load builds caches) …")
     info("This takes 1-5 minutes for a 7B model — subsequent loads will be <1s")
 
-    from compressed_loader import load_from_npy_dir
+    from squish.compressed_loader import load_from_npy_dir
 
     t0 = time.perf_counter()
     model, tokenizer, stats = load_from_npy_dir(
@@ -429,7 +429,7 @@ def phase_validate(model_dir: Path, comp_dir: Path, skip: bool, prompt: str, max
 
     # ── Compressed ───────────────────────────────────────────────────────────
     info("Loading compressed model …")
-    from compressed_loader import load_from_npy_dir
+    from squish.compressed_loader import load_from_npy_dir
     import mlx_lm as _mlx_lm_comp
     t0 = time.perf_counter()
     comp_model, comp_tok, stats = load_from_npy_dir(
@@ -531,7 +531,7 @@ def phase_benchmark(model_dir: Path, comp_dir: Path, skip: bool, prompt: str, ma
             sum(tps_vals) / len(tps_vals),
         )
 
-    from compressed_loader import load_from_npy_dir
+    from squish.compressed_loader import load_from_npy_dir
     def _comp_load():
         return load_from_npy_dir(str(comp_dir), model_dir=str(model_dir),
                                  verbose=False, return_stats=True)

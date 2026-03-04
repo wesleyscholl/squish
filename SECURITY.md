@@ -10,9 +10,11 @@
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Open a [GitHub Issue](https://github.com/wesleyscholl/squish/issues) marked with
-the `security` label, or email the maintainer directly (address on the GitHub
-profile).
+Report security issues privately using [GitHub Security Advisories](
+https://github.com/wesleyscholl/squish/security/advisories/new).  
+This keeps the report confidential until a patch is ready.
+
+Alternatively, email the maintainer directly (address on the GitHub profile).
 
 Include:
 - A description of the vulnerability
@@ -20,8 +22,9 @@ Include:
 - Potential impact
 - Any suggested mitigations
 
-You can expect an acknowledgement within 72 hours and a fix or mitigation plan
-within 14 days for confirmed issues.
+We follow a **90-day coordinated disclosure** policy.  You can expect an
+acknowledgement within 72 hours and a fix or mitigation plan within 14 days
+for confirmed issues.
 
 ## Scope
 

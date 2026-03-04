@@ -3,14 +3,23 @@
 import time
 import sys
 import os
-sys.path.insert(0, os.path.dirname(__file__))
+import argparse
+from pathlib import Path
+
+_MODELS_DIR = Path.home() / ".squish" / "models"
+
+ap = argparse.ArgumentParser(description="Verify 7B model load")
+ap.add_argument("--model", default=str(_MODELS_DIR / "Qwen2.5-7B-Instruct-bf16"))
+ap.add_argument("--compressed", default=None)
+args = ap.parse_args()
 
 t0 = time.perf_counter()
-from compressed_loader import load_from_npy_dir
+from squish.compressed_loader import load_from_npy_dir
 
+comp_dir = args.compressed or (args.model + "-compressed")
 result = load_from_npy_dir(
-    '/Users/wscholl/models/Qwen2.5-7B-Instruct-bf16-compressed',
-    model_dir='/Users/wscholl/models/Qwen2.5-7B-Instruct-bf16',
+    comp_dir,
+    model_dir=args.model,
     verbose=True,
     return_stats=True,
 )

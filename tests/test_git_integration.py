@@ -28,7 +28,7 @@ from pathlib import Path
 import pytest
 
 SQUISH_ROOT = Path(__file__).resolve().parent.parent
-CLI         = str(SQUISH_ROOT / "cli.py")
+CLI         = str(SQUISH_ROOT / "squish" / "cli.py")
 
 # Shell-script constants — must stay in sync with git-commit-push-script.sh
 _SCRIPT_TIMEOUT_SECONDS  = 45

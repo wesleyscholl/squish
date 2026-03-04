@@ -281,6 +281,8 @@ process on the same machine — hits Tier 2 and loads in sub-second time.
 | lm-eval harness integration | ✅ | `squish_lm_eval.py` |
 | 7B model support | ✅ | squish_4bit path for large models |
 | INT4 nibble-packed storage | ✅ | `save_int4_npy_dir()` + Rust deq — 50% disk vs INT8 |
+| **AWQ calibration** | **✅** | **`squish/awq.py` — `collect_activation_scales` → `save_awq_scales` → `--awq-scales` in convert** |
+| **KV cache quantisation** | **✅** | **`squish/kv_cache.py` — KIVI INT8 + SnapKV; mlx_lm `update_and_fetch` protocol** |
 | Remote/cloud weight streaming | 🔜 | npy-dir format is range-request friendly |
 | Multi-shard models | 🔜 | Convert individually, merge manifest |
 | GGUF / ONNX export from cache | 🔜 | weight_dict already in bf16 |
@@ -445,11 +447,11 @@ Attention layer norm, embedding, and lm_head already use passthrough (f16).
 Profiling which weight matrices are most sensitive to quantization noise and using
 INT8 group-32 for those (higher accuracy at small disk cost).
 
-**B3: KV-cache compression**
-Inference-time optimization: compress KV cache with 8-bit floating point or
-grouped INT4.  Reduces peak RAM during long-context generation.  On a 16 GB
-device with a 14B 4-bit model, the KV cache is the primary memory consumer
-for long sequences.
+**B3: KV-cache compression** ✅ **IMPLEMENTED** (`squish/kv_cache.py`)
+INT8 + FP16 recent-window quantisation (KIVI algorithm) and SnapKV importance-based
+eviction.  `KVLayerCache` implements the mlx_lm `update_and_fetch` / `offset` protocol
+so the cache is invoked automatically each decode step.  Reduces peak RAM during
+long-context generation on 16 GB devices.  Enable with `squish run --kv-cache-mode int8`.
 
 **B4: Remote streaming protocol**
 The npy-dir format stores each tensor as an individual `.npy` file, making it
@@ -529,7 +531,7 @@ SLAs, enterprise support, and cloud integration.
 
 ## 15. New Implementations (this milestone)
 
-### 15.1 OpenAI-Compatible API Server (`squish_server.py`)
+### 15.1 OpenAI-Compatible API Server (`squish/server.py`)
 
 FastAPI + uvicorn HTTP server providing a drop-in OpenAI REST API over any squish
 compressed model.
@@ -540,6 +542,10 @@ compressed model.
   - `seed` parameter for reproducible outputs
   - TTFT measured at first token; `X-Request-Id` response header
 - `POST /v1/completions` — raw completion with seed + TTFT tracking
+- `POST /v1/embeddings` — mean-pooled L2-normalised embeddings via three-tier fallback:
+  1. `model.model(x)` — last hidden state (preferred; suitable for semantic similarity)
+  2. `model.model.embed_tokens(x)` — input token embeddings (if hidden state unavailable)
+  3. `model(x)` logits mean-pool — last resort
 - `GET /health` — readiness probe with `inflight`, `avg_tps`, `avg_ttft_s`
 - `GET /v1/metrics` — Prometheus-compatible plain-text metrics:
   ```
@@ -559,7 +565,14 @@ compressed model.
 - `_apply_chat_template()` uses tokenizer.apply_chat_template with ChatML fallback
 - Streaming via FastAPI `StreamingResponse` + async SSE generator
 - Port 11435 (avoids conflict with Ollama's 11434)
+**Key CLI arguments** (see `squish run --help` for the full list):
 
+| Argument | Default | Purpose |
+|---|---|---|
+| `--kv-cache-mode` | `fp16` | `int8` = KIVI INT8+FP16 window; `snap` = +SnapKV eviction |
+| `--kv-cache-window` | `64` | FP16 recent-token window in `int8`/`snap` modes |
+| `--kv-cache-budget` | `4096` | Max K/V positions retained in `snap` mode |
+| `--log-level` | `warning` | Uvicorn log verbosity: `warning`/`info`/`debug`/`trace` |
 ```bash
 python3 squish_server.py \
   --model-dir ~/models/Qwen2.5-7B-Instruct-bf16 \
@@ -713,6 +726,34 @@ Key features:
 
 Predicted first-load latency: ~50s from Cloudflare R2 (100 MB/s); steady-state
 inference speed unchanged (all weights in Metal memory).
+
+### 15.8 AWQ Calibration Pass (`squish/awq.py`)
+
+Activation-aware Weight Quantization (AWQ) calibration reduces quantisation
+error by scaling weight columns proportional to their observed activation
+magnitudes before quantising.
+
+**Pipeline**:
+1. `collect_activation_scales(model, tokenizer, n_samples, alpha)` — monkey-patches
+   each `nn.Linear.__call__` in the loaded model, runs `n_samples` calibration
+   prompts, collects per-column activation statistics, returns a `{layer_key: scales}`
+   dict
+2. `save_awq_scales(scales, output_dir)` — writes each scale vector as a `.npy` file
+   named by layer key (with `/` replaced by `.`)
+3. `load_awq_scales(scales_dir)` — inverse of save; returns identical `{key: array}` dict
+4. `apply_awq_to_weights(weights, scales)` — divides weight columns by `s` and multiplies
+   the paired layer-norm column by `s`, preserving the mathematical invariant
+   `LayerNorm(W/s · (s·x)) = LayerNorm(W·x)`
+
+**Usage via CLI**:
+```bash
+squish compress qwen2.5:7b --awq --awq-samples 32  # 2-5 min, improves accuracy
+```
+
+**Implementation note**: MLX lacks PyTorch-style forward hooks.  The calibration
+works by temporarily replacing `module.__call__` with a wrapper that records
+activation statistics.  This is fragile across major MLX API changes and is
+scoped to run only during the one-time calibration step.
 
 ---
 

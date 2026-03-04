@@ -4,7 +4,7 @@ mlx-lm>=0.19
 safetensors>=0.4
 numpy>=1.26
 transformers>=4.40
-huggingface_hub>=0.23
+huggingface-hub>=0.23
 
 # ── OpenAI-compatible API server (server.py) ──────────────────────────────────
 fastapi>=0.111
@@ -15,10 +15,6 @@ sse-starlette>=1.8.2
 zstandard>=0.22.0
 aiofiles>=23.0
 
-# ── Evaluation (optional — pip install squish[eval]) ─────────────────────────
-lm-eval>=0.4.0
-datasets>=2.18
-accelerate>=0.29
-sacrebleu
-rouge_score
-nltk
+# ── Evaluation extras (install separately) ───────────────────────────────────
+# pip install "squish[eval]"   or   pip install -r requirements-eval.txt
+# lm-eval, datasets, accelerate, sacrebleu, rouge_score, nltk

@@ -9,8 +9,9 @@ Sub-commands
   squish pull   MODEL               Download + compress a model
   squish catalog                    Browse available models
   squish run    [MODEL] [OPTIONS]   Start the inference server
+  squish serve  [MODEL] [OPTIONS]   Alias for `squish run`
   squish chat   [MODEL] [OPTIONS]   Interactive terminal chat (no browser needed)
-  squish models                     List local models (auto-discovers ~/models/)
+  squish models                     List local models (auto-discovers ~/.squish/models/)
   squish info                       System info: Metal, RAM, disk
   squish bench  [MODEL] [OPTIONS]   Quick throughput/latency benchmark
   squish doctor                     Check all dependencies
@@ -56,7 +57,7 @@ except Exception:  # pragma: no cover
 
 # ── Model registry ─────────────────────────────────────────────────────────── 
 
-_MODELS_DIR = Path.home() / "models"
+_MODELS_DIR = Path.home() / ".squish" / "models"
 
 # Legacy shorthand → directory name (kept for backward compatibility).
 # New models should be added to squish/catalog.py instead.
@@ -412,6 +413,16 @@ def cmd_run(args):
     host     = args.host or "127.0.0.1"
     api_key  = args.api_key or "squish"
 
+    # Warn when binding to a non-loopback address — server will be reachable on LAN
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        import warnings
+        warnings.warn(
+            f"\n  ⚠  CORS is wide-open and the server will be reachable from your LAN "
+            f"at http://{host}:{port}/v1.\n"
+            f"  Set a strong SQUISH_API_KEY env var or bind to 127.0.0.1 if unintended.",
+            stacklevel=0,
+        )
+
     print()
     _box([
         "  Squish — Local Inference Server  ",
@@ -447,6 +458,8 @@ def cmd_run(args):
         cmd += ["--batch-scheduler", "--batch-size", str(args.batch_size)]
     if args.kv_cache_mode and args.kv_cache_mode != "fp16":
         cmd += ["--kv-cache-mode", args.kv_cache_mode]
+    if getattr(args, "log_level", "warning") != "warning":
+        cmd += ["--log-level", args.log_level]
 
     try:
         os.execv(sys.executable, cmd)  # replace this process — clean signals
@@ -1001,6 +1014,35 @@ def cmd_compress(args):
     print(f"  Quantization: {quant_label}")
     print(f"  Output:      {output_dir}\n")
 
+    # ── Optional AWQ calibration pass ────────────────────────────────────────
+    awq_scales_dir = None
+    if getattr(args, "awq", False):
+        n_samples = getattr(args, "awq_samples", 20)
+        print(f"  Running AWQ calibration ({n_samples} samples)...")
+        print(f"  Note: loads full model in memory — may take 2–5 min for large models.")
+        try:
+            import mlx_lm
+            import tempfile
+            model_awq, tokenizer_awq = mlx_lm.load(str(model_dir))
+            from squish.awq import collect_activation_scales, save_awq_scales
+            scales = collect_activation_scales(
+                model_awq, tokenizer_awq,
+                n_samples=n_samples, verbose=True,
+            )
+            awq_scales_dir = tempfile.mkdtemp(prefix="squish_awq_")
+            save_awq_scales(scales, awq_scales_dir, verbose=False)
+            print(f"  ✓  AWQ scales collected → {awq_scales_dir}")
+            del model_awq
+            try:
+                import mlx.core as mx
+                mx.clear_cache()
+            except Exception:
+                pass
+        except ImportError as _e:
+            print(f"  Warning: AWQ skipped — {_e}. Install mlx-lm to enable AWQ.")
+        except Exception as _e:
+            print(f"  Warning: AWQ calibration failed — {_e}. Continuing without AWQ.")
+
     cmd = [
         sys.executable, "-m", "squish.convert",
         "--model-dir", str(model_dir),
@@ -1013,6 +1055,8 @@ def cmd_compress(args):
         cmd += ["--outlier-threshold", str(args.outlier_threshold)]
     if getattr(args, "int4", False):
         cmd.append("--int4")
+    if awq_scales_dir:
+        cmd += ["--awq-scales", awq_scales_dir]
     if args.verbose:
         cmd.append("--verbose")
 
@@ -1203,6 +1247,12 @@ Ollama drop-in:
     )
     sub = ap.add_subparsers(dest="command")
 
+    ap.add_argument(
+        "--version", action="version",
+        version=f"squish 1.0.0",
+        help="Show squish version and exit",
+    )
+
     # ── run ──
     p_run = sub.add_parser("run", help="Start the inference server")
     p_run.add_argument("model", nargs="?", help="Model: 7b, 14b, 1.5b, or path")
@@ -1216,7 +1266,28 @@ Ollama drop-in:
                        help="Enable continuous batching (improves concurrent throughput)")
     p_run.add_argument("--batch-size",       type=int, default=8)
     p_run.add_argument("--kv-cache-mode",    choices=["fp16", "int8", "snap"], default="fp16")
+    p_run.add_argument("--log-level",
+                       choices=["critical", "error", "warning", "info", "debug", "trace"],
+                       default="warning",
+                       help="Server log verbosity (default: warning)")
     p_run.set_defaults(func=cmd_run)
+
+    # ── serve (alias for run) ──
+    p_serve = sub.add_parser("serve", help="Start the inference server (alias for 'run')")
+    p_serve.add_argument("model", nargs="?", help="Model: qwen3:8b, 7b, 14b, or path")
+    p_serve.add_argument("--port",    type=int, default=_DEFAULT_PORT)
+    p_serve.add_argument("--host",    default="127.0.0.1",
+                         help="0.0.0.0 to expose on LAN")
+    p_serve.add_argument("--api-key", default="squish")
+    p_serve.add_argument("--draft-model",      default="")
+    p_serve.add_argument("--batch-scheduler",  action="store_true")
+    p_serve.add_argument("--batch-size",       type=int, default=8)
+    p_serve.add_argument("--kv-cache-mode",    choices=["fp16", "int8", "snap"], default="fp16")
+    p_serve.add_argument("--log-level",
+                         choices=["critical", "error", "warning", "info", "debug", "trace"],
+                         default="warning",
+                         help="Server log verbosity (default: warning)")
+    p_serve.set_defaults(func=cmd_run)
 
     # ── chat ──
     p_chat = sub.add_parser("chat", help="Interactive terminal chat")
@@ -1287,6 +1358,12 @@ Ollama drop-in:
                             help="Apply zstd entropy compression at level N (1-22) after "
                                  "quantization.  Level 3 is a good default; 0 = skip (default). "
                                  "Requires: pip install zstandard")
+    p_compress.add_argument("--awq", action="store_true", default=False,
+                            help="Run Activation-aware Weight Quantization (AWQ) calibration "
+                                 "before INT8/INT4 compression. Improves accuracy at the cost "
+                                 "of ~2-5 min extra calibration time.")
+    p_compress.add_argument("--awq-samples", type=int, default=20, metavar="N",
+                            help="Number of calibration samples for AWQ (default: 20)")
     p_compress.add_argument("--verbose",           action="store_true")
     p_compress.set_defaults(func=cmd_compress)
 

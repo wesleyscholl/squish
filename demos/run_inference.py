@@ -22,8 +22,9 @@ import time
 import argparse
 from pathlib import Path
 
-MODEL_DIR_DEFAULT = "/Users/wscholl/models/Qwen2.5-1.5B-Instruct"
-NPZ_DEFAULT = "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-compressed/weights_compressed.npz"
+_DEFAULT_MODELS_DIR = Path.home() / ".squish" / "models"
+MODEL_DIR_DEFAULT = str(_DEFAULT_MODELS_DIR / "Qwen2.5-1.5B-Instruct")
+NPZ_DEFAULT = str(_DEFAULT_MODELS_DIR / "Qwen2.5-1.5B-Instruct-compressed" / "weights_compressed.npz")
 PROMPT_DEFAULT = "The capital of France is"
 MAX_TOKENS_DEFAULT = 50
 
@@ -75,7 +76,7 @@ def main():
             verbose=not args.quiet,
         )
     else:
-        from compressed_loader import load_compressed_model
+        from squish.compressed_loader import load_compressed_model
         model, tokenizer, loader_stats = load_compressed_model(
             model_dir=args.model_dir,
             npz_path=args.npz,

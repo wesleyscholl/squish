@@ -195,6 +195,36 @@ class _PrefixCache:
 _prefix_cache = _PrefixCache(maxsize=512)
 
 
+def _sample_mx(logits_row, temperature: float, top_p: float) -> int:
+    """
+    Sample a single token id from an MLX logits vector.
+
+    Parameters
+    ----------
+    logits_row  : mx.array  shape (vocab_size,)
+    temperature : float — <= 0 means greedy argmax
+    top_p       : float — nucleus sampling probability mass (1.0 = disabled)
+
+    Returns
+    -------
+    int token id
+    """
+    import mlx.core as mx
+    import numpy as np
+    if temperature <= 0.0 or temperature < 1e-5:
+        return int(mx.argmax(logits_row).item())
+    probs_np = np.array(mx.softmax(logits_row.astype(mx.float32) / temperature, axis=-1))
+    if top_p < 1.0:
+        idx    = np.argsort(-probs_np)
+        cumsum = np.cumsum(probs_np[idx])
+        cutoff = min(int((cumsum <= top_p).sum()) + 1, len(idx))
+        mask   = np.zeros_like(probs_np)
+        mask[idx[:max(1, cutoff)]] = 1.0
+        probs_np = probs_np * mask
+        probs_np /= probs_np.sum() + 1e-9
+    return int(np.random.choice(len(probs_np), p=probs_np))
+
+
 def _check_auth(creds: HTTPAuthorizationCredentials | None) -> None:
     """Raise 401 if an API key is configured and the request doesn't match.
 
@@ -217,8 +247,7 @@ def _system_fingerprint() -> str:
 
 def load_model(model_dir: str, compressed_dir: str, verbose: bool = True) -> None:
     """Load the Squish compressed model into global state."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from compressed_loader import load_compressed_model as _load_compressed_model
+    from .compressed_loader import load_compressed_model as _load_compressed_model
     # Keep backward-compat shim
     load_from_npy_dir = _load_compressed_model
 
@@ -434,6 +463,67 @@ def _generate_tokens(
             _log.getLogger(__name__).warning("Speculative decoding failed (%s); "
                                              "falling back to standard generation", _spec_err)
 
+    # ── Quantized KV cache generation path ─────────────────────────────────────
+    if _kv_cache is not None:
+        _kv_cache.reset()
+        try:
+            import mlx.core as mx
+            input_ids = (
+                tokenizer.encode(prompt)
+                if hasattr(tokenizer, "encode")
+                else tokenizer(prompt, return_tensors="np")["input_ids"][0].tolist()
+            )
+            layer_caches = _kv_cache._layers
+            x = mx.array(input_ids, dtype=mx.int32)[None]
+            logits = model(x, cache=layer_caches)
+            mx.eval(logits)
+            next_id = _sample_mx(logits[0, -1], temperature, top_p)
+            stop_buf = [next_id]
+            for step in range(max_tokens):
+                tok_text = (
+                    tokenizer.decode([next_id])
+                    if hasattr(tokenizer, "decode")
+                    else str(next_id)
+                )
+                if next_id == eos_id:
+                    if cache_eligible and _cache_buf:
+                        _prefix_cache.put(prompt, "".join(_cache_buf), "stop")
+                    yield tok_text, "stop"
+                    return
+                if stop_ids:
+                    for seq in stop_ids:
+                        if stop_buf[-len(seq):] == seq:
+                            if cache_eligible and _cache_buf:
+                                _prefix_cache.put(prompt, "".join(_cache_buf), "stop")
+                            yield tok_text, "stop"
+                            return
+                    if len(stop_buf) > 64:
+                        stop_buf = stop_buf[-64:]
+                if step == max_tokens - 1:
+                    if cache_eligible and _cache_buf:
+                        _prefix_cache.put(prompt, "".join(_cache_buf), "length")
+                    yield tok_text, "length"
+                    return
+                if cache_eligible:
+                    _cache_buf.append(tok_text)
+                yield tok_text, None
+                x = mx.array([[next_id]], dtype=mx.int32)
+                logits = model(x, cache=layer_caches)
+                mx.eval(logits)
+                next_id = _sample_mx(logits[0, -1], temperature, top_p)
+                stop_buf.append(next_id)
+            if cache_eligible and _cache_buf:
+                _prefix_cache.put(prompt, "".join(_cache_buf), "stop")
+            yield "", "stop"
+            return
+        except Exception as _kv_err:
+            import logging as _kv_log
+            _kv_log.getLogger(__name__).warning(
+                "Quantized KV cache path failed (%s); falling back to stream_generate",
+                _kv_err,
+            )
+            _kv_cache.reset()
+
     # ── mlx_lm.stream_generate (preferred, available mlx_lm >= 0.12) ────────
     try:
         import mlx_lm
@@ -504,7 +594,7 @@ def _generate_tokens(
         if top_p < 1.0:
             idx      = np.argsort(-probs_np)
             cumsum   = np.cumsum(probs_np[idx])
-            cutoff   = int((cumsum <= top_p).sum()) + 1
+            cutoff   = min(int((cumsum <= top_p).sum()) + 1, len(idx))
             mask     = np.zeros_like(probs_np)
             mask[idx[:max(1, cutoff)]] = 1.0
             probs_np = probs_np * mask
@@ -551,7 +641,7 @@ def _generate_tokens(
 app = FastAPI(
     title       = "Squish OpenAI-compatible API",
     description = "Local LLM inference via Squish compressed models",
-    version     = "0.2.0",
+    version     = "1.0.0",
 )
 
 # Allow browser clients (e.g. Open WebUI) to call without CORS blocks
@@ -933,13 +1023,18 @@ async def embeddings(
 
         x = mx.array(ids, dtype=mx.int32)[None]       # (1, seq)
         try:
-            # Access intermediate hidden states if model exposes embed_tokens
-            tok_emb = model.model.embed_tokens(x)     # (1, seq, D)
-            emb_np  = np.array(mx.mean(tok_emb, axis=1)[0])  # (D,)
-        except AttributeError:
-            # Fallback: run full forward, use logits mean as proxy
-            logits = model(x)                         # (1, seq, vocab)
-            emb_np = np.array(mx.mean(logits[0], axis=0))    # (vocab,)
+            # Preferred path: last hidden state (proper semantic embeddings)
+            hidden = model.model(x)                           # (1, seq, hidden_dim)
+            emb_np = np.array(mx.mean(hidden, axis=1)[0])    # (hidden_dim,)
+        except (AttributeError, TypeError):
+            try:
+                # Second-best: input token embeddings (less useful but available)
+                tok_emb = model.model.embed_tokens(x)        # (1, seq, D)
+                emb_np  = np.array(mx.mean(tok_emb, axis=1)[0])
+            except AttributeError:
+                # Last-resort: mean-pool logits (not suitable for similarity tasks)
+                logits = model(x)                            # (1, seq, vocab)
+                emb_np = np.array(mx.mean(logits[0], axis=0))
 
         # L2-normalize
         norm = np.linalg.norm(emb_np)
@@ -1114,6 +1209,10 @@ Examples:
                     help="Recent-token FP16 window for int8/snap modes (default 64)")
     ap.add_argument("--kv-cache-budget", type=int, default=4096,
                     help="Max K/V positions in snap mode (default 4096)")
+    ap.add_argument("--log-level",
+                    choices=["critical", "error", "warning", "info", "debug", "trace"],
+                    default="warning",
+                    help="Uvicorn log verbosity (default: warning)")
     # ── Phase 2.1: Batch scheduler ────────────────────────────────────────────
     ap.add_argument("--batch-scheduler", action="store_true", default=False,
                     help="Enable continuous batching scheduler: collects concurrent\n"
@@ -1188,7 +1287,10 @@ Examples:
             )
             print(f"  KV cache ready ({args.kv_cache_mode})")
         except Exception as e:
-            print(f"  [KV cache] Warning: could not attach ({e}) — using fp16")
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "[KV cache] could not attach (%s) — running without KV quantisation", e
+            )
 
     # ── Phase 2.1: start batch scheduler if requested ────────────────────────
     global _scheduler
@@ -1206,7 +1308,10 @@ Examples:
             print(f"  Batch scheduler : enabled  "
                   f"(max_batch={args.batch_size}  window={args.batch_window_ms:.0f}ms)")
         except Exception as e:
-            print(f"  [Scheduler] Warning: could not start ({e}) — sequential mode")
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "[Scheduler] could not start (%s) — falling back to sequential mode", e
+            )
             _scheduler = None
 
     if args.draft_model:
@@ -1226,7 +1331,7 @@ Examples:
         app,
         host      = args.host,
         port      = args.port,
-        log_level = "warning",
+        log_level = args.log_level,
     )
 
 

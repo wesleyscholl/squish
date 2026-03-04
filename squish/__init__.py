@@ -11,17 +11,7 @@ Public API:
 
     run_server(...)   # OpenAI-compatible HTTP server
 """
-import sys
-from pathlib import Path
-
-# Development fallback: ensure repo root is on sys.path so that the root-level
-# compressed_loader.py can be imported directly.  When installed via pip the
-# module is available as a proper top-level `compressed_loader` module.
-_ROOT = Path(__file__).resolve().parent.parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
-
-from compressed_loader import (  # noqa: F401
+from .compressed_loader import (  # noqa: F401
     load_compressed_model,
     load_from_npy_dir,
     save_int4_npy_dir,
@@ -95,7 +85,7 @@ from squish.catalog import (  # noqa: F401
     pull as pull_model,
 )
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"
 __all__ = [
     "load_compressed_model",
     "load_from_npy_dir",

@@ -119,13 +119,11 @@ def main():
         print("Rerun without --dry-run to apply.")
         return
 
-    # Real compression via compressed_loader.compress_npy_dir()
-    squish_root = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(squish_root))
+    # Real compression via squish.compressed_loader.compress_npy_dir()
     try:
-        from compressed_loader import compress_npy_dir
+        from squish.compressed_loader import compress_npy_dir
     except ImportError as e:
-        print(f"ERROR: could not import compressed_loader: {e}")
+        print(f"ERROR: could not import squish.compressed_loader: {e}")
         sys.exit(1)
 
     print(f"Compressing {target}  (level={args.level}) …")

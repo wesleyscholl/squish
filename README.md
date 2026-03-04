@@ -3,7 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PyPI version](https://img.shields.io/pypi/v/squish.svg)](https://pypi.org/project/squish/)
 [![Platform](https://img.shields.io/badge/platform-Apple%20Silicon-lightgrey.svg)](https://github.com/wesleyscholl/squish)
-[![Paper](https://img.shields.io/badge/paper-coming%20soon-lightgrey)](https://github.com/wesleyscholl/squish)
+[![Discord](https://img.shields.io/badge/Discord-join%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/squish)
+[![HuggingFace](https://img.shields.io/badge/🤗%20Models-squish--community-yellow)](https://huggingface.co/squish-community)
 
 <img src="assets/squish-logo.png" height="550" alt="Squish Logo"/>
 
@@ -12,6 +13,8 @@
 > **Web chat UI · Tool calling · Batch scheduler · CLI**  
 > **No API key.  No cloud.  No data leaving your machine.**  
 > **Free.**
+
+> ⚠️ **macOS + Apple Silicon (M1–M5) only.** Linux/CUDA support is on the roadmap. Windows is not planned.
 
 ---
 
@@ -22,12 +25,17 @@
 ## Install
 
 ```bash
+# Homebrew (recommended)
+brew install wesleyscholl/squish/squish
+```
+
+```bash
+# One-liner installer
 curl -fsSL https://raw.githubusercontent.com/wesleyscholl/squish/main/install.sh | bash
 ```
 
-Or with pip:
-
 ```bash
+# pip
 pip install squish
 ```
 
@@ -55,6 +63,32 @@ export OPENAI_API_KEY=squish
 # or
 export OLLAMA_HOST=http://localhost:11435
 ```
+
+---
+
+## Why Not Ollama or LM Studio?
+
+Ollama and LM Studio are great tools. Squish solves a different problem.
+
+| | Ollama | LM Studio | **Squish** |
+|---|:---:|:---:|:---:|
+| Cold-start load time | 8–25 s | 10–30 s | **0.33–0.53 s** |
+| RAM during load | ~2–8 GB | ~2–8 GB | **160 MB** ‡ |
+| OpenAI-compatible API | ✅ | ✅ | ✅ |
+| Ollama-compatible API | ✅ | ✅ | ✅ |
+| Web chat UI | ❌ | ✅ | ✅ |
+| Tool calling | ✅ | ✅ | ✅ |
+| Batch/concurrent requests | limited | ❌ | ✅ |
+| Works offline after pull | ✅ | ✅ | ✅ |
+| Download pre-squished weights | N/A | N/A | ✅ ([HuggingFace](https://huggingface.co/squish-community)) |
+| Apple Silicon–optimised | ✅ | ✅ | ✅ |
+| INT8 npy-dir format (mmap) | ❌ | ❌ | ✅ |
+| Source available | ✅ | ❌ | ✅ |
+
+The key distinction: Ollama and LM Studio use standard GGUF/MLX weights that require full dtype-conversion on every boot.
+Squish stores weights in a Metal-native format that maps directly into unified memory — **no conversion, sub-second every time**.
+
+‡ *160 MB = Apple Metal virtual-address delta during the load phase (mmap, no CPU heap allocation). Peak RSS during full initialization is ~402 MB. Both figures measured on Apple Silicon M-series.*
 
 ---
 
@@ -169,6 +203,24 @@ python3 -m squish.server \
     --compressed-dir ~/models/Qwen2.5-7B-Instruct-bf16-compressed \
     --port 11435
 ```
+
+**Key server flags** (`squish run --help` for the full list):
+
+| Flag | Values | Default | Purpose |
+|---|---|---|---|
+| `--kv-cache-mode` | `fp16` · `int8` · `snap` | `fp16` | KV cache compression; `int8` saves RAM on long contexts via KIVI INT8 + FP16 recent window; `snap` adds SnapKV importance-based eviction |
+| `--kv-cache-window` | integer | `64` | FP16 recent-token window size for `int8`/`snap` modes |
+| `--kv-cache-budget` | integer | `4096` | Max K/V positions retained in `snap` mode |
+| `--log-level` | `warning` · `info` · `debug` | `warning` | Uvicorn log verbosity |
+
+**Key compress flags** (`squish compress --help`):
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `--awq` | off | Run AWQ activation calibration before INT8/INT4 compression |
+| `--awq-samples N` | `20` | Calibration samples for AWQ (more → better accuracy, slower) |
+| `--int4` | off | INT4 nibble-packed output (~50% disk vs INT8) |
+| `--zstd-level N` | `0` | Optional zstd entropy pass after quantisation (level 3 recommended) |
 
 Point **any OpenAI client** at it — no code changes:
 
@@ -384,7 +436,7 @@ squish bench --markdown --save bench_results.md
 |---|---|
 | `install.sh` | **One-command installer** — `curl -fsSL .../install.sh \| bash` |
 | `squish/server.py` | **OpenAI + Ollama API server** — `/v1/*`, `/api/*`, `/chat` |
-| `squish/cli.py` | **CLI** — `squish pull/run/chat/catalog/models/info/bench/doctor/daemon` |
+| `squish/cli.py` | **CLI** — `squish pull`, `squish run`/`serve`, `squish compress`, `squish chat`, `squish models`, `squish info`, `squish bench`, `squish catalog`, `squish doctor`, `squish daemon` |
 | `squish/catalog.py` | **Model catalog** — 29 models, `squish pull`, HuggingFace hub integration |
 | `squish/quantizer.py` | **INT8/INT4 quantizer** — self-contained, Rust backend (6 GB/s) |
 | `squish/ollama_compat.py` | Ollama HTTP API compatibility layer |
@@ -408,6 +460,15 @@ squish bench --markdown --save bench_results.md
 | `configs/continue.json` | Continue.dev config (VS Code / JetBrains AI) |
 | `configs/litellm.yaml` | LiteLLM proxy config (unified multi-provider endpoint) |
 | `configs/aider.yml` | aider config (AI pair programming CLI) |
+
+---
+
+## Community
+
+- **[Discord](https://discord.gg/squish)** — get help, share benchmarks, discuss models
+- **[GitHub Discussions](https://github.com/wesleyscholl/squish/discussions)** — Q&A, ideas, show & tell
+- **[HuggingFace](https://huggingface.co/squish-community)** — pre-squished model weights (no local compression needed)
+- **[Contributing](CONTRIBUTING.md)** — good first issues, dev setup, PR guidelines
 
 ---
 

@@ -44,8 +44,8 @@ def _find_vectro() -> str:
 sys.path.insert(0, _find_vectro())
 from python.interface import reconstruct_embeddings, QuantizationResult
 
-MODEL_DIR_DEFAULT = "/Users/wscholl/models/Qwen2.5-1.5B-Instruct"
-NPZ_DEFAULT = "/Users/wscholl/models/Qwen2.5-1.5B-Instruct-compressed/weights_compressed.npz"
+MODEL_DIR_DEFAULT = str(Path.home() / ".squish" / "models" / "Qwen2.5-1.5B-Instruct")
+NPZ_DEFAULT = str(Path.home() / ".squish" / "models" / "Qwen2.5-1.5B-Instruct-compressed" / "weights_compressed.npz")
 
 # Tensors to sample for weight fidelity checks
 SAMPLE_TENSOR_PATTERNS = [

@@ -14,7 +14,7 @@ _vectro = Path(os.environ.get("VECTRO_DIR", Path.home() / "vectro"))
 if _vectro.exists():
     sys.path.insert(0, str(_vectro))
 
-from compressed_loader import save_int4_npy_dir, _dequantize_npy_dir, _INT4_READY
+from squish.compressed_loader import save_int4_npy_dir, _dequantize_npy_dir, _INT4_READY
 
 # ── Build a tiny synthetic npy-dir ──────────────────────────────────────────
 def make_synthetic_npy_dir(root: Path, n: int = 64, d: int = 512) -> list[str]:
