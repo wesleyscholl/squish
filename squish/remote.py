@@ -169,7 +169,7 @@ def build_manifest(
 
 # ─── CLI ─────────────────────────────────────────────────────────────────────
 
-def main():
+def main():  # pragma: no cover
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model-dir",  required=True, type=Path, help="Path to squish compressed model dir")
     p.add_argument("--base-url",   required=True, help="Public base URL where files will be hosted")

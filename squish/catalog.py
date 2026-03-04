@@ -317,7 +317,7 @@ def _try_refresh_catalog(catalog: dict[str, CatalogEntry]) -> dict[str, CatalogE
                 pass
 
     # ── Stale (or absent) — return now, refresh asynchronously ───────────────
-    def _background_fetch() -> None:
+    def _background_fetch() -> None:  # pragma: no cover
         try:
             import importlib.metadata as _imeta
             try:

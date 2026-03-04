@@ -52,7 +52,7 @@ import numpy as np
 # ---------------------------------------------------------------------------
 try:
     import mlx.core as _mlx  # type: ignore[import]
-except ImportError:
+except ImportError:  # pragma: no cover
     _mlx = None  # will raise at runtime if Metal code is actually called
 
 

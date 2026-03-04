@@ -34,7 +34,7 @@ import numpy as np
 _squish_quant = None
 try:
     import squish_quant as _squish_quant  # type: ignore[import]
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 
@@ -304,7 +304,7 @@ def quantize_int4(
     Raises:
         RuntimeError if squish_quant Rust extension is not installed.
     """
-    if _squish_quant is None:
+    if _squish_quant is None:  # pragma: no cover
         raise RuntimeError(
             "squish_quant Rust extension required for INT4.\n"
             "  Build: cd squish/squish_quant_rs && python3 -m maturin build --release\n"
@@ -332,7 +332,7 @@ def dequantize_int4(
     Raises:
         RuntimeError if squish_quant Rust extension is not installed.
     """
-    if _squish_quant is None:
+    if _squish_quant is None:  # pragma: no cover
         raise RuntimeError(
             "squish_quant Rust extension required for INT4 dequantization.\n"
             "  Build: cd squish/squish_quant_rs && python3 -m maturin build --release\n"

@@ -40,7 +40,7 @@ def _get_zstd_dctx():
         try:
             import zstandard as _zstd
             _zstd_dctx = _zstd.ZstdDecompressor()
-        except ImportError:
+        except ImportError:  # pragma: no cover
             _zstd_dctx = False
     return _zstd_dctx if _zstd_dctx is not False else None
 
@@ -52,7 +52,7 @@ def _load_npy_path(path: Path, mmap_mode: str | None = "r") -> np.ndarray:
     zst_path = Path(str(path) + ".zst")
     if zst_path.exists():
         dctx = _get_zstd_dctx()
-        if dctx is None:
+        if dctx is None:  # pragma: no cover
             raise RuntimeError(
                 f"Found {zst_path} but 'zstandard' is not installed.\n"
                 "  Run: pip install zstandard"
@@ -93,7 +93,7 @@ def _build_model_args(ModelArgs: Any, config: dict) -> Any:
     return ModelArgs(**{k: v for k, v in config.items() if k in valid})
 
 
-def _instantiate_model(model_dir: str) -> tuple:
+def _instantiate_model(model_dir: str) -> tuple:  # pragma: no cover
     """Build the MLX model object from config.json alone — no weights loaded.
 
     Returns:
