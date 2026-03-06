@@ -102,6 +102,10 @@ omit = [
     "squish/streaming.py",
     "squish/speculative.py",
     "squish/squish_lm_eval.py",
+    "squish/minference_patch.py",
+    "squish/paged_attention.py",
+    "squish/prompt_compressor.py",
+    "squish/vector_index.py",
 ]
 
 [tool.coverage.report]

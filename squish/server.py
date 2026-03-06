@@ -86,6 +86,27 @@ _compress_ratio           = 0.5
 _compress_min_tokens      = 512
 _compress_preserve_tokens = 0   # protect first N words from compression (RadixAttention synergy)
 
+# ── Phase 3A: Chunked prefill (COMPRESS_PATH long sequences) ─────────────────
+_chunk_prefill_enabled   = False  # set in main() via --chunk-prefill
+_chunk_prefill_threshold = 512    # min token count to trigger chunking (default 512)
+_chunk_prefill_size      = 512    # tokens per chunk (default 512)
+
+# ── Phase 3C: MInference sparse attention ─────────────────────────────────────
+_minference_enabled      = False  # set in main() via --minference
+_minference_threshold    = 1024   # min seq_len to apply sparse attention (default 1024)
+
+# ── Phase A1: Qwen3 thinking budget ──────────────────────────────────────────
+_thinking_budget: int = -1            # -1=unlimited, 0=disable thinking, >0=token limit
+_think_close_token_id: int | None = None  # ID of </think> token, resolved at model load
+# ── Phase A2: explicit MLX rotating KV cache size ────────────────────────────
+_max_kv_size: int | None = None       # None = mlx_lm default (4K); set to extend context
+# ── Phase A3: concise output mode ────────────────────────────────────────────
+_concise_responses: bool = False      # prepend concision prefix + EOS bias
+_CONCISION_PREFIX = (
+    "Respond with only the requested output. "
+    "No preamble, no explanation, no apologies.\n\n"
+)
+
 # ── Conflict-Resolution Routing (Phase 0) ────────────────────────────────────
 # Two exclusive request paths prevent incompatible optimizations firing together:
 #
@@ -350,6 +371,7 @@ _draft = _DraftState()
 # future requests with matching token prefixes can skip prefill entirely.
 from squish.radix_cache import RadixTree as _RadixTree  # noqa: E402
 
+_PrefixCache = _RadixTree   # backward-compat alias used by tests
 _prefix_cache = _RadixTree(maxsize=512)
 
 
@@ -839,14 +861,103 @@ def _generate_tokens(  # pragma: no cover
                 next_id = _sample_mx(last_logit_mlx, temperature, top_p)
             else:
                 # Cache miss: run full prefill
-                x = mx.array(input_ids, dtype=mx.int32)[None]
-                logits = model(x, cache=layer_caches)
-                mx.eval(logits)
-                next_id = _sample_mx(logits[0, -1], temperature, top_p)
+                # ── Phase 3C: patch sparse attention for long sequences ────────
+                # Applied BEFORE prefill; must be unpatched after regardless of
+                # the prefill path taken (standard or chunked).
+                # Guard: only when NOT using ane-disagg backend (Core ML graphs
+                # are pre-compiled and cannot accept Python-level mask injection).
+                _minf_restore = None
+                if (_minference_enabled
+                        and len(input_ids) > _minference_threshold
+                        and _inference_backend != "ane-disagg"):
+                    try:
+                        from squish.minference_patch import (
+                            patch_model_minference as _patch_minf,
+                            select_pattern_for_sequence as _minf_pattern,
+                        )
+                        _pattern = _minf_pattern(len(input_ids))
+                        _minf_restore = _patch_minf(
+                            model,
+                            seq_len_threshold=0,   # already gated above
+                            pattern=_pattern,
+                        )
+                        if _trace:
+                            _tlog(f"REQ {_rid}  minference PATCHED  "
+                                  f"pattern={_pattern}  seq_len={len(input_ids)}")
+                    except Exception as _minf_err:
+                        import logging as _mlog
+                        _mlog.getLogger(__name__).debug(
+                            "[minference] patch failed (%s) — dense fallback", _minf_err
+                        )
+                        _minf_restore = None
+
+                # ── Phase 3A: chunked prefill (COMPRESS_PATH, long prompts) ────
+                # CRITICAL: spec decode starts only after is_final_chunk=True.
+                # Interleaved greedy tokens emitted on non-final chunks DO count
+                # toward the output but bypass the speculative decode path.
+                _last_logit_vec = None   # [vocab_size] mlx array
+                if (_on_compress_path
+                        and _chunk_prefill_enabled
+                        and len(input_ids) > _chunk_prefill_threshold):
+                    try:
+                        from squish.chunked_prefill import (
+                            chunk_prefill as _chunk_prefill_fn,
+                            ChunkedPrefillConfig as _CPFConfig,
+                        )
+                        _cpf_cfg = _CPFConfig(chunk_size=_chunk_prefill_size)
+                        if _trace:
+                            _tlog(f"REQ {_rid}  chunked-prefill START  "
+                                  f"tokens={len(input_ids)}  "
+                                  f"chunk={_chunk_prefill_size}")
+                        for _clogit, _is_fin in _chunk_prefill_fn(
+                                model, input_ids, layer_caches, _cpf_cfg):
+                            if _is_fin:
+                                _last_logit_vec = _clogit
+                            elif _cpf_cfg.interleave_decode:
+                                # Yield one greedy token between chunks for TTFT.
+                                # CRITICAL: spec decode MUST NOT start here.
+                                _il_id = _sample_mx(_clogit, temperature, top_p)
+                                _il_tok = (
+                                    tokenizer.decode([_il_id])
+                                    if hasattr(tokenizer, "decode") else str(_il_id)
+                                )
+                                if cache_eligible:
+                                    _cache_buf.append(_il_tok)
+                                yield _il_tok, None
+                        if _trace:
+                            _tlog(f"REQ {_rid}  chunked-prefill DONE")
+                    except Exception as _cpf_err:
+                        import logging as _cpflog
+                        _cpflog.getLogger(__name__).warning(
+                            "[chunk-prefill] failed (%s) — standard prefill", _cpf_err
+                        )
+                        _last_logit_vec = None  # fall through below
+
+                if _last_logit_vec is None:
+                    # Standard single-shot prefill (non-compress path or fallback)
+                    x = mx.array(input_ids, dtype=mx.int32)[None]
+                    logits_full = model(x, cache=layer_caches)
+                    mx.eval(logits_full)
+                    _last_logit_vec = logits_full[0, -1]
+
+                # ── Phase 3C: restore dense attention after prefill ────────────
+                if _minf_restore is not None:
+                    try:
+                        from squish.minference_patch import (
+                            unpatch_model_minference as _unpatch_minf,
+                        )
+                        _unpatch_minf(model, _minf_restore)
+                        if _trace:
+                            _tlog(f"REQ {_rid}  minference UNPATCHED")
+                    except Exception:
+                        pass  # never block generation on unpatch failure
+                    _minf_restore = None
+
+                next_id = _sample_mx(_last_logit_vec, temperature, top_p)
                 # Persist for future requests in background
                 if _disk_prompt_cache is not None:
                     try:
-                        _last_logit_np = np.array(logits[0, -1].astype(mx.float32))
+                        _last_logit_np = np.array(_last_logit_vec.astype(mx.float32))
                         # Store under original token IDs for stable cache keys
                         _disk_prompt_cache.store(_orig_input_ids, _kv_cache, _last_logit_np)
                     except Exception:
@@ -863,12 +974,24 @@ def _generate_tokens(  # pragma: no cover
                     )
                 except Exception:
                     pass  # mx.compile unavailable or incompatible — use plain call
+            # Phase A1: thinking budget tracking state
+            _in_think_block = False
+            _think_step_count = 0
             for step in range(max_tokens):
                 tok_text = (
                     tokenizer.decode([next_id])
                     if hasattr(tokenizer, "decode")
                     else str(next_id)
                 )
+                # Phase A1: track thinking block boundaries
+                if _thinking_budget >= 0:
+                    if "<think>" in tok_text:
+                        _in_think_block = True
+                        _think_step_count = 0
+                    elif "</think>" in tok_text:
+                        _in_think_block = False
+                    elif _in_think_block:
+                        _think_step_count += 1
                 if next_id == eos_id:
                     if cache_eligible and _cache_buf:
                         _prefix_cache.put(_orig_prompt, "".join(_cache_buf), "stop")
@@ -903,7 +1026,20 @@ def _generate_tokens(  # pragma: no cover
                 x = mx.array([[next_id]], dtype=mx.int32)
                 logits = _decode_fn(x) if _decode_fn is not None else model(x, cache=layer_caches)
                 mx.eval(logits)
-                next_id = _sample_mx(logits[0, -1], temperature, top_p)
+                # Phase A1/A3: apply logit biases before sampling
+                _logit_vec = logits[0, -1]
+                if (_thinking_budget > 0
+                        and _in_think_block
+                        and _think_step_count >= _thinking_budget
+                        and _think_close_token_id is not None):
+                    _lg_np = np.array(_logit_vec.astype(mx.float32))
+                    _lg_np[_think_close_token_id] += 100.0
+                    _logit_vec = mx.array(_lg_np)
+                if _concise_responses and step >= 20:
+                    _lg_np = np.array(_logit_vec.astype(mx.float32))
+                    _lg_np[eos_id] += 8.0
+                    _logit_vec = mx.array(_lg_np)
+                next_id = _sample_mx(_logit_vec, temperature, top_p)
                 stop_buf.append(next_id)
                 # Phase 0C: fire async CPU dequant for next step while we set up
                 # the token embedding — hides O(n_old_tokens) numpy cost behind
@@ -934,6 +1070,9 @@ def _generate_tokens(  # pragma: no cover
         import mlx_lm
         if _trace:
             _tlog(f"REQ {_rid}  dispatch → mlx_lm.stream_generate")
+        _sg_kwargs = {}
+        if _max_kv_size is not None:
+            _sg_kwargs["max_kv_size"] = _max_kv_size
         gen = mlx_lm.stream_generate(
             model,
             tokenizer,
@@ -941,6 +1080,7 @@ def _generate_tokens(  # pragma: no cover
             max_tokens = max_tokens,
             temp       = temperature,
             top_p      = top_p,
+            **_sg_kwargs,
         )
         emitted = 0
         stop_buf: list[int] = []
@@ -1188,6 +1328,34 @@ async def chat_completions(  # pragma: no cover
     seed        = body.get("seed", None)
     model_id    = body.get("model", _state.model_name)
     tools       = body.get("tools", [])
+
+    # ── Phase A1: /no_think mode (thinking_budget == 0) ──────────────────────
+    if _thinking_budget == 0:
+        _msgs_copy = []
+        _found_sys = False
+        for _m in messages:
+            if _m.get("role") == "system" and not _found_sys:
+                _msgs_copy.append({**_m, "content": (_m.get("content", "") + " /no_think").strip()})
+                _found_sys = True
+            else:
+                _msgs_copy.append(_m)
+        if not _found_sys:
+            _msgs_copy = [{"role": "system", "content": "/no_think"}] + list(messages)
+        messages = _msgs_copy
+
+    # ── Phase A3: concision prefix ────────────────────────────────────────────
+    if _concise_responses:
+        _msgs_copy = []
+        _found_sys = False
+        for _m in messages:
+            if _m.get("role") == "system" and not _found_sys:
+                _msgs_copy.append({**_m, "content": _CONCISION_PREFIX + _m.get("content", "")})
+                _found_sys = True
+            else:
+                _msgs_copy.append(_m)
+        if not _found_sys:
+            _msgs_copy = [{"role": "system", "content": _CONCISION_PREFIX}] + list(messages)
+        messages = _msgs_copy
 
     if not messages:
         raise HTTPException(400, "'messages' must be a non-empty list")
@@ -1687,6 +1855,45 @@ Examples:
                     help="Fraction of total RAM to allocate for paged KV blocks "
                          "(default 0.25 = 25%%).  Ignored when --paged-attention "
                          "is not set.")
+    # ── Phase 3A: Chunked prefill ─────────────────────────────────────────────
+    ap.add_argument("--chunk-prefill", action="store_true", default=False,
+                    help="Enable chunked prefill for long COMPRESS_PATH requests.\n"
+                         "Splits the prompt into chunks and interleaves one greedy\n"
+                         "decode token between chunks to minimise TTFT.\n"
+                         "Only activates on the COMPRESS_PATH (--compress-prompt).")
+    ap.add_argument("--chunk-prefill-threshold", type=int, default=512,
+                    metavar="N",
+                    help="Minimum prompt token count to trigger chunked prefill\n"
+                         "(default 512).  Requests shorter than N use standard\n"
+                         "single-shot prefill regardless of --chunk-prefill.")
+    ap.add_argument("--chunk-prefill-size", type=int, default=512,
+                    metavar="N",
+                    help="Tokens per prefill chunk (default 512).")
+    # ── Phase 3C: MInference sparse attention ─────────────────────────────────
+    ap.add_argument("--minference", action="store_true", default=False,
+                    help="Enable MInference-style sparse attention during prefill.\n"
+                         "Reduces attention cost from O(n²) to O(n·k) for prompts\n"
+                         "longer than --minference-threshold.\n"
+                         "Automatically selects the best sparsity pattern.\n"
+                         "Incompatible with --inference-backend ane-disagg.")
+    ap.add_argument("--minference-threshold", type=int, default=1024,
+                    metavar="N",
+                    help="Minimum sequence length to activate sparse attention\n"
+                         "(default 1024 tokens).")
+    # ── Phase A1: Qwen3 thinking budget ──────────────────────────────────────
+    ap.add_argument("--thinking-budget", type=int, default=-1, metavar="N",
+                    help="Qwen3 thinking token budget (-1=unlimited, 0=disable thinking mode).\n"
+                         "0 appends /no_think to system messages (non-thinking mode).\n"
+                         ">0 forces </think> after N thinking tokens via logit bias (+100).")
+    # ── Phase A2: explicit KV cache size ─────────────────────────────────────
+    ap.add_argument("--max-kv-size", type=int, default=None, metavar="N",
+                    help="MLX rotating KV cache size in tokens.\n"
+                         "MLX defaults to 4096, silently truncating contexts longer than 4K.\n"
+                         "Set to 131072 for 128K context. Passed directly to mlx_lm.stream_generate.")
+    # ── Phase A3: concise responses ───────────────────────────────────────────
+    ap.add_argument("--concise-responses", action="store_true", default=False,
+                    help="Prepend a concision directive to every system message and apply\n"
+                         "+8.0 EOS logit bias after 20 tokens to reduce verbosity.")
     # ── Phase 1.3: KV cache quantization ─────────────────────────────────────
     ap.add_argument("--kv-cache-mode",
                     choices=["fp16", "int8", "snap"],
@@ -1968,8 +2175,52 @@ Examples:
         _info("compress", f"ratio={_compress_ratio}  min_tokens={_compress_min_tokens}"
               + (f"  preserve_tokens={_compress_preserve_tokens}" if _compress_preserve_tokens else ""))
 
+    # ── Phase 3A: chunked prefill settings ───────────────────────────────────
+    global _chunk_prefill_enabled, _chunk_prefill_threshold, _chunk_prefill_size
+    _chunk_prefill_enabled   = getattr(args, "chunk_prefill", False)
+    _chunk_prefill_threshold = getattr(args, "chunk_prefill_threshold", 512)
+    _chunk_prefill_size      = getattr(args, "chunk_prefill_size", 512)
+    if _chunk_prefill_enabled:
+        _info("chunk-prefill",
+              f"threshold={_chunk_prefill_threshold}  chunk={_chunk_prefill_size}")
+
+    # ── Phase 3C: MInference settings ────────────────────────────────────────
+    global _minference_enabled, _minference_threshold, _inference_backend
+    _minference_enabled   = getattr(args, "minference", False)
+    _minference_threshold = getattr(args, "minference_threshold", 1024)
+    if _minference_enabled:
+        if _inference_backend == "ane-disagg":
+            _warn("[minference] disabled — incompatible with --inference-backend ane-disagg")
+            _minference_enabled = False
+        else:
+            _info("minference", f"sparse-attention  threshold={_minference_threshold}")
+
+    # ── Phase A1: Qwen3 thinking budget ──────────────────────────────────────
+    global _thinking_budget, _think_close_token_id
+    _thinking_budget = getattr(args, "thinking_budget", -1)
+    if _thinking_budget >= 0 and _state.tokenizer is not None:
+        try:
+            _think_close_token_id = _state.tokenizer.convert_tokens_to_ids("</think>")
+        except Exception:
+            _think_close_token_id = None
+    if _thinking_budget == 0:
+        _info("thinking-budget", "disabled (no_think mode)")
+    elif _thinking_budget > 0:
+        _info("thinking-budget", f"{_thinking_budget} tokens  close_id={_think_close_token_id}")
+
+    # ── Phase A2: max KV size ─────────────────────────────────────────────────
+    global _max_kv_size
+    _max_kv_size = getattr(args, "max_kv_size", None)
+    if _max_kv_size is not None:
+        _info("max-kv-size", f"{_max_kv_size} tokens")
+
+    # ── Phase A3: concise responses ───────────────────────────────────────────
+    global _concise_responses
+    _concise_responses = getattr(args, "concise_responses", False)
+    if _concise_responses:
+        _info("concise-responses", "enabled")
+
     # ── Phase 0C: hardware inference backend ─────────────────────────────────
-    global _inference_backend
     _inference_backend = getattr(args, "inference_backend", "mlx-eager")
     if _inference_backend != "mlx-eager":
         _info("inference-backend", _inference_backend)

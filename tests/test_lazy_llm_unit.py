@@ -486,3 +486,124 @@ class TestPatchUnpatch:
         assert state2 is not None
         for lay in model.model.layers:
             assert isinstance(lay, _LazyLLMLayerWrapper)
+
+    def test_unpatch_direct_layers_path(self):
+        """unpatch_model_lazy_llm restores layers when model uses .layers (not .model.layers)."""
+        orig  = [_FakeLayer() for _ in range(3)]
+        # Use the same list object (not a copy) so identity check works
+        model = types.SimpleNamespace(layers=orig)
+
+        patch_model_lazy_llm(model, LazyLLMConfig(start_layer=0))
+        assert isinstance(model.layers[0], _LazyLLMLayerWrapper)
+
+        unpatch_model_lazy_llm(model)
+        # After unpatch the original list is restored
+        assert model.layers is orig
+
+    def test_unpatch_neither_model_nor_layers_attr(self):
+        """
+        When a model has _lazy_llm_orig set but neither model.model.layers nor
+        model.layers exists after patching, unpatch must still clean up safely.
+        This exercises the elif-False → del branch (line 327->330).
+        """
+        model = types.SimpleNamespace()
+        # Manually inject patch state to simulate an exotic model layout
+        model._lazy_llm_orig  = []
+        model._lazy_llm_state = _PruneState()
+        unpatch_model_lazy_llm(model)
+        assert not hasattr(model, "_lazy_llm_state")
+        assert not hasattr(model, "_lazy_llm_orig")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Extra branch coverage: non-tuple return & verbose output
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestLayerWrapperNonTupleAndVerbose:
+    """Covers lines 218 (tuple return) and 224->240 (hidden.shape[1]<=1 branch)."""
+
+    def _make_wrapper(self, layer_idx=3, start_layer=2, verbose=False):
+        cfg   = LazyLLMConfig(start_layer=start_layer, keep_ratio=0.7,
+                              revive_window=2, verbose=verbose)
+        state = _PruneState()
+        return cfg, state
+
+    def test_tuple_return_covers_hidden_out0(self):
+        """
+        When the wrapped layer returns (hidden, kv) tuple, line 218 ``hidden = out[0]``
+        must be taken.
+        """
+        try:
+            import mlx.core as mx
+        except ImportError:
+            pytest.skip("MLX not available")
+
+        cfg, state = self._make_wrapper(verbose=False)
+
+        class _TupleLayer:
+            """Returns (hidden, dummy_kv) — a tuple like attention layers in mlx_lm."""
+            def __call__(self, x, *a, **kw):
+                dummy_kv = x[:, :1, :]   # arbitrary second element
+                return (x, dummy_kv)
+
+        wrapper = _LazyLLMLayerWrapper(_TupleLayer(), 3, cfg, state)
+        x = _fake_hidden(T=8)
+        out = wrapper(x)
+        # out should be the original tuple returned by _TupleLayer
+        assert isinstance(out, tuple)
+        assert state.active_mask is not None     # mask must have been updated
+
+    def test_hidden_shape1_le1_skips_importance_scores(self):
+        """
+        When the orig layer compresses the sequence to T=1 (e.g. a pooling layer),
+        hidden.shape[1] <= 1 → the importance-scoring branch (224->240) is skipped.
+        """
+        try:
+            import mlx.core as mx
+        except ImportError:
+            pytest.skip("MLX not available")
+
+        cfg, state = self._make_wrapper()
+
+        class _PoolingLayer:
+            """Reduce T>1 → T=1 by mean-pooling (simulates a layer that collapses seq)."""
+            def __call__(self, x, *a, **kw):
+                # x: (1, T, D) → (1, 1, D)
+                import mlx.core as mx
+                return mx.mean(x, axis=1, keepdims=True)
+
+        wrapper = _LazyLLMLayerWrapper(_PoolingLayer(), 3, cfg, state)
+        x = _fake_hidden(T=8)
+        # Should not raise; active_mask NOT updated because hidden.shape[1]==1
+        wrapper(x)
+        assert state.active_mask is None   # no update when T collapses to 1
+
+    def test_verbose_print_on_prefill(self):
+        """
+        When verbose=True and T>1, the importance-score block must print to stdout.
+        Covers lines 232-234 (the verbose print path).
+        """
+        try:
+            import mlx.core  # noqa — real MLX required for importance scores
+        except ImportError:
+            pytest.skip("MLX not available — skipping verbose path")
+
+        cfg, state = self._make_wrapper(verbose=True)
+
+        class _EchoTupleLayer:
+            def __call__(self, x, *a, **kw):
+                return (x, None)   # returns tuple so hidden = out[0] = x
+
+        wrapper = _LazyLLMLayerWrapper(_EchoTupleLayer(), 3, cfg, state)
+        x = _fake_hidden(T=8)
+        import io, sys
+        buf = io.StringIO()
+        old_stdout = sys.stdout
+        sys.stdout = buf
+        try:
+            wrapper(x)
+        finally:
+            sys.stdout = old_stdout
+        printed = buf.getvalue()
+        assert "lazy_llm" in printed
+        assert state.active_mask is not None

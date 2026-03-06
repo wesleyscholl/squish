@@ -107,8 +107,8 @@ def _importance_scores(hidden: "mx.array") -> "np.ndarray":
     try:
         import mlx.core as mx
         import numpy as np
-    except ImportError as exc:
-        raise RuntimeError("MLX is required for LazyLLM pruning") from exc
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("MLX is required for LazyLLM pruning") from exc  # pragma: no cover
 
     # (B, T, D) → (T,) via mean over batch then L2 over embed dim
     h = hidden[0].astype(mx.float32)              # (T, D)

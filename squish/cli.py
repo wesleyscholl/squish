@@ -1418,6 +1418,72 @@ def cmd_pull_head(args):  # pragma: no cover
     print()
 
 
+def cmd_convert_model(args):
+    """
+    Convert and optionally quantize a model with mixed-precision quantization.
+
+    Runs two mlx_lm.convert passes for different precision per layer group:
+      - FFN layers (all linear except lm_head + embed_tokens): --ffn-bits
+      - Embedding/output layers (lm_head, embed_tokens): --embed-bits
+
+    Usage:
+      squish convert-model --source-path path/to/model \\
+        --output-path path/to/output \\
+        --ffn-bits 4 --embed-bits 6
+    """
+    source_path = Path(args.source_path).expanduser().resolve()
+    output_path = Path(args.output_path).expanduser().resolve()
+
+    if not source_path.exists():
+        _die(f"Source path not found: {source_path}")
+
+    if args.dry_run:
+        print(f"  [dry-run] source      : {source_path}")
+        print(f"  [dry-run] output      : {output_path}")
+        print(f"  [dry-run] ffn-bits    : {args.ffn_bits}")
+        print(f"  [dry-run] embed-bits  : {args.embed_bits}")
+        return
+
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    try:
+        import mlx_lm as _mlx_lm
+    except ImportError:
+        _die("mlx_lm is required for convert-model. Install with: pip install mlx-lm>=0.19")
+
+    print(f"  Quantizing FFN layers to {args.ffn_bits}-bit …")
+    try:
+        _mlx_lm.convert(
+            hf_path=str(source_path),
+            mlx_path=str(output_path),
+            quantize=True,
+            q_bits=args.ffn_bits,
+            linear_class_predicate=lambda m: (
+                "lm_head" not in m.name and "embed_tokens" not in m.name
+            ),
+        )
+    except Exception as exc:
+        _die(f"FFN quantization failed: {exc}")
+
+    if args.embed_bits != args.ffn_bits:
+        print(f"  Re-quantizing embed/lm_head to {args.embed_bits}-bit …")
+        try:
+            _mlx_lm.convert(
+                hf_path=str(output_path),
+                mlx_path=str(output_path),
+                quantize=True,
+                q_bits=args.embed_bits,
+                linear_class_predicate=lambda m: (
+                    "lm_head" in m.name or "embed_tokens" in m.name
+                ),
+            )
+        except Exception as exc:
+            _die(f"Embed quantization failed: {exc}")
+
+    print(f"\n  Mixed-precision model saved to: {output_path}")
+    print(f"  Load with: squish run --mlx-model-dir {output_path}")
+
+
 def main():
     ap = argparse.ArgumentParser(
         prog="squish",
@@ -1657,6 +1723,34 @@ Ollama drop-in:
     p_search = sub.add_parser("search", help="Search the model catalog")
     p_search.add_argument("query", help="Search query (matched against ID, tags, params, description)")
     p_search.set_defaults(func=cmd_search)
+
+    # ── convert-model ──
+    p_convert = sub.add_parser(
+        "convert-model",
+        help="Create a mixed-precision quantized model (different bits per layer group)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Quantize an existing model with different precision per layer group.\n\n"
+            "Applies --ffn-bits to all linear layers except lm_head and embed_tokens,\n"
+            "then --embed-bits to those omitted layers. Produces a single merged model.\n\n"
+            "Example:\n"
+            "  squish convert-model \\\n"
+            "    --source-path ~/.squish/models/qwen3-8b \\\n"
+            "    --output-path ~/.squish/models/qwen3-8b-mixed \\\n"
+            "    --ffn-bits 4 --embed-bits 6\n"
+        ),
+    )
+    p_convert.add_argument("--source-path", required=True, metavar="PATH",
+                           help="Source model directory (HF format or mlx_lm format)")
+    p_convert.add_argument("--output-path", required=True, metavar="PATH",
+                           help="Output directory for mixed-precision model")
+    p_convert.add_argument("--ffn-bits", type=int, default=4, metavar="N",
+                           help="Quantization bits for FFN layers (default: 4)")
+    p_convert.add_argument("--embed-bits", type=int, default=6, metavar="N",
+                           help="Quantization bits for lm_head + embed_tokens (default: 6)")
+    p_convert.add_argument("--dry-run", action="store_true", default=False,
+                           help="Print what would be done without converting")
+    p_convert.set_defaults(func=cmd_convert_model)
 
     args = ap.parse_args()
 
