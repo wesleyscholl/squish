@@ -95,13 +95,6 @@ def _extract_commit_message(stdout: str) -> str:
 
 # ── pytest configuration ──────────────────────────────────────────────────────
 
-def pytest_addoption(parser):
-    parser.addoption(
-        "--model", default=None,
-        help="Model hint passed to squish --model  (e.g. '14b', '7b', full path)"
-    )
-
-
 @pytest.fixture(scope="session")
 def model_hint(pytestconfig):
     """Model hint from --model pytest flag or $SQUISH_MODEL env var."""
@@ -109,9 +102,19 @@ def model_hint(pytestconfig):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _skip_if_disabled():
+def _skip_if_disabled(pytestconfig):
     if os.environ.get("SQUISH_SKIP_INTEGRATION"):
         pytest.skip("SQUISH_SKIP_INTEGRATION is set — skipping integration tests")
+    model = pytestconfig.getoption("--model") or os.environ.get("SQUISH_MODEL")
+    if not model:
+        pytest.skip("No model configured — pass --model or set $SQUISH_MODEL to run")
+    # Skip if the 'git' subcommand doesn't exist in this build
+    probe = subprocess.run(
+        [sys.executable, CLI, "git", "--help"],
+        capture_output=True, timeout=30,
+    )
+    if probe.returncode != 0:
+        pytest.skip("squish git subcommand not available in this build")
 
 
 @pytest.fixture(scope="session")

@@ -209,3 +209,28 @@ class TestSpeCachePrefetcher:
         for t in threads:
             t.join()
         assert errors == []
+
+    def test_candidates_loop_exhausts_naturally(self):
+        """Branch 298→305: for loop exits without break (budget > len(candidates))."""
+        cfg   = SpeCacheConfig(block_size=4, prefetch_budget=100, sink_blocks=0,
+                               alpha_recency=1.0, beta_attention=0.0)
+        store = InMemoryBlockStore()
+        pref  = SpeCachePrefetcher(cfg, store)
+        # Only 3 blocks → 3 candidates, budget 100 → loop never breaks
+        blocks = pref.predict_next_turn_blocks(total_blocks=3)
+        assert sorted(blocks) == [0, 1, 2]
+
+    def test_sink_block_skipped_in_candidates_loop(self):
+        """Branch 301→298: block_id already in seen (sink) → skipped in second loop."""
+        # Sink blocks 0 and 1 appear later in sorted candidates → False branch hit.
+        cfg   = SpeCacheConfig(block_size=4, prefetch_budget=10, sink_blocks=2,
+                               alpha_recency=1.0, beta_attention=0.0)
+        store = InMemoryBlockStore()
+        pref  = SpeCachePrefetcher(cfg, store)
+        # 3 blocks total; candidates sorted descending by recency: [2, 1, 0]
+        # After sinks (0, 1) are added to seen, iterating: block 2 added, then
+        # block 1 → already in seen (False branch), block 0 → already in seen.
+        blocks = pref.predict_next_turn_blocks(total_blocks=3)
+        assert 0 in blocks
+        assert 1 in blocks
+        assert 2 in blocks

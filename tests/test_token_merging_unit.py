@@ -176,6 +176,18 @@ class TestUnmergeTokens:
         for orig_idx in np.where(keep_mask)[0]:
             pass  # just verify no exception
 
+    def test_dimension_mismatch_fallback(self):
+        """len(keep_pos) != T_merged → safe fallback path (lines 291-293)."""
+        # Duplicate indices in src_idx create a mismatch:
+        # unique positions removed from keep_mask = 2,
+        # but T_merged = t_original - len(src_idx) = 6 - 3 = 3 → mismatch.
+        t_original = 6
+        merged     = np.ones((3, 4), dtype=np.float32)
+        src_idx    = np.array([0, 0, 1], dtype=np.int64)  # duplicate 0
+        dst_idx    = np.array([2, 2, 3], dtype=np.int64)
+        out = unmerge_tokens(merged, src_idx, dst_idx, t_original=t_original)
+        assert out.shape == (t_original, 4)
+
 
 # ---------------------------------------------------------------------------
 # _get_layers
@@ -235,6 +247,25 @@ class TestPatchUnpatch:
         unpatch_model_tome(model)
         assert all(isinstance(l, _FakeLayer) for l in model.layers)
         assert not hasattr(model, "_tome_state")
+
+    def test_unpatch_direct_layers_model(self):
+        """Covers 443→446: model has .layers (not .model.layers) during unpatch."""
+        model  = _FakeModel(4)  # direct layers, no .model attribute
+        patch_model_tome(model, TokenMergingConfig(start_layer=0, end_layer=2))
+        unpatch_model_tome(model)
+        assert all(isinstance(l, _FakeLayer) for l in model.layers)
+        assert not hasattr(model, "_tome_state")
+
+    def test_unpatch_model_no_layers_attr(self):
+        """443→446 False branch: model has _tome_orig but no .layers or .model."""
+        class NoLayerModel:
+            pass
+        m            = NoLayerModel()
+        m._tome_orig  = []          # simulate a patched model
+        m._tome_state = TokenMergingState()
+        # Neither hasattr(m, "model") nor hasattr(m, "layers")
+        unpatch_model_tome(m)
+        assert not hasattr(m, "_tome_orig")
 
     def test_unpatch_on_unpatched_model_safe(self):
         model = _FakeModel()
@@ -299,3 +330,85 @@ class TestToMeLayerWrapper:
         state = TokenMergingState()
         w     = _ToMeLayerWrapper(orig, 0, cfg, state)
         assert w.custom_attr == "hello"
+
+    def test_call_passthrough_single_token(self):
+        """x.shape[1] <= 1 → pass-through without merging (line 332-333)."""
+        try:
+            import mlx.core as mx
+        except ImportError:
+            pytest.skip("MLX not available")
+        orig  = _FakeLayer()
+        cfg   = TokenMergingConfig(r=4, start_layer=0)
+        state = TokenMergingState()
+        w     = _ToMeLayerWrapper(orig, 0, cfg, state)
+        x_np   = np.ones((1, 1, 4), dtype=np.float32)  # T=1
+        x      = mx.array(x_np)
+        result = w(x)
+        assert result is not None
+        assert state.n_merges == 0  # no merging for single token
+
+    def test_call_passthrough_end_layer_exceeded(self):
+        """idx > end_layer → pass-through (line 337-338)."""
+        try:
+            import mlx.core as mx
+        except ImportError:
+            pytest.skip("MLX not available")
+        orig   = _FakeLayer()
+        cfg    = TokenMergingConfig(r=4, start_layer=0, end_layer=0)
+        state  = TokenMergingState()
+        w      = _ToMeLayerWrapper(orig, layer_idx=1, config=cfg, state=state)
+        x_np   = np.ones((1, 8, 4), dtype=np.float32)
+        x      = mx.array(x_np)
+        result = w(x)
+        assert state.n_merges == 0  # idx=1 > end_layer=0 → pass-through
+
+    def test_call_with_merging_verbose(self):
+        """Full merge path: lines 327, 332-362 including verbose print."""
+        try:
+            import mlx.core as mx
+        except ImportError:
+            pytest.skip("MLX not available")
+        orig   = _FakeLayer()
+        cfg    = TokenMergingConfig(r=2, start_layer=0,
+                                    similarity_threshold=-1.0, verbose=True)
+        state  = TokenMergingState()
+        w      = _ToMeLayerWrapper(orig, layer_idx=0, config=cfg, state=state)
+        # 8-token batch with identical rows → high similarity, merges occur
+        x_np   = np.ones((1, 8, 4), dtype=np.float32)
+        x      = mx.array(x_np)
+        result = w(x)
+        assert state.n_merge_layers >= 1
+
+    def test_call_with_merging_silent(self):
+        """353→359: merges happen but verbose=False → no print (silent path)."""
+        try:
+            import mlx.core as mx
+        except ImportError:
+            pytest.skip("MLX not available")
+        orig   = _FakeLayer()
+        cfg    = TokenMergingConfig(r=2, start_layer=0,
+                                    similarity_threshold=-1.0, verbose=False)
+        state  = TokenMergingState()
+        w      = _ToMeLayerWrapper(orig, layer_idx=0, config=cfg, state=state)
+        x_np   = np.ones((1, 8, 4), dtype=np.float32)
+        x      = mx.array(x_np)
+        result = w(x)
+        assert state.n_merge_layers >= 1
+
+    def test_call_no_merges_low_similarity(self):
+        """len(src_idx) == 0 path: very high threshold → no merges (351→359)."""
+        try:
+            import mlx.core as mx
+        except ImportError:
+            pytest.skip("MLX not available")
+        orig   = _FakeLayer()
+        # Use max valid threshold; random orthogonal data won't hit it
+        cfg    = TokenMergingConfig(r=2, start_layer=0, similarity_threshold=1.0)
+        state  = TokenMergingState()
+        w      = _ToMeLayerWrapper(orig, layer_idx=0, config=cfg, state=state)
+        # Orthogonal basis vectors: cosine similarity = 0 for any pair
+        x_np   = np.eye(8, 8, dtype=np.float32)[:8]  # shape (8,8)
+        x_np   = x_np.reshape(1, 8, 8)
+        x      = mx.array(x_np)
+        result = w(x)
+        assert state.n_merges == 0

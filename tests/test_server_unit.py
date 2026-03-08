@@ -640,3 +640,17 @@ class TestAuthOnEndpoints:
         finally:
             _srv._API_KEY = orig_key
             _srv._state   = orig_state
+
+
+class TestDetectTaskType:
+    def test_returns_default_for_unrecognized_prompt(self):
+        """Line 547: no keyword match → returns 'default'."""
+        from squish import server as _srv
+        result = _srv._detect_task_type("xyzzy nonsense foobar baz")
+        assert result == "default"
+
+    def test_returns_task_type_when_keyword_matched(self):
+        """Line 546: keyword match → returns task_type string early."""
+        from squish import server as _srv
+        result = _srv._detect_task_type("write a commit message for this change")
+        assert result == "git_commit"

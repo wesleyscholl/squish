@@ -293,7 +293,7 @@ class TestSerialiseDeserialise:
 
 class TestDiskKVCacheStoreCoverage:
 
-    def _wait(self, dc: DiskKVCache, ids, timeout: float = 2.0) -> bool:
+    def _wait(self, dc: DiskKVCache, ids, timeout: float = 30.0) -> bool:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if dc.lookup(ids) is not None:

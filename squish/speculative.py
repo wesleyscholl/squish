@@ -52,6 +52,76 @@ _DEFAULT_TEMP       = 0.7
 _DEFAULT_TOP_P      = 0.9
 _MAX_SPEC_TOKENS    = 8      # cap K at this regardless of setting
 
+# ── FSM adaptive speculation-length controller ────────────────────────────────
+
+class FSMGammaController:
+    """Finite-State-Machine adaptive speculation-length controller.
+
+    After each speculative step the caller reports how many tokens were
+    proposed and how many were accepted.  The FSM adjusts the draft length
+    ``gamma`` by a fixed delta:
+
+    * **Full accept** (``n_accepted >= n_proposed``): ``gamma += 1``,
+      clamped at ``max_gamma``.
+    * **Any rejection** (``n_accepted < n_proposed``): ``gamma -= 1``,
+      clamped at ``min_gamma``.
+
+    Based on: FSM speculation control described in Liu et al. 2025 and the
+    AdaEAGLE line of work.  Zero hyperparameter tuning required — the
+    controller is self-adapting.
+
+    Parameters
+    ----------
+    initial_gamma : int
+        Starting draft length.
+    min_gamma : int
+        Floor for ``gamma`` (≥ 1).
+    max_gamma : int
+        Ceiling for ``gamma``.
+    """
+
+    def __init__(
+        self,
+        initial_gamma: int = 4,
+        min_gamma:     int = 2,
+        max_gamma:     int = 8,
+    ) -> None:
+        if min_gamma < 1:
+            raise ValueError("min_gamma must be ≥ 1")
+        if max_gamma < min_gamma:
+            raise ValueError("max_gamma must be ≥ min_gamma")
+        self.min_gamma = min_gamma
+        self.max_gamma = max_gamma
+        self.gamma     = max(min_gamma, min(max_gamma, initial_gamma))
+
+    def step(self, n_accepted: int, n_proposed: int) -> int:
+        """Update ``gamma`` based on the latest speculation result.
+
+        Parameters
+        ----------
+        n_accepted : int
+            Number of draft tokens accepted (not counting bonus token).
+        n_proposed : int
+            Total draft tokens proposed in this step.
+
+        Returns
+        -------
+        Updated ``gamma`` value.
+        """
+        if n_accepted >= n_proposed:
+            self.gamma = min(self.gamma + 1, self.max_gamma)
+        else:
+            self.gamma = max(self.gamma - 1, self.min_gamma)
+        return self.gamma
+
+    def reset(self, gamma: "int | None" = None) -> None:
+        """Reset ``gamma`` to *gamma* (or midpoint if ``None``)."""
+        if gamma is not None:
+            self.gamma = max(self.min_gamma, min(self.max_gamma, gamma))
+        else:
+            self.gamma = (self.min_gamma + self.max_gamma) // 2
+
+
 # ── Sampling helpers ──────────────────────────────────────────────────────────
 
 def _softmax_np(logits_row: np.ndarray, temp: float) -> np.ndarray:
@@ -551,12 +621,21 @@ class SpeculativeGenerator:
         k: int                  = _DEFAULT_K,
         eagle_head: "EagleDraftHead | None" = None,
         ngram_max_n: int        = 8,
+        fsm_gamma:   bool       = False,
+        fsm_min:     int        = 2,
+        fsm_max:     int        = 8,
     ):
         self._target  = target_model
         self._ttok    = target_tokenizer
         self._draft   = draft_model
         self._dtok    = draft_tokenizer or target_tokenizer
         self._k       = min(max(1, k), _MAX_SPEC_TOKENS)
+
+        # Phase 6W: FSM adaptive speculation length
+        self._fsm: FSMGammaController | None = (
+            FSMGammaController(self._k, fsm_min, fsm_max)
+            if fsm_gamma else None
+        )
 
         # Phase 1B: EAGLE-3 head + hidden-state capture
         self._eagle_head    = eagle_head
@@ -616,6 +695,12 @@ class SpeculativeGenerator:
         """Roll both KV caches back to position 0 (start of new request)."""
         _cache_set_offset(self._target_cache, 0)
         _cache_set_offset(self._draft_cache, 0)
+
+    def _update_fsm(self, n_accepted: int, n_proposed: int) -> None:
+        """Update the FSM gamma controller and sync ``self._k``."""
+        if self._fsm is not None:
+            new_k = self._fsm.step(n_accepted, n_proposed)
+            self._k = min(new_k, _MAX_SPEC_TOKENS)
 
     # ── main streaming API ────────────────────────────────────────────────────
 
@@ -816,6 +901,7 @@ class SpeculativeGenerator:
                     break
 
             self.accepted_total += accepted
+            self._update_fsm(accepted, len(draft_ids))
 
             # ── Step 4: bonus token (all k accepted) ──────────────────────────
             if accepted == len(draft_ids):
@@ -968,6 +1054,7 @@ class SpeculativeGenerator:
                     break
 
             self.accepted_total += accepted
+            self._update_fsm(accepted, len(draft_ids))
 
             # ── Step 4: bonus token ───────────────────────────────────────────
             if accepted == len(draft_ids):
@@ -1090,6 +1177,7 @@ class SpeculativeGenerator:
                     break
 
             self.accepted_total += accepted
+            self._update_fsm(accepted, len(draft_ids))
 
             # ── Step 4: bonus token from target ──────────────────────────
             if accepted == len(draft_ids):

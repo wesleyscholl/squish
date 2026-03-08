@@ -213,3 +213,80 @@ class TestParisKVCodebook:
         cb = self._make()
         with pytest.raises(RuntimeError):
             cb.online_update(np.random.rand(5, 4).astype(np.float32))
+
+
+class TestParisKVValidationAndEdgeCases:
+    def test_dim_lt_1_raises(self):
+        """Line 167: dim < 1 → ValueError."""
+        with pytest.raises(ValueError, match="dim"):
+            ParisKVCodebook(dim=0)
+
+    def test_n_codes_lt_1_raises(self):
+        """Line 169: n_codes < 1 → ValueError."""
+        with pytest.raises(ValueError, match="n_codes"):
+            ParisKVCodebook(dim=4, n_codes=0)
+
+    def test_fit_wrong_shape_raises(self):
+        """Line 200: vectors with wrong dim → ValueError."""
+        cb   = ParisKVCodebook(dim=4)
+        bad  = np.ones((10, 9), dtype=np.float32)   # second dim = 9 ≠ 4
+        with pytest.raises(ValueError, match="Expected"):
+            cb.fit(bad)
+
+    def test_fit_loop_exhausts_without_convergence(self):
+        """Branch 209→223: refine_iters=1 → loop runs once without triggering
+        the early break (data doesn't converge fully in 1 step)."""
+        cfg  = ParisKVConfig(refine_iters=1)
+        cb   = ParisKVCodebook(dim=4, n_codes=4, config=cfg)
+        rng  = np.random.default_rng(0)
+        vecs = rng.random((20, 4)).astype(np.float32)
+        cb.fit(vecs)   # 1 iter → loop body runs once then exits naturally
+        assert cb.is_fitted
+
+    def test_fit_empty_cluster_handled(self, monkeypatch):
+        """Line 218: empty cluster during fit refinement → centroid unchanged."""
+        import squish.paris_kv as _pk
+
+        call_count = [0]
+        real_dist  = _pk._pairwise_sq_dist
+
+        def biased_dist(a, b):
+            call_count[0] += 1
+            d = real_dist(a, b)
+            if call_count[0] == 1:
+                # Force all points to assign to centroid 0 by making its
+                # distances tiny; all other columns become huge.
+                d[:, 1:] = 1e9
+            return d
+
+        monkeypatch.setattr(_pk, "_pairwise_sq_dist", biased_dist)
+        cb   = ParisKVCodebook(dim=4, n_codes=4)
+        vecs = np.random.default_rng(7).random((20, 4)).astype(np.float32)
+        cb.fit(vecs, seed=7)   # centroids 1,2,3 are empty → line 218 executed
+        assert cb.is_fitted
+
+    def test_drift_score_empty_history(self):
+        """Line 312: drift_score when _drift_history is empty → 0.0."""
+        cb   = ParisKVCodebook(dim=4)
+        vecs = np.random.rand(20, 4).astype(np.float32)
+        cb.fit(vecs)   # fit does NOT populate drift_history
+        assert cb.drift_score == 0.0
+
+    def test_quantization_error_after_online_update(self):
+        """Line 320: quantization_error after online_update → non-zero float."""
+        cb   = ParisKVCodebook(dim=4)
+        vecs = np.random.rand(20, 4).astype(np.float32)
+        cb.fit(vecs)
+        cb.online_update(vecs)
+        assert cb.quantization_error >= 0.0
+
+    def test_drift_history_pop_when_window_exceeded(self):
+        """Line 299: _drift_history.pop(0) when len > drift_window."""
+        cfg  = ParisKVConfig(drift_window=2)         # tiny window
+        cb   = ParisKVCodebook(dim=4, config=cfg)
+        vecs = np.random.rand(20, 4).astype(np.float32)
+        cb.fit(vecs)
+        # Call online_update 3 times → history will exceed drift_window=2
+        for _ in range(3):
+            cb.online_update(vecs)
+        assert len(cb._drift_history) <= 2

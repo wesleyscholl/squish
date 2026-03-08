@@ -253,3 +253,41 @@ class TestHighEntropyTracking:
         # Config validation: entropy_high_threshold ≤ entropy_threshold must raise
         with pytest.raises(ValueError):
             MetaReasonerConfig(entropy_threshold=3.0, entropy_high_threshold=2.9)
+
+
+class TestObserveAndStepEdgeCases:
+    def _make_thinking_reasoner(self):
+        cfg = MetaReasonerConfig(
+            think_start_token_id=1, think_end_token_id=2,
+            entropy_threshold=0.5, entropy_high_threshold=2.0,
+            patience=10, min_think_tokens=0, max_think_tokens=50,
+        )
+        m = MetaReasoner(cfg)
+        m.advance(1)   # enter thinking phase
+        return m
+
+    def test_observe_non_special_token_outside_thinking_no_increment(self):
+        """Branch 152→exit: observe() with non-think token when not in thinking
+        phase → elif self._in_thinking is False → think_tokens stays at 0."""
+        cfg = MetaReasonerConfig(think_start_token_id=1, think_end_token_id=2)
+        m   = MetaReasoner(cfg)
+        # Not in thinking yet; send a plain token (id=99)
+        m.advance(99)
+        assert m._think_tokens == 0   # the elif branch body was skipped
+
+    def test_step_neutral_entropy_resets_both_counters(self):
+        """Lines 188-189: H between threshold and high_threshold → else branch
+        sets both consecutive_low and consecutive_high to 0."""
+        m = self._make_thinking_reasoner()
+        # First, build up consecutive_low > 0
+        peaked = np.array([100.0] + [0.0] * 99, dtype=np.float32)
+        m.step(peaked)   # H ≈ 0 < 0.5 → consecutive_low = 1
+        assert m.consecutive_converged_steps == 1
+        # Now pass logits with neutral entropy between 0.5 and 2.0.
+        # Use a 3-token softmax: [2.0, 1.0, 0.0] → H ≈ 0.988, in [0.5, 2.0].
+        # Pad to 100 elements with a very large negative value so softmax is ~0.
+        # Easiest: just use 3-element logits array directly.
+        neutral = np.array([2.0, 1.0, 0.0], dtype=np.float32)
+        m.step(neutral)  # else branch → both counters reset to 0
+        assert m.consecutive_converged_steps == 0
+        assert m._consecutive_high == 0

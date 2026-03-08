@@ -129,6 +129,12 @@ class TestSamplingUtils:
         result = _top_p_filter(probs, 1.0)
         np.testing.assert_allclose(result, probs, rtol=1e-5)
 
+    def test_top_p_filter_all_zero_input(self):
+        """Branch 206→208: total == 0 → no normalization, returns zeros."""
+        probs    = np.zeros(5, dtype=np.float32)
+        filtered = _top_p_filter(probs, 0.9)
+        assert filtered.sum() == 0.0
+
     def test_sample_returns_valid_index(self):
         rng   = np.random.default_rng(42)
         probs = np.array([0.1, 0.4, 0.3, 0.2], dtype=np.float32)
@@ -219,3 +225,27 @@ class TestQuantSpecDecoder:
         dec = QuantSpecDecoder(draft_fn=draft_fn, verify_fn=verify_fn, config=cfg)
         dec.generate_step(np.array([1, 2], dtype=np.int32), None)
         assert called["verify"] >= 1
+
+
+class TestAllAcceptedOneDimLogits:
+    def test_all_accepted_with_1d_logits_no_bonus(self):
+        """Branch 356→364: all drafts accepted AND all_logits is 1-D
+        → elif skipped → return directly."""
+        vocab = 4
+        # Draft always generates token 0 (overwhelmingly peaked on token 0).
+        peaked = np.array([100.0, 0.0, 0.0, 0.0], dtype=np.float32)
+
+        def draft_fn(ids, kv, skip_layers=0):
+            return peaked.copy(), kv
+
+        # Verify returns 1D logits also peaked on token 0 → target_prob[0] ≥ draft_prob[0]
+        # → acceptance_prob = 1.0 → always accepted.
+        def verify_fn(ids, kv):
+            return peaked.copy(), kv
+
+        cfg = QuantSpecConfig(gamma=2, acceptance_threshold=0.0)
+        dec = QuantSpecDecoder(draft_fn=draft_fn, verify_fn=verify_fn,
+                               config=cfg, seed=0)
+        tokens, _ = dec.generate_step(np.array([1], dtype=np.int32), None)
+        # With all accepted and 1D logits, no bonus is added → exactly gamma tokens
+        assert len(tokens) == cfg.gamma

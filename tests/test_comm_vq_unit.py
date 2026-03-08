@@ -264,3 +264,14 @@ class TestFitKVCodebooks:
         vals = np.ones((30, 8), dtype=np.float32)
         k_cb, v_cb = fit_kv_codebooks(keys, vals, n_codes=4)
         assert not np.allclose(k_cb.centroids, v_cb.centroids)
+
+
+class TestFitLoopBranches:
+    def test_fit_loop_exhausts_without_convergence(self):
+        """Branch 128→150: loop runs all n_iters without early break."""
+        # Use random data that is unlikely to converge in exactly 1 step.
+        rng  = np.random.default_rng(42)
+        vecs = rng.random((20, 4)).astype(np.float32)
+        cb   = CommVQCodebook(dim=4, n_codes=4)
+        cb.fit(vecs, n_iters=1, seed=42)   # single iter → shift check never met
+        assert cb.centroids.shape == (4, 4)

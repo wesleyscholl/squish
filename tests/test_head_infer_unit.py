@@ -139,6 +139,37 @@ class TestHeadClassifier:
         assert hc.head_types[0][0] == HeadType.STREAMING
         assert hc.head_types[0][1] == HeadType.RETRIEVAL
 
+    def test_label_returns_classified_type_directly(self):
+        """Line 208: label() returns ht when ht != UNKNOWN (no early-return)."""
+        hc = self._make(n_layers=1, n_heads=1)
+        hc.head_types[0][0] = HeadType.STREAMING
+        assert hc.label(0, 0) == HeadType.STREAMING
+
+    def test_retrieval_score_zero_seq_len(self):
+        """Line 219: _retrieval_score with seq_len=0 → 0.0 score → STREAMING."""
+        hc    = self._make(n_layers=1, n_heads=1)
+        # Pass attention with shape (1, 0): 1 head, 0 sequence positions
+        empty = np.zeros((1, 0), dtype=np.float32)
+        hc.calibrate([empty])
+        # score = 0.0 < retrieval_threshold → classified as STREAMING
+        assert hc.head_types[0][0] == HeadType.STREAMING
+
+
+# ---------------------------------------------------------------------------
+# HeadAwareKVStore branch: non-UNKNOWN head type provided
+# ---------------------------------------------------------------------------
+
+class TestHeadAwareKVStoreNonUnknownType:
+    def test_non_unknown_head_type_used_directly(self):
+        """Branch 367→371: head_types provided with non-UNKNOWN → False branch
+        of 'if ht == HeadType.UNKNOWN' → ht used as-is."""
+        cfg = HeadInferConfig(n_layers=1, n_heads=1, window_size=4, sink_tokens=1)
+        store = HeadAwareKVStore(cfg, head_types=[[HeadType.RETRIEVAL]])
+        # No error; buffer created with RETRIEVAL type
+        store.put(0, 0, np.ones(4), np.ones(4))
+        k, _ = store.get(0, 0)
+        assert k.shape[0] == 1
+
 
 # ---------------------------------------------------------------------------
 # _HeadBuffer

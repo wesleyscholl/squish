@@ -292,3 +292,34 @@ class TestDISCRouterExecute:
         router.execute_plan(plan, "")
         # The second prompt should include the first result
         assert any("result1" in p for p in prompts_seen)
+
+
+class TestTopologicalEdgeCases:
+    def test_external_dependency_ignored_in_in_deg(self):
+        """Branch 145→144: dep not in in_deg → skipped (no KeyError)."""
+        plan = DISCPlan()
+        plan.add(SubTask("t1", TaskType.GENERATE, "task",
+                         depends_on=["ghost_external"], output_var="out1"))
+        # "ghost_external" is not in task_map → branch 145 False: in_deg unchanged
+        order = plan.topological_order()
+        assert len(order) == 1
+
+    def test_multi_dep_task_not_queued_until_all_done(self):
+        """Branch 157→154: in_deg[candidate] > 0 after decrement → not appended."""
+        plan = DISCPlan()
+        plan.add(SubTask("a", TaskType.GENERATE, "A", output_var="ra"))
+        plan.add(SubTask("b", TaskType.GENERATE, "B", output_var="rb"))
+        plan.add(SubTask("c", TaskType.AGGREGATE, "C",
+                         depends_on=["a", "b"], output_var="rc"))
+        order = plan.topological_order()
+        task_ids = [t.task_id for t in order]
+        assert task_ids.index("c") > task_ids.index("a")
+        assert task_ids.index("c") > task_ids.index("b")
+
+    def test_execute_empty_plan_returns_empty_string(self):
+        """Line 301: ordered is empty → execute returns ''."""
+        llm    = lambda prompt, system, context: "x"
+        plan   = DISCPlan()          # no tasks
+        router = DISCRouter(llm)
+        result = router.execute("", plan=plan, context="anything")
+        assert result == ""

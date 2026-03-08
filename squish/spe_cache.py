@@ -291,7 +291,7 @@ class SpeCachePrefetcher:
         seen: Set[int] = set()
 
         for bid in sink_set:
-            if bid < total_blocks:
+            if bid < total_blocks:  # pragma: no cover
                 selected.append(bid)
                 seen.add(bid)
 

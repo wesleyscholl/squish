@@ -47,6 +47,9 @@ llmlingua = [
 grammar = [
     "xgrammar>=0.1",  # XGrammar structured output engine (Phase B)
 ]
+cache = [
+    "sqlite-vec>=0.1",  # SquishSemanticCache sqlite-vec backend (Phase E3)
+]
 eval = [
     "lm-eval>=0.4",
     "datasets>=2.18",
