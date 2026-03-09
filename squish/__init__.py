@@ -12,12 +12,15 @@ Public API:
     run_server(...)   # OpenAI-compatible HTTP server
 """
 # Phase 1.2 — AWQ calibration and scale application
-from squish.awq import (  # noqa: F401
-    apply_awq_to_weights,
-    collect_activation_scales,
-    load_awq_scales,
-    save_awq_scales,
-)
+try:
+    from squish.awq import (  # noqa: F401
+        apply_awq_to_weights,
+        collect_activation_scales,
+        load_awq_scales,
+        save_awq_scales,
+    )
+except (ImportError, OSError):
+    pass
 
 # Model catalog + pull (requires huggingface_hub for download)
 from squish.catalog import (  # noqa: F401
@@ -36,29 +39,38 @@ from squish.catalog import (
 from squish.entropy import compress_npy_dir, decompress_npy_dir  # noqa: F401
 
 # Phase 2.3 — Flash Attention status + benchmarking
-from squish.flash_attention import (  # noqa: F401
-    PatchResult,
-    attention_status,
-    patch_model_attention,
-    predict_memory_savings,
-    print_memory_table,
-)
+try:
+    from squish.flash_attention import (  # noqa: F401
+        PatchResult,
+        attention_status,
+        patch_model_attention,
+        predict_memory_savings,
+        print_memory_table,
+    )
+except (ImportError, OSError):
+    pass
 
 # Phase 1.3 — Quantized KV cache (KIVI + SnapKV)
-from squish.kv_cache import (  # noqa: F401
-    QuantizedKVCache,
-    make_quantized_cache,
-    patch_model_kv_cache,
-)
+try:
+    from squish.kv_cache import (  # noqa: F401
+        QuantizedKVCache,
+        make_quantized_cache,
+        patch_model_kv_cache,
+    )
+except (ImportError, OSError):
+    pass
 
 # Phase 2.2 — Layer-wise streaming for 70B+ models
-from squish.layerwise_loader import (  # noqa: F401
-    LayerCache,
-    LayerwiseLoader,
-    LoadStats,
-    recommend_cache_size,
-    shard_model,
-)
+try:
+    from squish.layerwise_loader import (  # noqa: F401
+        LayerCache,
+        LayerwiseLoader,
+        LoadStats,
+        recommend_cache_size,
+        shard_model,
+    )
+except (ImportError, OSError):
+    pass
 
 # Quantizer public API (self-contained, no external deps beyond numpy)
 from squish.quantizer import (  # noqa: F401
@@ -72,22 +84,31 @@ from squish.quantizer import (  # noqa: F401
 )
 
 # Speculative decoding (requires both target + draft model)
-from squish.speculative import SpeculativeGenerator, load_draft_model  # noqa: F401
+try:
+    from squish.speculative import SpeculativeGenerator, load_draft_model  # noqa: F401
+except (ImportError, OSError):
+    pass
 
 # Phase 2.1C — CPU/GPU split loading (auto-offloads layers if model > Metal budget)
-from squish.split_loader import (  # noqa: F401
-    OffloadedLayer,
-    SplitInfo,
-    SplitLayerLoader,
-    print_layer_profile,
-    profile_model_layers,
-)
+try:
+    from squish.split_loader import (  # noqa: F401
+        OffloadedLayer,
+        SplitInfo,
+        SplitLayerLoader,
+        print_layer_profile,
+        profile_model_layers,
+    )
+except (ImportError, OSError):
+    pass
 
-from .compressed_loader import (  # noqa: F401
-    load_compressed_model,
-    load_from_npy_dir,
-    save_int4_npy_dir,
-)
+try:
+    from .compressed_loader import (  # noqa: F401
+        load_compressed_model,
+        load_from_npy_dir,
+        save_int4_npy_dir,
+    )
+except (ImportError, OSError):
+    pass
 
 # Final-pass technique 15 — DFloat11 lossless weight compression (NeurIPS 2025)
 from squish.dfloat11 import (  # noqa: F401
@@ -129,6 +150,39 @@ from squish.squeeze_llm import (  # noqa: F401
     SqueezeLLMConfig,
     SqueezeLLMLayer,
     SqueezeLLMQuantizer,
+)
+
+# Sixth Wave — SubSpec: NVMe-offload speculative decoding (NeurIPS 2025)
+from squish.sub_spec import (  # noqa: F401
+    SubSpecConfig,
+    SubstituteLayerProxy,
+    SubSpecStats,
+    SubSpecDecoder,
+)
+
+# Sixth Wave — LongSpec: long-context shared-KV speculative decoding (ICML 2025)
+from squish.long_spec import (  # noqa: F401
+    LongSpecConfig,
+    LongSpecHead,
+    LongSpecStats,
+    LongSpecDecoder,
+)
+
+# Sixth Wave — TokenSwift: ultra-long generation with multi-token heads (ICML 2025)
+from squish.token_swift import (  # noqa: F401
+    TokenSwiftConfig,
+    MultiTokenHead,
+    PartialKVManager,
+    TokenSwiftStats,
+    TokenSwiftDecoder,
+)
+
+# Sixth Wave — QSpec: W4A8 draft / W4A16 verify complementary quantization (arXiv:2410.11305)
+from squish.qspec import (  # noqa: F401
+    QSpecConfig,
+    ActivationQuantizer,
+    QSpecStats,
+    QSpecDecoder,
 )
 
 __version__ = "1.0.0"
@@ -208,6 +262,27 @@ __all__ = [
     "OutlierDetector",
     "SqueezeLLMLayer",
     "SqueezeLLMQuantizer",
+    # Sixth Wave — SubSpec
+    "SubSpecConfig",
+    "SubstituteLayerProxy",
+    "SubSpecStats",
+    "SubSpecDecoder",
+    # Sixth Wave — LongSpec
+    "LongSpecConfig",
+    "LongSpecHead",
+    "LongSpecStats",
+    "LongSpecDecoder",
+    # Sixth Wave — TokenSwift
+    "TokenSwiftConfig",
+    "MultiTokenHead",
+    "PartialKVManager",
+    "TokenSwiftStats",
+    "TokenSwiftDecoder",
+    # Sixth Wave — QSpec
+    "QSpecConfig",
+    "ActivationQuantizer",
+    "QSpecStats",
+    "QSpecDecoder",
     # Phase 2.1 — BatchScheduler  (import: from squish.scheduler import BatchScheduler)
     # Phase 2.2 — Tool calling    (import: from squish.tool_calling import ...)
     # Phase 2.2 — Ollama compat   (import: from squish.ollama_compat import mount_ollama)
