@@ -1,4 +1,4 @@
-# Squish
+# Squish - Squeeze the Most Out of Your AI Models
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PyPI version](https://img.shields.io/pypi/v/squish.svg)](https://pypi.org/project/squish/)
@@ -7,12 +7,14 @@
 [![Discord](https://img.shields.io/badge/Discord-join%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/squish)
 [![HuggingFace](https://img.shields.io/badge/🤗%20Models-squish--community-yellow)](https://huggingface.co/squish-community)
 
-<img src="assets/squish-logo.png" height="550" alt="Squish Logo"/>
+<img src="assets/squish-logo-1.png" height="500" alt="Squish Logo"/>
+
+
 
 > **Local LLM inference at sub-second load times.**  
 > **Drop-in for OpenAI, Ollama, and any LLM client.**  
 > **Web chat UI · Tool calling · Batch scheduler · CLI**  
-> **No API key.  No cloud.  No data leaving your machine.**  
+> **No API key. No cloud.  No data leaving your machine.**  
 > **Free.**
 
 > ⚠️ **macOS + Apple Silicon (M1–M5) only.** Linux/CUDA support is on the roadmap. Windows is not planned.

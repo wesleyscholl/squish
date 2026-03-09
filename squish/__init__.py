@@ -185,6 +185,108 @@ from squish.qspec import (  # noqa: F401
     QSpecDecoder,
 )
 
+# Seventh Wave — Mirror-SD: GPU+NPU dual-pipeline speculative decoding (arXiv:2510.13161)
+from squish.mirror_sd import (  # noqa: F401
+    MirrorSDConfig,
+    MirrorFuture,
+    MirrorDraftPipeline,
+    MirrorVerifyPipeline,
+    MirrorSDStats,
+    MirrorSDDecoder,
+)
+
+# Seventh Wave — Dovetail: CPU verification + GPU drafting (EMNLP 2025, arXiv:2412.18934)
+from squish.dovetail import (  # noqa: F401
+    DovetailConfig,
+    DovetailDraftRunner,
+    DovetailCPUVerifier,
+    DovetailStats,
+    DovetailDecoder,
+)
+
+# Seventh Wave — DuoDecoding: dynamic multi-sequence heterogeneous spec decode (arXiv:2503.00784)
+from squish.duo_decoding import (  # noqa: F401
+    DuoDecodingConfig,
+    DuoCandidate,
+    DuoScheduler,
+    DuoCPUVerifier,
+    DuoDecodingStats,
+    DuoDecodingDecoder,
+)
+
+# Seventh Wave — Heterogeneous Vocabulary SD: any-model draft for any target (ICML 2025)
+from squish.hetero_vocab_sd import (  # noqa: F401
+    HeteroVocabConfig,
+    VocabMapper,
+    HeteroVocabDrafter,
+    HeteroVocabStats,
+    HeteroVocabDecoder,
+)
+
+# Eighth Wave — SparseSpec: dynamic sparse self-speculation for reasoning (arXiv:2512.01278)
+from squish.sparse_spec import (  # noqa: F401
+    SparseSpecConfig,
+    PillarAttnCache,
+    SparseSpecDrafter,
+    SparseSpecStats,
+    SparseSpecDecoder,
+)
+
+# Eighth Wave — Sparse Verification Framework (arXiv:2512.21911)
+from squish.sparse_verify import (  # noqa: F401
+    SparseVerifyConfig,
+    InterDraftReuseCache,
+    SparseVerifyPass,
+    SparseVerifyStats,
+)
+
+# Eighth Wave — ForeLen: entropy-guided output length prediction (ICLR 2026)
+from squish.forelen import (  # noqa: F401
+    ForelenConfig,
+    EGTPPredictor,
+    PLPPredictor,
+    ForelenStats,
+)
+
+# Eighth Wave — TRAIL: recycled embedding length predictor (ICLR 2025)
+from squish.trail import (  # noqa: F401
+    TrailConfig,
+    TrailLinearProbe,
+    TrailPredictor,
+    TrailStats,
+)
+
+# Eighth Wave — SpeContext: distilled model as KV retrieval algorithm (ASPLOS 2026)
+from squish.specontext import (  # noqa: F401
+    SpeContextConfig,
+    DistilledRetrievalHead,
+    SpeContextCache,
+    SpeContextStats,
+)
+
+# Eighth Wave — IPW: Intelligence Per Watt evaluation framework (arXiv:2511.07885)
+from squish.ipw import (  # noqa: F401
+    IPWConfig,
+    IPWMeasurement,
+    IPWTracker,
+    IPWSummary,
+)
+
+# Eighth Wave — Sequence Packing: barrel effect elimination
+from squish.seq_packing import (  # noqa: F401
+    PackingConfig,
+    SequencePacker,
+    PackedBatch,
+    PackingStats,
+)
+
+# Eighth Wave — StreamingLLM Attention Sinks: infinite context (ICLR 2024)
+from squish.streaming_sink import (  # noqa: F401
+    SinkConfig,
+    SinkKVCache,
+    SinkStats,
+)
+
 __version__ = "1.0.0"
 __all__ = [
     "load_compressed_model",
@@ -283,6 +385,72 @@ __all__ = [
     "ActivationQuantizer",
     "QSpecStats",
     "QSpecDecoder",
+    # Seventh Wave — Mirror-SD
+    "MirrorSDConfig",
+    "MirrorFuture",
+    "MirrorDraftPipeline",
+    "MirrorVerifyPipeline",
+    "MirrorSDStats",
+    "MirrorSDDecoder",
+    # Seventh Wave — Dovetail
+    "DovetailConfig",
+    "DovetailDraftRunner",
+    "DovetailCPUVerifier",
+    "DovetailStats",
+    "DovetailDecoder",
+    # Seventh Wave — DuoDecoding
+    "DuoDecodingConfig",
+    "DuoCandidate",
+    "DuoScheduler",
+    "DuoCPUVerifier",
+    "DuoDecodingStats",
+    "DuoDecodingDecoder",
+    # Seventh Wave — Heterogeneous Vocabulary SD
+    "HeteroVocabConfig",
+    "VocabMapper",
+    "HeteroVocabDrafter",
+    "HeteroVocabStats",
+    "HeteroVocabDecoder",
+    # Eighth Wave — SparseSpec
+    "SparseSpecConfig",
+    "PillarAttnCache",
+    "SparseSpecDrafter",
+    "SparseSpecStats",
+    "SparseSpecDecoder",
+    # Eighth Wave — Sparse Verification
+    "SparseVerifyConfig",
+    "InterDraftReuseCache",
+    "SparseVerifyPass",
+    "SparseVerifyStats",
+    # Eighth Wave — ForeLen
+    "ForelenConfig",
+    "EGTPPredictor",
+    "PLPPredictor",
+    "ForelenStats",
+    # Eighth Wave — TRAIL
+    "TrailConfig",
+    "TrailLinearProbe",
+    "TrailPredictor",
+    "TrailStats",
+    # Eighth Wave — SpeContext
+    "SpeContextConfig",
+    "DistilledRetrievalHead",
+    "SpeContextCache",
+    "SpeContextStats",
+    # Eighth Wave — IPW
+    "IPWConfig",
+    "IPWMeasurement",
+    "IPWTracker",
+    "IPWSummary",
+    # Eighth Wave — Sequence Packing
+    "PackingConfig",
+    "SequencePacker",
+    "PackedBatch",
+    "PackingStats",
+    # Eighth Wave — StreamingLLM Attention Sinks
+    "SinkConfig",
+    "SinkKVCache",
+    "SinkStats",
     # Phase 2.1 — BatchScheduler  (import: from squish.scheduler import BatchScheduler)
     # Phase 2.2 — Tool calling    (import: from squish.tool_calling import ...)
     # Phase 2.2 — Ollama compat   (import: from squish.ollama_compat import mount_ollama)
