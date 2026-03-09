@@ -4,11 +4,10 @@ import pytest
 
 from squish.sub_spec import (
     SubSpecConfig,
-    SubstituteLayerProxy,
-    SubSpecStats,
     SubSpecDecoder,
+    SubSpecStats,
+    SubstituteLayerProxy,
 )
-
 
 # ---------------------------------------------------------------------------
 # SubSpecConfig

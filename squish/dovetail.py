@@ -66,8 +66,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -90,7 +91,7 @@ def _softmax(x: np.ndarray) -> np.ndarray:
 
 
 def _sample(logits: np.ndarray, temperature: float, top_p: float,
-            rng: np.random.Generator) -> Tuple[int, np.ndarray]:
+            rng: np.random.Generator) -> tuple[int, np.ndarray]:
     probs = _softmax(logits / max(temperature, 1e-8))
     if top_p < 1.0:
         sorted_idx = np.argsort(probs)[::-1]
@@ -156,7 +157,7 @@ class DovetailDraftRunner:
 
     def __init__(
         self,
-        draft_fn: Callable[[List[int]], np.ndarray],
+        draft_fn: Callable[[list[int]], np.ndarray],
         config: DovetailConfig,
         rng_seed: int = 0,
     ) -> None:
@@ -167,8 +168,8 @@ class DovetailDraftRunner:
         self._rng = np.random.default_rng(rng_seed)
 
     def run(
-        self, ids: List[int], gamma: int
-    ) -> Tuple[List[int], List[np.ndarray]]:
+        self, ids: list[int], gamma: int
+    ) -> tuple[list[int], list[np.ndarray]]:
         """Produce *gamma* draft tokens autoregressively.
 
         Returns
@@ -178,8 +179,8 @@ class DovetailDraftRunner:
             ``probs_list[i]`` is its probability distribution over the vocab.
         """
         ctx = list(ids)
-        tokens: List[int] = []
-        probs: List[np.ndarray] = []
+        tokens: list[int] = []
+        probs: list[np.ndarray] = []
         for _ in range(gamma):
             logits = self._fn(ctx)
             tok, p = _sample(logits, self._cfg.temperature,
@@ -213,7 +214,7 @@ class DovetailCPUVerifier:
 
     def __init__(
         self,
-        target_fn: Callable[[List[int]], np.ndarray],
+        target_fn: Callable[[list[int]], np.ndarray],
         config: DovetailConfig,
         rng_seed: int = 0,
     ) -> None:
@@ -224,8 +225,8 @@ class DovetailCPUVerifier:
         self._rng = np.random.default_rng(rng_seed)
 
     def verify_one(
-        self, ctx: List[int]
-    ) -> Tuple[int, np.ndarray]:
+        self, ctx: list[int]
+    ) -> tuple[int, np.ndarray]:
         """Verify one position: run target model on *ctx*, return (token, probs)."""
         logits = self._fn(ctx)
         tok, probs = _sample(logits, self._cfg.temperature,
@@ -297,7 +298,7 @@ class DovetailDecoder:
         self,
         draft_runner: DovetailDraftRunner,
         cpu_verifier: DovetailCPUVerifier,
-        config: Optional[DovetailConfig] = None,
+        config: DovetailConfig | None = None,
         rng_seed: int = 0,
     ) -> None:
         if config is None:
@@ -311,9 +312,9 @@ class DovetailDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int = 64,
-    ) -> Tuple[List[int], DovetailStats]:
+    ) -> tuple[list[int], DovetailStats]:
         """Generate up to *max_new_tokens* tokens.
 
         Parameters
@@ -341,10 +342,10 @@ class DovetailDecoder:
 
             # ── CPU: verify each draft token (Leviathan criterion) ───────────
             ctx = list(ids)
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected = False
 
-            for d_tok, d_probs in zip(draft_tokens, draft_probs):
+            for d_tok, d_probs in zip(draft_tokens, draft_probs, strict=False):
                 v_tok, v_probs = self._verify.verify_one(ctx)
                 p_t = float(v_probs[d_tok])
                 p_d = float(d_probs[d_tok])

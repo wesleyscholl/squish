@@ -4,12 +4,11 @@ import numpy as np
 import pytest
 
 from squish.seq_packing import (
-    PackingConfig,
-    SequencePacker,
     PackedBatch,
+    PackingConfig,
     PackingStats,
+    SequencePacker,
 )
-
 
 # ---------------------------------------------------------------------------
 # PackingConfig

@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 
 from squish.forelen import (
-    ForelenConfig,
     EGTPPredictor,
-    PLPPredictor,
+    ForelenConfig,
     ForelenStats,
+    PLPPredictor,
 )
 
 RNG = np.random.default_rng(42)

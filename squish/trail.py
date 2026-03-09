@@ -118,9 +118,9 @@ class TrailLinearProbe:
         ``TrailConfig``.
     """
 
-    def __init__(self, config: Optional[TrailConfig] = None) -> None:
+    def __init__(self, config: TrailConfig | None = None) -> None:
         self._cfg = config or TrailConfig()
-        self._w: Optional[np.ndarray] = None  # shape (hidden_dim,)
+        self._w: np.ndarray | None = None  # shape (hidden_dim,)
         self._b: float = 0.0
 
     # ------------------------------------------------------------------
@@ -223,7 +223,7 @@ class TrailPredictor:
         ``TrailConfig``.
     """
 
-    def __init__(self, config: Optional[TrailConfig] = None) -> None:
+    def __init__(self, config: TrailConfig | None = None) -> None:
         self._cfg = config or TrailConfig()
         self.probe = TrailLinearProbe(self._cfg)
         # Log-uniform bucket boundaries

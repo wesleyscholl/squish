@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 
 from squish.sparse_verify import (
-    SparseVerifyConfig,
     InterDraftReuseCache,
+    SparseVerifyConfig,
     SparseVerifyPass,
     SparseVerifyStats,
 )

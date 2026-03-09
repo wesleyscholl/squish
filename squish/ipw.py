@@ -180,9 +180,9 @@ class IPWTracker:
         ``IPWConfig``.
     """
 
-    def __init__(self, config: Optional[IPWConfig] = None) -> None:
+    def __init__(self, config: IPWConfig | None = None) -> None:
         self._cfg = config or IPWConfig()
-        self._measurements: List[IPWMeasurement] = []
+        self._measurements: list[IPWMeasurement] = []
 
     def record(self, measurement: IPWMeasurement) -> None:
         """Append a measurement to the tracker."""
@@ -209,13 +209,13 @@ class IPWTracker:
         self.record(m)
         return m
 
-    def summary(self) -> "IPWSummary":
+    def summary(self) -> IPWSummary:
         """Compute a statistical summary across all recorded measurements."""
         return IPWSummary.from_measurements(self._measurements, self._cfg)
 
-    def summary_by_task(self) -> Dict[str, "IPWSummary"]:
+    def summary_by_task(self) -> dict[str, IPWSummary]:
         """Per-task-type summaries."""
-        by_type: Dict[str, List[IPWMeasurement]] = {}
+        by_type: dict[str, list[IPWMeasurement]] = {}
         for m in self._measurements:
             by_type.setdefault(m.task_type, []).append(m)
         return {
@@ -270,9 +270,9 @@ class IPWSummary:
 
     @staticmethod
     def from_measurements(
-        measurements: List[IPWMeasurement],
-        config: Optional[IPWConfig] = None,
-    ) -> "IPWSummary":
+        measurements: list[IPWMeasurement],
+        config: IPWConfig | None = None,
+    ) -> IPWSummary:
         """Build an ``IPWSummary`` from a list of measurements."""
         cfg = config or IPWConfig()
         if not measurements:
@@ -295,8 +295,8 @@ class IPWSummary:
         tps_vals = np.array([m.tokens_per_second for m in measurements])
 
         # Best config by mean IPW
-        config_ipw: Dict[str, List[float]] = {}
-        for m, ipw in zip(measurements, ipw_vals):
+        config_ipw: dict[str, list[float]] = {}
+        for m, ipw in zip(measurements, ipw_vals, strict=False):
             config_ipw.setdefault(m.config_label, []).append(float(ipw))
         best_config = max(config_ipw, key=lambda k: np.mean(config_ipw[k]))
 

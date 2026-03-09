@@ -66,8 +66,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -232,7 +233,7 @@ class SparseSpecDrafter:
 
     def __init__(
         self,
-        draft_fn: Callable[[List[int]], Tuple[int, np.ndarray]],
+        draft_fn: Callable[[list[int]], tuple[int, np.ndarray]],
         pillar_cache: PillarAttnCache,
         config: SparseSpecConfig,
     ) -> None:
@@ -247,7 +248,7 @@ class SparseSpecDrafter:
     # Internals
     # ------------------------------------------------------------------
 
-    def _sparse_context(self, full_ids: List[int]) -> List[int]:
+    def _sparse_context(self, full_ids: list[int]) -> list[int]:
         """Return a sparse subset of *full_ids* based on PillarAttn scores."""
         n = len(full_ids)
         if n == 0:
@@ -262,7 +263,7 @@ class SparseSpecDrafter:
         sorted_indices = sorted(idx_set)
         return [full_ids[i] for i in sorted_indices]
 
-    def _sample(self, probs: np.ndarray) -> Tuple[int, np.ndarray]:
+    def _sample(self, probs: np.ndarray) -> tuple[int, np.ndarray]:
         """Apply temperature + top-p and sample one token."""
         logits = np.log(probs + 1e-10) / self._cfg.temperature
         probs_t = np.exp(logits - logits.max())
@@ -285,8 +286,8 @@ class SparseSpecDrafter:
 
     def draft(
         self,
-        input_ids: List[int],
-    ) -> Tuple[List[int], List[np.ndarray]]:
+        input_ids: list[int],
+    ) -> tuple[list[int], list[np.ndarray]]:
         """Generate *gamma* draft tokens.
 
         Parameters
@@ -304,8 +305,8 @@ class SparseSpecDrafter:
         self._step_count += 1
         use_sparse = self._step_count > self._cfg.warmup_steps and self._cache.n_positions > 0
 
-        tokens: List[int] = []
-        probs_list: List[np.ndarray] = []
+        tokens: list[int] = []
+        probs_list: list[np.ndarray] = []
         ctx = list(input_ids)
 
         for _ in range(self._cfg.gamma):
@@ -396,8 +397,8 @@ class SparseSpecDecoder:
     def __init__(
         self,
         drafter: SparseSpecDrafter,
-        target_fn: Callable[[List[int]], Tuple[int, np.ndarray]],
-        config: Optional[SparseSpecConfig] = None,
+        target_fn: Callable[[list[int]], tuple[int, np.ndarray]],
+        config: SparseSpecConfig | None = None,
     ) -> None:
         if not callable(target_fn):
             raise TypeError("target_fn must be callable")
@@ -411,8 +412,8 @@ class SparseSpecDecoder:
 
     def _verify_one(
         self,
-        ctx: List[int],
-    ) -> Tuple[int, np.ndarray]:
+        ctx: list[int],
+    ) -> tuple[int, np.ndarray]:
         """Run target_fn to verify and return (token, probs)."""
         return self._target_fn(ctx)
 
@@ -448,9 +449,9 @@ class SparseSpecDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int,
-    ) -> Tuple[List[int], SparseSpecStats]:
+    ) -> tuple[list[int], SparseSpecStats]:
         """Generate up to *max_new_tokens* tokens with SparseSpec.
 
         Parameters
@@ -485,9 +486,9 @@ class SparseSpecDecoder:
             draft_probs = draft_probs[:remaining]
 
             # --- Verify ---
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected = False
-            for dt, dp in zip(draft_tokens, draft_probs):
+            for dt, dp in zip(draft_tokens, draft_probs, strict=False):
                 tok, tp = self._verify_one(ids + accepted)
                 q = float(tp[dt]) if dt < len(tp) else 0.0
                 p = float(dp[dt]) if dt < len(dp) else 0.0

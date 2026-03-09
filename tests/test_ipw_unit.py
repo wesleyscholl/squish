@@ -6,10 +6,9 @@ import pytest
 from squish.ipw import (
     IPWConfig,
     IPWMeasurement,
-    IPWTracker,
     IPWSummary,
+    IPWTracker,
 )
-
 
 # ---------------------------------------------------------------------------
 # IPWConfig

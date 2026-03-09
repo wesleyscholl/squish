@@ -102,7 +102,9 @@ ignore = [
     "B023",   # function does not bind loop variable
     "B904",   # raise without `from` inside except
     "F401",   # imported but unused (try/except availability checks)
+    "F811",   # redefinition of unused name (re-export blocks in __init__.py)
     "F821",   # undefined name (forward-reference string annotations)
+    "UP035",  # deprecated typing imports (dead after UP006/UP045 auto-fix; kept for compat)
 ]
 
 [tool.pytest.ini_options]

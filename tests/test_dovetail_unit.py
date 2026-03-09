@@ -4,10 +4,10 @@ import pytest
 
 from squish.dovetail import (
     DovetailConfig,
-    DovetailDraftRunner,
     DovetailCPUVerifier,
-    DovetailStats,
     DovetailDecoder,
+    DovetailDraftRunner,
+    DovetailStats,
 )
 
 VOCAB = 16
@@ -26,7 +26,7 @@ def _fixed_fn(agree_tok: int):
 
 
 def _make_decoder(agree_tok: int = 5, gamma: int = 4, rng_seed: int = 0):
-    cfg = MirrorCfg = DovetailConfig(gamma=gamma)
+    cfg = DovetailConfig(gamma=gamma)
     runner = DovetailDraftRunner(_fixed_fn(agree_tok), cfg, rng_seed=rng_seed)
     verifier = DovetailCPUVerifier(_fixed_fn(agree_tok), cfg, rng_seed=rng_seed + 1)
     return DovetailDecoder(runner, verifier, cfg, rng_seed=rng_seed + 2)

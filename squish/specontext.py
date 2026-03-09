@@ -143,8 +143,8 @@ class DistilledRetrievalHead:
 
     def __init__(
         self,
-        config: Optional[SpeContextConfig] = None,
-        head_weights: Optional[np.ndarray] = None,
+        config: SpeContextConfig | None = None,
+        head_weights: np.ndarray | None = None,
     ) -> None:
         self._cfg = config or SpeContextConfig()
         if head_weights is not None:
@@ -257,13 +257,13 @@ class SpeContextCache:
     def __init__(
         self,
         retrieval_head: DistilledRetrievalHead,
-        config: Optional[SpeContextConfig] = None,
+        config: SpeContextConfig | None = None,
     ) -> None:
         self._head = retrieval_head
         self._cfg = config or SpeContextConfig()
         # Storage: list of (key, value) arrays per position
-        self._keys: List[np.ndarray] = []    # (head_dim,) each
-        self._values: List[np.ndarray] = []  # (head_dim,) each (value vectors)
+        self._keys: list[np.ndarray] = []    # (head_dim,) each
+        self._values: list[np.ndarray] = []  # (head_dim,) each (value vectors)
         self._hot_indices: np.ndarray = np.array([], dtype=np.int64)
         self._prefetch_indices: np.ndarray = np.array([], dtype=np.int64)
 
@@ -272,7 +272,7 @@ class SpeContextCache:
         self._keys.append(np.asarray(key, dtype=np.float32).ravel())
         self._values.append(np.asarray(value, dtype=np.float32).ravel())
 
-    def retrieve(self, query_vec: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def retrieve(self, query_vec: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Retrieve the hot-tier KV block for the given query.
 
         Updates hot and prefetch indices, simulating the elastic loading

@@ -4,10 +4,10 @@ import pytest
 
 from squish.hetero_vocab_sd import (
     HeteroVocabConfig,
-    VocabMapper,
+    HeteroVocabDecoder,
     HeteroVocabDrafter,
     HeteroVocabStats,
-    HeteroVocabDecoder,
+    VocabMapper,
 )
 
 DRAFT_VOCAB = 12

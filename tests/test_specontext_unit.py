@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 
 from squish.specontext import (
-    SpeContextConfig,
     DistilledRetrievalHead,
     SpeContextCache,
+    SpeContextConfig,
     SpeContextStats,
 )
 

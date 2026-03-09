@@ -1,15 +1,16 @@
 """tests/test_sparse_spec_unit.py — unit tests for squish.sparse_spec"""
 
 import math
+
 import numpy as np
 import pytest
 
 from squish.sparse_spec import (
-    SparseSpecConfig,
     PillarAttnCache,
+    SparseSpecConfig,
+    SparseSpecDecoder,
     SparseSpecDrafter,
     SparseSpecStats,
-    SparseSpecDecoder,
 )
 
 VOCAB = 16

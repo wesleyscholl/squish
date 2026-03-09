@@ -64,8 +64,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -298,8 +299,8 @@ class LongSpecDecoder:
 
     def __init__(
         self,
-        target_fn: Callable[[List[int]], np.ndarray],
-        hidden_fn: Callable[[List[int]], np.ndarray],
+        target_fn: Callable[[list[int]], np.ndarray],
+        hidden_fn: Callable[[list[int]], np.ndarray],
         head:      LongSpecHead,
         config:    LongSpecConfig,
         rng_seed:  int = 0,
@@ -332,9 +333,9 @@ class LongSpecDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int = 64,
-    ) -> Tuple[List[int], LongSpecStats]:
+    ) -> tuple[list[int], LongSpecStats]:
         """
         Generate up to *max_new_tokens* tokens with shared-KV LongSpec.
 
@@ -367,8 +368,8 @@ class LongSpecDecoder:
             hidden = self._hidden(ids)                   # (hidden_size,)
 
             # ── Draft γ tokens via head — zero attention overhead ─────────────
-            draft_ids:   List[int]        = []
-            draft_probs: List[np.ndarray] = []
+            draft_ids:   list[int]        = []
+            draft_probs: list[np.ndarray] = []
             # Reuse same hidden state for all draft positions (first-order
             # approximation; production: update hidden via embedding + layers).
             for _ in range(cfg.gamma):
@@ -387,10 +388,10 @@ class LongSpecDecoder:
 
             # ── Verify via target model ───────────────────────────────────────
             ctx       = list(ids)
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected  = False
 
-            for d_tok, d_probs in zip(draft_ids, draft_probs):
+            for d_tok, d_probs in zip(draft_ids, draft_probs, strict=False):
                 t_logits = self._target(ctx)
                 t_probs  = _softmax(t_logits)
                 v_tok    = self._sample(t_logits)

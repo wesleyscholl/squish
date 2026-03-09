@@ -123,8 +123,8 @@ class PackedBatch:
 
     token_ids: np.ndarray
     attention_mask: np.ndarray
-    sequence_offsets: List[int]
-    sequence_lengths: List[int]
+    sequence_offsets: list[int]
+    sequence_lengths: list[int]
     pad_token_id: int = 0
 
     @property
@@ -181,7 +181,7 @@ class SequencePacker:
 
     def __init__(
         self,
-        config: Optional[PackingConfig] = None,
+        config: PackingConfig | None = None,
         pad_token_id: int = 0,
     ) -> None:
         self._cfg = config or PackingConfig()
@@ -191,7 +191,7 @@ class SequencePacker:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _build_packed_batch(self, sequences: List[List[int]]) -> PackedBatch:
+    def _build_packed_batch(self, sequences: list[list[int]]) -> PackedBatch:
         """Build one ``PackedBatch`` from a list of sequences.
 
         The sequences are assumed to fit within *max_packed_length* in total.
@@ -204,7 +204,7 @@ class SequencePacker:
         padded_total = ((total_content + m - 1) // m) * m
 
         token_ids = np.full(padded_total, self._pad, dtype=np.int64)
-        offsets: List[int] = []
+        offsets: list[int] = []
         cursor = 0
         for seq in sequences:
             offsets.append(cursor)
@@ -233,7 +233,7 @@ class SequencePacker:
     # Public API
     # ------------------------------------------------------------------
 
-    def pack(self, sequences: List[List[int]]) -> List[PackedBatch]:
+    def pack(self, sequences: list[list[int]]) -> list[PackedBatch]:
         """Pack a list of sequences into as few ``PackedBatch`` objects as possible.
 
         Long sequences (> max_packed_length) are placed alone in their own batch.
@@ -253,8 +253,8 @@ class SequencePacker:
         # Sort by length descending (greedy FFD)
         indexed = sorted(enumerate(sequences), key=lambda x: len(x[1]), reverse=True)
 
-        bins: List[List[List[int]]] = []     # list of bins; each bin = list of seq lists
-        bin_used: List[int] = []             # tokens used per bin
+        bins: list[list[list[int]]] = []     # list of bins; each bin = list of seq lists
+        bin_used: list[int] = []             # tokens used per bin
 
         for _orig_idx, seq in indexed:
             n = len(seq)
@@ -303,7 +303,7 @@ class PackingStats:
     padded_tokens: int = 0
     total_batches: int = 0
 
-    def record_batches(self, batches: List[PackedBatch]) -> None:
+    def record_batches(self, batches: list[PackedBatch]) -> None:
         """Accumulate statistics from a list of produced batches."""
         for b in batches:
             self.total_sequences += b.n_sequences

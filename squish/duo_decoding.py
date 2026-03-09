@@ -71,8 +71,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -96,7 +97,7 @@ def _softmax(x: np.ndarray) -> np.ndarray:
 
 
 def _sample(logits: np.ndarray, temperature: float, top_p: float,
-            rng: np.random.Generator) -> Tuple[int, np.ndarray]:
+            rng: np.random.Generator) -> tuple[int, np.ndarray]:
     probs = _softmax(logits / max(temperature, 1e-8))
     if top_p < 1.0:
         sorted_idx = np.argsort(probs)[::-1]
@@ -173,8 +174,8 @@ class DuoCandidate:
         pruning).
     """
 
-    tokens: List[int] = field(default_factory=list)
-    probs: List[np.ndarray] = field(default_factory=list)
+    tokens: list[int] = field(default_factory=list)
+    probs: list[np.ndarray] = field(default_factory=list)
     log_prob: float = 0.0
 
     def append(self, token: int, prob_dist: np.ndarray) -> None:
@@ -212,7 +213,7 @@ class DuoScheduler:
 
     def __init__(
         self,
-        draft_fn: Callable[[List[int]], np.ndarray],
+        draft_fn: Callable[[list[int]], np.ndarray],
         config: DuoDecodingConfig,
         rng_seed: int = 0,
     ) -> None:
@@ -223,8 +224,8 @@ class DuoScheduler:
     # ------------------------------------------------------------------
 
     def draft_candidates(
-        self, base_ids: List[int]
-    ) -> List[DuoCandidate]:
+        self, base_ids: list[int]
+    ) -> list[DuoCandidate]:
         """Generate up to *k_max* candidates each of depth *gamma*.
 
         Each candidate diverges from a fresh sample at its first token,
@@ -235,7 +236,7 @@ class DuoScheduler:
         List of DuoCandidate sorted by descending log_prob.
         """
         cfg = self._cfg
-        candidates: List[DuoCandidate] = []
+        candidates: list[DuoCandidate] = []
 
         for _ in range(cfg.k_max):
             cand = DuoCandidate()
@@ -259,7 +260,7 @@ class DuoScheduler:
 
         return candidates
 
-    def best(self, candidates: List[DuoCandidate]) -> DuoCandidate:
+    def best(self, candidates: list[DuoCandidate]) -> DuoCandidate:
         """Return the highest-probability candidate."""
         if not candidates:
             raise ValueError("candidate list is empty")
@@ -289,7 +290,7 @@ class DuoCPUVerifier:
 
     def __init__(
         self,
-        target_fn: Callable[[List[int]], np.ndarray],
+        target_fn: Callable[[list[int]], np.ndarray],
         config: DuoDecodingConfig,
         rng_seed: int = 0,
     ) -> None:
@@ -297,7 +298,7 @@ class DuoCPUVerifier:
         self._cfg = config
         self._rng = np.random.default_rng(rng_seed)
 
-    def verify_one(self, ctx: List[int]) -> Tuple[int, np.ndarray]:
+    def verify_one(self, ctx: list[int]) -> tuple[int, np.ndarray]:
         """Verify one position: run target model, return (token, probs)."""
         logits = self._fn(ctx)
         tok, probs = _sample(logits, self._cfg.temperature,
@@ -375,7 +376,7 @@ class DuoDecodingDecoder:
         self,
         scheduler: DuoScheduler,
         cpu_verifier: DuoCPUVerifier,
-        config: Optional[DuoDecodingConfig] = None,
+        config: DuoDecodingConfig | None = None,
         rng_seed: int = 0,
     ) -> None:
         if config is None:
@@ -389,9 +390,9 @@ class DuoDecodingDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int = 64,
-    ) -> Tuple[List[int], DuoDecodingStats]:
+    ) -> tuple[list[int], DuoDecodingStats]:
         """Generate up to *max_new_tokens* tokens.
 
         Parameters
@@ -425,10 +426,10 @@ class DuoDecodingDecoder:
 
             # ── CPU: verify best candidate (Leviathan accept/reject) ─────────
             ctx = list(ids)
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected = False
 
-            for d_tok, d_probs in zip(draft_tokens, draft_probs):
+            for d_tok, d_probs in zip(draft_tokens, draft_probs, strict=False):
                 v_tok, v_probs = self._verify.verify_one(ctx)
                 p_t = float(v_probs[d_tok])
                 p_d = float(d_probs[d_tok])

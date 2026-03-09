@@ -146,12 +146,66 @@ from squish.dfloat11 import (  # noqa: F401
     compress_model,
 )
 
-# Final-pass technique 16 — ShadowKV low-rank key cache + CPU value shadow (arXiv:2410.21465)
-from squish.shadow_kv import (  # noqa: F401
-    LandmarkSelector,
-    LowRankKeyCache,
-    ShadowKVCache,
-    ShadowKVConfig,
+# Seventh Wave — Dovetail: CPU verification + GPU drafting (EMNLP 2025, arXiv:2412.18934)
+from squish.dovetail import (  # noqa: F401
+    DovetailConfig,
+    DovetailCPUVerifier,
+    DovetailDecoder,
+    DovetailDraftRunner,
+    DovetailStats,
+)
+
+# Seventh Wave — DuoDecoding: dynamic multi-sequence heterogeneous spec decode (arXiv:2503.00784)
+from squish.duo_decoding import (  # noqa: F401
+    DuoCandidate,
+    DuoCPUVerifier,
+    DuoDecodingConfig,
+    DuoDecodingDecoder,
+    DuoDecodingStats,
+    DuoScheduler,
+)
+
+# Eighth Wave — ForeLen: entropy-guided output length prediction (ICLR 2026)
+from squish.forelen import (  # noqa: F401
+    EGTPPredictor,
+    ForelenConfig,
+    ForelenStats,
+    PLPPredictor,
+)
+
+# Seventh Wave — Heterogeneous Vocabulary SD: any-model draft for any target (ICML 2025)
+from squish.hetero_vocab_sd import (  # noqa: F401
+    HeteroVocabConfig,
+    HeteroVocabDecoder,
+    HeteroVocabDrafter,
+    HeteroVocabStats,
+    VocabMapper,
+)
+
+# Eighth Wave — IPW: Intelligence Per Watt evaluation framework (arXiv:2511.07885)
+from squish.ipw import (  # noqa: F401
+    IPWConfig,
+    IPWMeasurement,
+    IPWSummary,
+    IPWTracker,
+)
+
+# Sixth Wave — LongSpec: long-context shared-KV speculative decoding (ICML 2025)
+from squish.long_spec import (  # noqa: F401
+    LongSpecConfig,
+    LongSpecDecoder,
+    LongSpecHead,
+    LongSpecStats,
+)
+
+# Seventh Wave — Mirror-SD: GPU+NPU dual-pipeline speculative decoding (arXiv:2510.13161)
+from squish.mirror_sd import (  # noqa: F401
+    MirrorDraftPipeline,
+    MirrorFuture,
+    MirrorSDConfig,
+    MirrorSDDecoder,
+    MirrorSDStats,
+    MirrorVerifyPipeline,
 )
 
 # Final-pass technique 17 — PIPO pipelined offloading with INT4 bypass kernel
@@ -161,12 +215,94 @@ from squish.pipo import (  # noqa: F401
     PIPOConfig,
     PIPOScheduler,
 )
+
+# Sixth Wave — QSpec: W4A8 draft / W4A16 verify complementary quantization (arXiv:2410.11305)
+from squish.qspec import (  # noqa: F401
+    ActivationQuantizer,
+    QSpecConfig,
+    QSpecDecoder,
+    QSpecStats,
+)
+
+# Eighth Wave — Sequence Packing: barrel effect elimination
+from squish.seq_packing import (  # noqa: F401
+    PackedBatch,
+    PackingConfig,
+    PackingStats,
+    SequencePacker,
+)
+
+# Final-pass technique 16 — ShadowKV low-rank key cache + CPU value shadow (arXiv:2410.21465)
+from squish.shadow_kv import (  # noqa: F401
+    LandmarkSelector,
+    LowRankKeyCache,
+    ShadowKVCache,
+    ShadowKVConfig,
+)
+
+# Eighth Wave — SparseSpec: dynamic sparse self-speculation for reasoning (arXiv:2512.01278)
+from squish.sparse_spec import (  # noqa: F401
+    PillarAttnCache,
+    SparseSpecConfig,
+    SparseSpecDecoder,
+    SparseSpecDrafter,
+    SparseSpecStats,
+)
+
+# Eighth Wave — Sparse Verification Framework (arXiv:2512.21911)
+from squish.sparse_verify import (  # noqa: F401
+    InterDraftReuseCache,
+    SparseVerifyConfig,
+    SparseVerifyPass,
+    SparseVerifyStats,
+)
+
+# Eighth Wave — SpeContext: distilled model as KV retrieval algorithm (ASPLOS 2026)
+from squish.specontext import (  # noqa: F401
+    DistilledRetrievalHead,
+    SpeContextCache,
+    SpeContextConfig,
+    SpeContextStats,
+)
+
 # Final-pass technique 19 — SqueezeLLM dense-and-sparse quantization (ICML 2024)
 from squish.squeeze_llm import (  # noqa: F401
     OutlierDetector,
     SqueezeLLMConfig,
     SqueezeLLMLayer,
     SqueezeLLMQuantizer,
+)
+
+# Eighth Wave — StreamingLLM Attention Sinks: infinite context (ICLR 2024)
+from squish.streaming_sink import (  # noqa: F401
+    SinkConfig,
+    SinkKVCache,
+    SinkStats,
+)
+
+# Sixth Wave — SubSpec: NVMe-offload speculative decoding (NeurIPS 2025)
+from squish.sub_spec import (  # noqa: F401
+    SubSpecConfig,
+    SubSpecDecoder,
+    SubSpecStats,
+    SubstituteLayerProxy,
+)
+
+# Sixth Wave — TokenSwift: ultra-long generation with multi-token heads (ICML 2025)
+from squish.token_swift import (  # noqa: F401
+    MultiTokenHead,
+    PartialKVManager,
+    TokenSwiftConfig,
+    TokenSwiftDecoder,
+    TokenSwiftStats,
+)
+
+# Eighth Wave — TRAIL: recycled embedding length predictor (ICLR 2025)
+from squish.trail import (  # noqa: F401
+    TrailConfig,
+    TrailLinearProbe,
+    TrailPredictor,
+    TrailStats,
 )
 
 # Final-pass technique 18 — VPTQ vector post-training quantization (NeurIPS 2025)

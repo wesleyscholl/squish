@@ -53,8 +53,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -134,7 +135,7 @@ class InterDraftReuseCache:
         if budget < 1:
             raise ValueError("budget must be >= 1")
         self._budget = budget
-        self._entries: Dict[int, np.ndarray] = {}  # draft_pos → kv_indices
+        self._entries: dict[int, np.ndarray] = {}  # draft_pos → kv_indices
         self._hits: int = 0
         self._misses: int = 0
 
@@ -146,7 +147,7 @@ class InterDraftReuseCache:
             del self._entries[oldest]
         self._entries[draft_pos] = np.asarray(kv_indices, dtype=np.int64)
 
-    def query_reuse(self, draft_pos: int, candidate_indices: np.ndarray) -> Tuple[np.ndarray, int]:
+    def query_reuse(self, draft_pos: int, candidate_indices: np.ndarray) -> tuple[np.ndarray, int]:
         """Return indices NOT already in the cache from the previous position.
 
         Parameters
@@ -275,9 +276,9 @@ class SparseVerifyPass:
 
     def __init__(
         self,
-        verify_fn: Callable[[List[int], List[int]], Tuple[List[int], List[np.ndarray]]],
-        config: Optional[SparseVerifyConfig] = None,
-        rng_seed: Optional[int] = None,
+        verify_fn: Callable[[list[int], list[int]], tuple[list[int], list[np.ndarray]]],
+        config: SparseVerifyConfig | None = None,
+        rng_seed: int | None = None,
     ) -> None:
         if not callable(verify_fn):
             raise TypeError("verify_fn must be callable")
@@ -318,9 +319,9 @@ class SparseVerifyPass:
 
     def __call__(
         self,
-        context_ids: List[int],
-        draft_tokens: List[int],
-    ) -> Tuple[List[int], List[np.ndarray]]:
+        context_ids: list[int],
+        draft_tokens: list[int],
+    ) -> tuple[list[int], list[np.ndarray]]:
         """Run the sparse verification pass.
 
         Parameters

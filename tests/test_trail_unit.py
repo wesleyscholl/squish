@@ -1,9 +1,10 @@
 """tests/test_trail_unit.py — unit tests for squish.trail"""
 
+import os
+import tempfile
+
 import numpy as np
 import pytest
-import tempfile
-import os
 
 from squish.trail import (
     TrailConfig,

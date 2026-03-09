@@ -5,12 +5,12 @@ import numpy as np
 import pytest
 
 from squish.mirror_sd import (
-    MirrorSDConfig,
-    MirrorFuture,
     MirrorDraftPipeline,
-    MirrorVerifyPipeline,
-    MirrorSDStats,
+    MirrorFuture,
+    MirrorSDConfig,
     MirrorSDDecoder,
+    MirrorSDStats,
+    MirrorVerifyPipeline,
 )
 
 VOCAB = 16

@@ -57,8 +57,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 
@@ -274,8 +275,8 @@ class QSpecDecoder:
 
     def __init__(
         self,
-        w4a8_fn:  Callable[[List[int]], np.ndarray],
-        w4a16_fn: Callable[[List[int]], np.ndarray],
+        w4a8_fn:  Callable[[list[int]], np.ndarray],
+        w4a16_fn: Callable[[list[int]], np.ndarray],
         config:   QSpecConfig = None,
         rng_seed: int = 0,
     ) -> None:
@@ -311,9 +312,9 @@ class QSpecDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int = 64,
-    ) -> Tuple[List[int], QSpecStats]:
+    ) -> tuple[list[int], QSpecStats]:
         """
         Generate up to *max_new_tokens* tokens using W4A8 draft + W4A16 verify.
 
@@ -341,8 +342,8 @@ class QSpecDecoder:
 
         while generated < max_new_tokens:
             # ── Draft phase (W4A8 — fast INT8-activation path) ────────────────
-            draft_ids:   List[int]        = []
-            draft_probs: List[np.ndarray] = []
+            draft_ids:   list[int]        = []
+            draft_probs: list[np.ndarray] = []
             ctx = list(ids)
 
             for _ in range(cfg.gamma):
@@ -362,10 +363,10 @@ class QSpecDecoder:
 
             # ── Verify phase (W4A16 — FP16-activation path) ───────────────────
             ctx       = list(ids)
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected  = False
 
-            for d_tok, d_probs in zip(draft_ids, draft_probs):
+            for d_tok, d_probs in zip(draft_ids, draft_probs, strict=False):
                 v_logits = self._verify(ctx)
                 v_probs  = _softmax(v_logits)
                 v_tok    = self._sample(v_logits)

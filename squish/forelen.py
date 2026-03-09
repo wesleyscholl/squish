@@ -137,10 +137,10 @@ class EGTPPredictor:
         ``ForelenConfig``.
     """
 
-    def __init__(self, config: Optional[ForelenConfig] = None) -> None:
+    def __init__(self, config: ForelenConfig | None = None) -> None:
         self._cfg = config or ForelenConfig()
         # Linear probe: w (entropy_bins,) + b scalar → bucket logit
-        self._w: Optional[np.ndarray] = None
+        self._w: np.ndarray | None = None
         self._b: float = 0.0
         # Log-uniform bucket boundaries
         self._boundaries: np.ndarray = np.unique(np.round(
@@ -253,7 +253,7 @@ class PLPPredictor:
     def __init__(
         self,
         initial_prediction: int,
-        config: Optional[ForelenConfig] = None,
+        config: ForelenConfig | None = None,
     ) -> None:
         self._cfg = config or ForelenConfig()
         self._estimate: float = float(max(1, initial_prediction))

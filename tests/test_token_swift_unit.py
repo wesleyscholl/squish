@@ -3,13 +3,12 @@ import numpy as np
 import pytest
 
 from squish.token_swift import (
-    TokenSwiftConfig,
     MultiTokenHead,
     PartialKVManager,
-    TokenSwiftStats,
+    TokenSwiftConfig,
     TokenSwiftDecoder,
+    TokenSwiftStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # TokenSwiftConfig

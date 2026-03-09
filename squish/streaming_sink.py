@@ -134,17 +134,16 @@ class SinkKVCache:
         ``SinkConfig``.
     """
 
-    def __init__(self, config: Optional[SinkConfig] = None) -> None:
+    def __init__(self, config: SinkConfig | None = None) -> None:
         self._cfg = config or SinkConfig()
-        d = self._cfg.head_dim
         # Sink store: fixed capacity, filled once
-        self._sink_keys: List[np.ndarray] = []    # up to num_sinks
-        self._sink_values: List[np.ndarray] = []
-        self._sink_positions: List[int] = []       # original sequence position
+        self._sink_keys: list[np.ndarray] = []    # up to num_sinks
+        self._sink_values: list[np.ndarray] = []
+        self._sink_positions: list[int] = []       # original sequence position
         # Window store: circular buffer
-        self._win_keys: List[np.ndarray] = []
-        self._win_values: List[np.ndarray] = []
-        self._win_positions: List[int] = []
+        self._win_keys: list[np.ndarray] = []
+        self._win_values: list[np.ndarray] = []
+        self._win_positions: list[int] = []
         # Global sequence counter
         self._seq_pos: int = 0
         # Stats
@@ -196,7 +195,7 @@ class SinkKVCache:
     # Query
     # ------------------------------------------------------------------
 
-    def get_kv(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_kv(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return all KV entries available: sinks + window.
 
         Returns
@@ -261,7 +260,7 @@ class SinkKVCache:
         )
 
     @property
-    def stats(self) -> "SinkStats":
+    def stats(self) -> SinkStats:
         return self._stats
 
 

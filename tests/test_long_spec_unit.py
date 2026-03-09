@@ -4,11 +4,10 @@ import pytest
 
 from squish.long_spec import (
     LongSpecConfig,
+    LongSpecDecoder,
     LongSpecHead,
     LongSpecStats,
-    LongSpecDecoder,
 )
-
 
 # ---------------------------------------------------------------------------
 # LongSpecConfig

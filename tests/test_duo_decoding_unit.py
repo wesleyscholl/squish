@@ -3,12 +3,12 @@ import numpy as np
 import pytest
 
 from squish.duo_decoding import (
-    DuoDecodingConfig,
     DuoCandidate,
-    DuoScheduler,
     DuoCPUVerifier,
-    DuoDecodingStats,
+    DuoDecodingConfig,
     DuoDecodingDecoder,
+    DuoDecodingStats,
+    DuoScheduler,
 )
 
 VOCAB = 16

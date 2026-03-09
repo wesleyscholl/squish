@@ -77,8 +77,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -188,8 +189,8 @@ class VocabMapper:
         self,
         draft_vocab_size: int,
         target_vocab_size: int,
-        weight_matrix: Optional[np.ndarray] = None,
-        token_map: Optional[Dict[int, int]] = None,
+        weight_matrix: np.ndarray | None = None,
+        token_map: dict[int, int] | None = None,
         unmapped_prob: float = 1e-6,
     ) -> None:
         if draft_vocab_size < 2:
@@ -207,12 +208,12 @@ class VocabMapper:
                     f"weight_matrix must be ({target_vocab_size}, {draft_vocab_size}), "
                     f"got {W.shape}"
                 )
-            self._W: Optional[np.ndarray] = W
+            self._W: np.ndarray | None = W
         else:
             self._W = None
 
         if token_map is not None:
-            self._map: Optional[Dict[int, int]] = dict(token_map)
+            self._map: dict[int, int] | None = dict(token_map)
         else:
             self._map = None
 
@@ -261,7 +262,7 @@ class VocabMapper:
         rng: np.random.Generator,
         temperature: float = 1.0,
         top_p: float = 1.0,
-    ) -> Tuple[int, np.ndarray]:
+    ) -> tuple[int, np.ndarray]:
         """Sample a *target-vocabulary* token from the mapped draft distribution.
 
         Returns
@@ -307,7 +308,7 @@ class HeteroVocabDrafter:
 
     def __init__(
         self,
-        draft_fn: Callable[[List[int]], np.ndarray],
+        draft_fn: Callable[[list[int]], np.ndarray],
         mapper: VocabMapper,
         config: HeteroVocabConfig,
         rng_seed: int = 0,
@@ -318,8 +319,8 @@ class HeteroVocabDrafter:
         self._rng = np.random.default_rng(rng_seed)
 
     def draft_sequence(
-        self, ids: List[int], gamma: int
-    ) -> Tuple[List[int], List[np.ndarray]]:
+        self, ids: list[int], gamma: int
+    ) -> tuple[list[int], list[np.ndarray]]:
         """Generate *gamma* draft tokens in target-vocabulary space.
 
         Returns
@@ -328,8 +329,8 @@ class HeteroVocabDrafter:
             Both are in target-vocabulary space.
         """
         ctx = list(ids)
-        tokens: List[int] = []
-        probs: List[np.ndarray] = []
+        tokens: list[int] = []
+        probs: list[np.ndarray] = []
         for _ in range(gamma):
             draft_logits = self._fn(ctx)
             tok, mapped_probs = self._mapper.sample_target_token(
@@ -410,8 +411,8 @@ class HeteroVocabDecoder:
     def __init__(
         self,
         drafter: HeteroVocabDrafter,
-        target_fn: Callable[[List[int]], np.ndarray],
-        config: Optional[HeteroVocabConfig] = None,
+        target_fn: Callable[[list[int]], np.ndarray],
+        config: HeteroVocabConfig | None = None,
         rng_seed: int = 0,
     ) -> None:
         if config is None:
@@ -424,8 +425,8 @@ class HeteroVocabDecoder:
     # ------------------------------------------------------------------
 
     def _target_sample(
-        self, ids: List[int]
-    ) -> Tuple[int, np.ndarray]:
+        self, ids: list[int]
+    ) -> tuple[int, np.ndarray]:
         logits = self._target_fn(ids)
         probs = _softmax(logits / max(self._cfg.temperature, 1e-8))
         if self._cfg.top_p < 1.0:
@@ -443,9 +444,9 @@ class HeteroVocabDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int = 64,
-    ) -> Tuple[List[int], HeteroVocabStats]:
+    ) -> tuple[list[int], HeteroVocabStats]:
         """Generate up to *max_new_tokens* tokens.
 
         Parameters
@@ -473,10 +474,10 @@ class HeteroVocabDecoder:
 
             # ── Verify: Leviathan accept/reject in target-vocab space ────────
             ctx = list(ids)
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected = False
 
-            for d_tok, d_probs in zip(draft_tokens, draft_probs):
+            for d_tok, d_probs in zip(draft_tokens, draft_probs, strict=False):
                 v_tok, v_probs = self._target_sample(ctx)
                 p_t = float(v_probs[d_tok])
                 p_d = float(d_probs[d_tok])

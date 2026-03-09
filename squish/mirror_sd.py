@@ -73,8 +73,9 @@ Provides
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -164,7 +165,7 @@ class MirrorFuture:
 
     def __init__(self, fn: Callable[[], object]) -> None:
         self._result: object = None
-        self._exc: Optional[BaseException] = None
+        self._exc: BaseException | None = None
         self._done = threading.Event()
         self._thread = threading.Thread(target=self._run, args=(fn,), daemon=True)
         self._thread.start()
@@ -213,7 +214,7 @@ class MirrorDraftPipeline:
 
     def __init__(
         self,
-        draft_fn: Callable[[List[int]], np.ndarray],
+        draft_fn: Callable[[list[int]], np.ndarray],
         config: MirrorSDConfig,
         rng_seed: int = 0,
     ) -> None:
@@ -221,7 +222,7 @@ class MirrorDraftPipeline:
         self._cfg = config
         self._rng = np.random.default_rng(rng_seed)
 
-    def step(self, ids: List[int]) -> Tuple[int, np.ndarray]:
+    def step(self, ids: list[int]) -> tuple[int, np.ndarray]:
         """Run one GPU draft step.
 
         Returns
@@ -236,8 +237,8 @@ class MirrorDraftPipeline:
         return token, probs
 
     def draft_sequence(
-        self, ids: List[int], gamma: int
-    ) -> Tuple[List[int], List[np.ndarray]]:
+        self, ids: list[int], gamma: int
+    ) -> tuple[list[int], list[np.ndarray]]:
         """Generate *gamma* draft tokens autoregressively.
 
         Returns
@@ -245,8 +246,8 @@ class MirrorDraftPipeline:
         (draft_tokens, draft_probs_list)
         """
         ctx = list(ids)
-        tokens: List[int] = []
-        probs: List[np.ndarray] = []
+        tokens: list[int] = []
+        probs: list[np.ndarray] = []
         for _ in range(gamma):
             tok, p = self.step(ctx)
             tokens.append(tok)
@@ -278,7 +279,7 @@ class MirrorVerifyPipeline:
 
     def __init__(
         self,
-        target_fn: Callable[[List[int]], np.ndarray],
+        target_fn: Callable[[list[int]], np.ndarray],
         config: MirrorSDConfig,
         rng_seed: int = 0,
     ) -> None:
@@ -286,7 +287,7 @@ class MirrorVerifyPipeline:
         self._cfg = config
         self._rng = np.random.default_rng(rng_seed)
 
-    def enqueue(self, ids: List[int]) -> MirrorFuture:
+    def enqueue(self, ids: list[int]) -> MirrorFuture:
         """Launch a non-blocking ANE verification pass.
 
         Returns a ``MirrorFuture`` that resolves to
@@ -377,7 +378,7 @@ class MirrorSDDecoder:
         self,
         draft_pipeline: MirrorDraftPipeline,
         verify_pipeline: MirrorVerifyPipeline,
-        config: Optional[MirrorSDConfig] = None,
+        config: MirrorSDConfig | None = None,
         rng_seed: int = 0,
     ) -> None:
         if config is None:
@@ -391,9 +392,9 @@ class MirrorSDDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int = 64,
-    ) -> Tuple[List[int], MirrorSDStats]:
+    ) -> tuple[list[int], MirrorSDStats]:
         """Generate up to *max_new_tokens* tokens via dual-pipeline Mirror-SD.
 
         Parameters
@@ -422,7 +423,7 @@ class MirrorSDDecoder:
 
             # ── ANE: launch verification (non-blocking) ──────────────────────
             # Enqueue one verify call per draft position.
-            verify_futures: List[MirrorFuture] = []
+            verify_futures: list[MirrorFuture] = []
             ctx = list(ids)
             for d_tok in draft_tokens:
                 future = self._verify.enqueue(ctx)
@@ -430,11 +431,11 @@ class MirrorSDDecoder:
                 ctx.append(d_tok)
 
             # ── Collect verify results and accept/reject ─────────────────────
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected = False
 
             for i, (d_tok, d_probs, fut) in enumerate(
-                zip(draft_tokens, draft_probs, verify_futures)
+                zip(draft_tokens, draft_probs, verify_futures, strict=False)
             ):
                 v_tok, v_probs = fut.wait()
                 if fut.ready:

@@ -3,12 +3,11 @@ import numpy as np
 import pytest
 
 from squish.qspec import (
-    QSpecConfig,
     ActivationQuantizer,
-    QSpecStats,
+    QSpecConfig,
     QSpecDecoder,
+    QSpecStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # QSpecConfig

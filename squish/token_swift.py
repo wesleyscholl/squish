@@ -74,8 +74,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -207,11 +208,11 @@ class MultiTokenHead:
 
         rng   = np.random.default_rng(rng_seed)
         scale = float(np.sqrt(1.0 / hidden_size))
-        self.weights: List[np.ndarray] = [
+        self.weights: list[np.ndarray] = [
             (rng.standard_normal((vocab_size, hidden_size)) * scale).astype(np.float32)
             for _ in range(n_heads)
         ]
-        self.biases: List[np.ndarray] = [
+        self.biases: list[np.ndarray] = [
             np.zeros(vocab_size, dtype=np.float32)
             for _ in range(n_heads)
         ]
@@ -219,7 +220,7 @@ class MultiTokenHead:
         self.hidden_size = hidden_size
         self.vocab_size  = vocab_size
 
-    def predict(self, hidden: np.ndarray) -> List[np.ndarray]:
+    def predict(self, hidden: np.ndarray) -> list[np.ndarray]:
         """
         Run all K heads on *hidden* in a single pass.
 
@@ -234,13 +235,13 @@ class MultiTokenHead:
         per head; head 0 → offset +1, head K-1 → offset +K.
         """
         h = hidden.astype(np.float32)
-        return [h @ W.T + b for W, b in zip(self.weights, self.biases)]
+        return [h @ W.T + b for W, b in zip(self.weights, self.biases, strict=False)]
 
     def load_head_weights(
         self,
         head_idx: int,
         W: np.ndarray,
-        b: Optional[np.ndarray] = None,
+        b: np.ndarray | None = None,
     ) -> None:
         """Load pre-trained weights for head at *head_idx* (0-based)."""
         if not (0 <= head_idx < self.n_heads):
@@ -306,12 +307,12 @@ class PartialKVManager:
         return self.total_len
 
     @property
-    def window_positions(self) -> List[int]:
+    def window_positions(self) -> list[int]:
         """List of positions in the rolling dynamic window."""
         return list(range(self.window_start, self.window_end))
 
     @property
-    def frozen_positions(self) -> List[int]:
+    def frozen_positions(self) -> list[int]:
         """Prompt positions that are permanently frozen (always attended)."""
         return list(range(self.prompt_len))
 
@@ -379,10 +380,10 @@ class TokenSwiftDecoder:
 
     def __init__(
         self,
-        target_fn: Callable[[List[int]], np.ndarray],
+        target_fn: Callable[[list[int]], np.ndarray],
         config:    TokenSwiftConfig,
-        hidden_fn: Optional[Callable[[List[int]], np.ndarray]] = None,
-        heads:     Optional[MultiTokenHead] = None,
+        hidden_fn: Callable[[list[int]], np.ndarray] | None = None,
+        heads:     MultiTokenHead | None = None,
         rng_seed:  int = 0,
     ) -> None:
         self._target       = target_fn
@@ -390,13 +391,13 @@ class TokenSwiftDecoder:
         self._heads        = heads
         self._cfg          = config
         self._rng          = np.random.default_rng(rng_seed)
-        self._ngram_counts: Dict[Tuple[int, ...], int] = {}
+        self._ngram_counts: dict[tuple[int, ...], int] = {}
 
     # ------------------------------------------------------------------
     # N-gram penalty
     # ------------------------------------------------------------------
 
-    def _update_ngram(self, tok: int, ids: List[int]) -> None:
+    def _update_ngram(self, tok: int, ids: list[int]) -> None:
         """Increment the n-gram counter for the newly appended token *tok*."""
         n = self._cfg.ngram_n
         if len(ids) >= n - 1:
@@ -406,8 +407,8 @@ class TokenSwiftDecoder:
     def _apply_ngram_penalty(
         self,
         logits: np.ndarray,
-        ids: List[int],
-    ) -> Tuple[np.ndarray, bool]:
+        ids: list[int],
+    ) -> tuple[np.ndarray, bool]:
         """
         Subtract a count-proportional penalty from logits for repeated
         n-grams.
@@ -457,9 +458,9 @@ class TokenSwiftDecoder:
 
     def _draft_tokens(
         self,
-        ids: List[int],
+        ids: list[int],
         gamma: int,
-    ) -> Tuple[List[int], List[np.ndarray]]:
+    ) -> tuple[list[int], list[np.ndarray]]:
         """
         Produce up to *gamma* draft token ids and their probability arrays.
 
@@ -470,8 +471,8 @@ class TokenSwiftDecoder:
         if self._heads is not None and self._hidden is not None:
             hidden      = self._hidden(ids)
             head_logits = self._heads.predict(hidden)
-            draft_ids:   List[int]        = []
-            draft_probs: List[np.ndarray] = []
+            draft_ids:   list[int]        = []
+            draft_probs: list[np.ndarray] = []
             for hlogit in head_logits[:gamma]:
                 adj, _ = self._apply_ngram_penalty(hlogit, ids + draft_ids)
                 draft_ids.append(self._sample(adj))
@@ -496,9 +497,9 @@ class TokenSwiftDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int = 1024,
-    ) -> Tuple[List[int], TokenSwiftStats]:
+    ) -> tuple[list[int], TokenSwiftStats]:
         """
         Generate up to *max_new_tokens* tokens using TokenSwift.
 
@@ -541,10 +542,10 @@ class TokenSwiftDecoder:
 
             # ── Verify phase ──────────────────────────────────────────────────
             ctx       = list(ids)
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected  = False
 
-            for d_tok, d_probs in zip(draft_ids, draft_probs):
+            for d_tok, d_probs in zip(draft_ids, draft_probs, strict=False):
                 t_raw         = self._target(ctx)
                 t_adj, fired  = self._apply_ngram_penalty(t_raw, ctx)
                 if fired:

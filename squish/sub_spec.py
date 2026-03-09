@@ -53,8 +53,9 @@ Provides
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -274,8 +275,8 @@ class SubSpecDecoder:
 
     def __init__(
         self,
-        draft_fn:  Callable[[List[int]], np.ndarray],
-        target_fn: Callable[[List[int]], np.ndarray],
+        draft_fn:  Callable[[list[int]], np.ndarray],
+        target_fn: Callable[[list[int]], np.ndarray],
         config:    SubSpecConfig,
         rng_seed:  int = 0,
     ) -> None:
@@ -311,9 +312,9 @@ class SubSpecDecoder:
 
     def generate(
         self,
-        input_ids: List[int],
+        input_ids: list[int],
         max_new_tokens: int = 64,
-    ) -> Tuple[List[int], SubSpecStats]:
+    ) -> tuple[list[int], SubSpecStats]:
         """
         Generate up to *max_new_tokens* tokens using SubSpec.
 
@@ -344,8 +345,8 @@ class SubSpecDecoder:
 
         while generated < max_new_tokens:
             # ── Draft phase (GPU-resident + quantized substitutes) ────────────
-            draft_ids:   List[int]        = []
-            draft_probs: List[np.ndarray] = []
+            draft_ids:   list[int]        = []
+            draft_probs: list[np.ndarray] = []
             ctx = list(ids)
 
             for _ in range(cfg.gamma):
@@ -365,10 +366,10 @@ class SubSpecDecoder:
 
             # ── Verify phase (full target model, may page from NVMe) ──────────
             ctx       = list(ids)
-            accepted: List[int] = []
+            accepted: list[int] = []
             rejected  = False
 
-            for d_tok, d_probs in zip(draft_ids, draft_probs):
+            for d_tok, d_probs in zip(draft_ids, draft_probs, strict=False):
                 t_logits = self._target(ctx)
                 t_probs  = _softmax(t_logits)
                 v_tok    = self._sample(t_logits)
