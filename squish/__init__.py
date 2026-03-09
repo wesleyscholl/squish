@@ -177,11 +177,14 @@ from squish.vptq import (  # noqa: F401
     VPTQQuantizer,
 )
 
-from .compressed_loader import (  # noqa: F401
-    load_compressed_model,
-    load_from_npy_dir,
-    save_int4_npy_dir,
-)
+try:
+    from .compressed_loader import (  # noqa: F401
+        load_compressed_model,
+        load_from_npy_dir,
+        save_int4_npy_dir,
+    )
+except (ImportError, OSError):
+    pass
 
 # Sixth Wave — SubSpec: NVMe-offload speculative decoding (NeurIPS 2025)
 from squish.sub_spec import (  # noqa: F401
@@ -311,11 +314,75 @@ from squish.seq_packing import (  # noqa: F401
     PackingStats,
 )
 
-# Eighth Wave — StreamingLLM Attention Sinks: infinite context (ICLR 2024)
-from squish.streaming_sink import (  # noqa: F401
-    SinkConfig,
-    SinkKVCache,
-    SinkStats,
+# Ninth Wave — KVSharer: cross-layer KV sharing with dissimilar-pair heuristic (ICLR 2025)
+from squish.kvsharer import (  # noqa: F401
+    KVSharerConfig,
+    KVSharerCalibrator,
+    KVShareMap,
+    KVLayerCache,
+    KVSharerStats,
+)
+
+# Ninth Wave — CLA: Cross-Layer Attention architecture (Brandon et al., 2024)
+from squish.cla import (  # noqa: F401
+    CLAConfig,
+    CLALayerSpec,
+    CLASchedule,
+    CLAStats,
+)
+
+# Ninth Wave — YOCO: You Only Cache Once architecture (Sun et al., 2024)
+from squish.yoco import (  # noqa: F401
+    YOCOConfig,
+    YOCOLayerSpec,
+    YOCOSchedule,
+    YOCOKVStore,
+    YOCOStats,
+)
+
+# Ninth Wave — KVTuner: sensitivity-aware automated KV quantization search (ICML 2025)
+from squish.kvtuner import (  # noqa: F401
+    KVTunerConfig,
+    LayerSensitivity,
+    KVTunerCalibrator,
+    KVQuantConfig,
+    KVTunerStats,
+)
+
+# Ninth Wave — SVDq: per-head SVD key cache mixed precision (2025)
+from squish.svdq import (  # noqa: F401
+    SVDqConfig,
+    HeadSVDProfile,
+    SVDqCalibrator,
+    SVDqPrecisionMap,
+    SVDqStats,
+)
+
+# Ninth Wave — GemFilter: early-layer input token compression (ICLR 2025)
+from squish.gemfilter import (  # noqa: F401
+    GemFilterConfig,
+    AttentionScoreBuffer,
+    GemSelector,
+    GemFilterStats,
+)
+
+# Ninth Wave — Robust Scheduler: interval-prediction A_max + A_balanced (Aug 2025)
+from squish.robust_scheduler import (  # noqa: F401
+    RobustSchedulerConfig,
+    LengthInterval,
+    Request,
+    AMaxScheduler,
+    ABalancedScheduler,
+    RobustSchedulerStats,
+)
+
+# Ninth Wave — SqueezeAttention: joint 2D KV budget management (2025)
+from squish.squeeze_attention import (  # noqa: F401
+    SqueezeConfig,
+    LayerKVBudget,
+    BudgetAllocator,
+    SqueezeKVCache,
+    SqueezeStats,
 )
 
 __version__ = "1.0.0"
@@ -482,6 +549,53 @@ __all__ = [
     "SinkConfig",
     "SinkKVCache",
     "SinkStats",
+    # Ninth Wave — KVSharer
+    "KVSharerConfig",
+    "KVSharerCalibrator",
+    "KVShareMap",
+    "KVLayerCache",
+    "KVSharerStats",
+    # Ninth Wave — CLA
+    "CLAConfig",
+    "CLALayerSpec",
+    "CLASchedule",
+    "CLAStats",
+    # Ninth Wave — YOCO
+    "YOCOConfig",
+    "YOCOLayerSpec",
+    "YOCOSchedule",
+    "YOCOKVStore",
+    "YOCOStats",
+    # Ninth Wave — KVTuner
+    "KVTunerConfig",
+    "LayerSensitivity",
+    "KVTunerCalibrator",
+    "KVQuantConfig",
+    "KVTunerStats",
+    # Ninth Wave — SVDq
+    "SVDqConfig",
+    "HeadSVDProfile",
+    "SVDqCalibrator",
+    "SVDqPrecisionMap",
+    "SVDqStats",
+    # Ninth Wave — GemFilter
+    "GemFilterConfig",
+    "AttentionScoreBuffer",
+    "GemSelector",
+    "GemFilterStats",
+    # Ninth Wave — Robust Scheduler
+    "RobustSchedulerConfig",
+    "LengthInterval",
+    "Request",
+    "AMaxScheduler",
+    "ABalancedScheduler",
+    "RobustSchedulerStats",
+    # Ninth Wave — SqueezeAttention
+    "SqueezeConfig",
+    "LayerKVBudget",
+    "BudgetAllocator",
+    "SqueezeKVCache",
+    "SqueezeStats",
     # Phase 2.1 — BatchScheduler  (import: from squish.scheduler import BatchScheduler)
     # Phase 2.2 — Tool calling    (import: from squish.tool_calling import ...)
     # Phase 2.2 — Ollama compat   (import: from squish.ollama_compat import mount_ollama)
