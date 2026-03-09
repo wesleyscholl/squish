@@ -1,5 +1,4 @@
-# Squish 
-## Squeeze the Most Out of Your AI Models
+# Squish - Squeeze the Most Out of Your AI Models
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PyPI version](https://img.shields.io/pypi/v/squish.svg)](https://pypi.org/project/squish/)
