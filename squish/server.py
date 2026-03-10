@@ -272,25 +272,30 @@ _TTY_ERR: bool = sys.stderr.isatty()
 # this by requiring an explicit true-colour signal (COLORTERM env-var or a
 # known terminal program) before emitting gradient escape sequences.
 # Respects the NO_COLOR convention (https://no-color.org).
-_TRUE_COLOR: bool = (
-    _TTY
-    and "NO_COLOR" not in os.environ
-    and (
-        os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit")
-        or os.environ.get("TERM_PROGRAM", "") in (
-            "iTerm.app", "WezTerm", "Ghostty", "Hyper", "vscode", "warp",
-            "Apple_Terminal",
+def _has_truecolor(tty: bool) -> bool:
+    """Return True when the terminal reliably renders 24-bit RGB escape codes."""
+    return (
+        tty
+        and "NO_COLOR" not in os.environ
+        and (
+            os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit")
+            or os.environ.get("TERM_PROGRAM", "") in (
+                "iTerm.app", "WezTerm", "Ghostty", "Hyper", "vscode", "warp",
+                "Apple_Terminal",
+            )
+            or "kitty" in os.environ.get("TERM", "")
+            or "direct" in os.environ.get("TERM", "")
+            or bool(os.environ.get("FORCE_COLOR", ""))
         )
-        or "kitty" in os.environ.get("TERM", "")
-        or "direct" in os.environ.get("TERM", "")
-        or bool(os.environ.get("FORCE_COLOR", ""))
     )
-)
+
+_TRUE_COLOR:     bool = _has_truecolor(_TTY)
+_TRUE_COLOR_ERR: bool = _has_truecolor(_TTY_ERR)
 
 
 class _C:
-    """ANSI 24-bit colour constants.  Empty strings when stdout is not a TTY."""
-    _k = lambda s: s if sys.stdout.isatty() else ""  # noqa: E731
+    """ANSI 24-bit colour constants.  Empty strings on non-true-colour TTYs."""
+    _k = lambda s: s if _TRUE_COLOR else ""  # noqa: E731
     DP  = _k("\033[38;2;88;28;135m")    # deep purple   #581C87
     P   = _k("\033[38;2;124;58;237m")   # purple        #7C3AED
     V   = _k("\033[38;2;139;92;246m")   # violet        #8B5CF6
@@ -423,7 +428,7 @@ _trace_file = None           # IO | None — file handle opened by --trace-file
 
 def _tlog(msg: str) -> None:
     """Write a timestamped trace line to stderr (and _trace_file when set)."""
-    _ke = lambda s: s if _TTY_ERR else ""  # noqa: E731
+    _ke = lambda s: s if _TRUE_COLOR_ERR else ""  # noqa: E731
     ts  = f"{_ke(_C.MG)}[{time.strftime('%H:%M:%S')}]{_ke(_C.R)}"
     tag = f"{_ke(_C.V)}SQUISH{_ke(_C.R)}"
     line_color = f"{ts} {tag}  {_ke(_C.W)}{msg}{_ke(_C.R)}"
