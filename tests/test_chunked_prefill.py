@@ -9,7 +9,9 @@ Coverage for squish/chunked_prefill.py:
 """
 from __future__ import annotations
 
-import mlx.core as mx
+import pytest
+
+mx = pytest.importorskip("mlx.core", reason="mlx not available (requires Apple Silicon)")
 
 from squish.chunked_prefill import ChunkedPrefillConfig, chunk_prefill
 

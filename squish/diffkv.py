@@ -31,7 +31,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 # Supported precision levels (bits)
-PRECISION_TIERS: Tuple[int, ...] = (2, 4, 8)
+PRECISION_TIERS: tuple[int, ...] = (2, 4, 8)
 
 # Token importance thresholds
 IMPORTANCE_CRITICAL = 2
@@ -146,7 +146,7 @@ class TokenImportanceTier:
 def classify_tokens(
     attn_scores: np.ndarray,
     config: DiffKVConfig,
-) -> List[TokenImportanceTier]:
+) -> list[TokenImportanceTier]:
     """Classify tokens by importance using attention score aggregation.
 
     Args:
@@ -228,7 +228,7 @@ class DiffKVPolicyManager:
 
     def __init__(self, config: DiffKVConfig) -> None:
         self.config = config
-        self._profiles: Dict[Tuple[int, int], HeadSparsityProfile] = {}
+        self._profiles: dict[tuple[int, int], HeadSparsityProfile] = {}
         for layer_idx in range(config.n_layers):
             for head_idx in range(config.n_heads):
                 self._profiles[(layer_idx, head_idx)] = HeadSparsityProfile(
@@ -260,7 +260,7 @@ class DiffKVPolicyManager:
             sparsity_boost_active=boost,
         )
 
-    def all_policies(self) -> List[DiffKVPolicy]:
+    def all_policies(self) -> list[DiffKVPolicy]:
         return [
             self.get_policy(l, h)
             for l in range(self.config.n_layers)

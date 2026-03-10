@@ -1,14 +1,14 @@
 """Unit tests for squish.gemfilter — Early-layer input token compression."""
 
-import pytest
 import numpy as np
-from squish.gemfilter import (
-    GemFilterConfig,
-    AttentionScoreBuffer,
-    GemSelector,
-    GemFilterStats,
-)
+import pytest
 
+from squish.gemfilter import (
+    AttentionScoreBuffer,
+    GemFilterConfig,
+    GemFilterStats,
+    GemSelector,
+)
 
 # ---------------------------------------------------------------------------
 # TestGemFilterConfig

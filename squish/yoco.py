@@ -23,7 +23,6 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -98,11 +97,11 @@ class YOCOSchedule:
     Build via :meth:`from_config`.
     """
 
-    specs: List[YOCOLayerSpec]
+    specs: list[YOCOLayerSpec]
     config: YOCOConfig
 
     @classmethod
-    def from_config(cls, config: YOCOConfig) -> "YOCOSchedule":
+    def from_config(cls, config: YOCOConfig) -> YOCOSchedule:
         specs = []
         for i in range(config.n_layers):
             role = "self" if i < config.n_self_attn_layers else "cross"
@@ -113,11 +112,11 @@ class YOCOSchedule:
         return self.specs[layer_idx]
 
     @property
-    def self_attn_layers(self) -> List[int]:
+    def self_attn_layers(self) -> list[int]:
         return [s.layer_idx for s in self.specs if s.is_self_attn]
 
     @property
-    def cross_attn_layers(self) -> List[int]:
+    def cross_attn_layers(self) -> list[int]:
         return [s.layer_idx for s in self.specs if s.is_cross_attn]
 
     def kv_cache_reduction_factor(self) -> float:
@@ -147,8 +146,8 @@ class YOCOKVStore:
 
     def __init__(self, config: YOCOConfig) -> None:
         self._config = config
-        self._keys: List[np.ndarray] = []    # each entry: (n_kv_heads, head_dim)
-        self._values: List[np.ndarray] = []
+        self._keys: list[np.ndarray] = []    # each entry: (n_kv_heads, head_dim)
+        self._values: list[np.ndarray] = []
         self._stats = YOCOStats()
 
     # ------------------------------------------------------------------
@@ -167,7 +166,7 @@ class YOCOKVStore:
 
     def get_shared_kv(
         self,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Return *(keys, values)* for all tokens written so far.
 
         Returns:
@@ -199,7 +198,7 @@ class YOCOKVStore:
         return len(self._keys) == 0
 
     @property
-    def stats(self) -> "YOCOStats":
+    def stats(self) -> YOCOStats:
         return self._stats
 
 

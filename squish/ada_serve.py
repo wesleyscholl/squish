@@ -58,7 +58,7 @@ class SLOTarget:
 
 
 # Built-in SLO templates for Squish task types
-BUILT_IN_SLOS: Dict[str, SLOTarget] = {
+BUILT_IN_SLOS: dict[str, SLOTarget] = {
     "git_commit": SLOTarget(
         task_type="git_commit",
         time_to_first_token_ms=150.0,
@@ -208,7 +208,7 @@ class AdaServeStats:
     total_slo_violations: int = 0
     total_tokens_generated: int = 0
     total_goodput_tokens: int = 0  # tokens generated within SLO
-    gamma_histogram: Dict[int, int] = field(default_factory=dict)
+    gamma_histogram: dict[int, int] = field(default_factory=dict)
 
     def record_request(
         self,
@@ -268,11 +268,11 @@ class AdaServeScheduler:
     def __init__(
         self,
         config: AdaServeConfig,
-        slo_registry: Optional[Dict[str, SLOTarget]] = None,
+        slo_registry: dict[str, SLOTarget] | None = None,
     ) -> None:
         self.config = config
-        self._slo_registry: Dict[str, SLOTarget] = slo_registry or dict(BUILT_IN_SLOS)
-        self._active_requests: Dict[str, AdaServeRequest] = {}
+        self._slo_registry: dict[str, SLOTarget] = slo_registry or dict(BUILT_IN_SLOS)
+        self._active_requests: dict[str, AdaServeRequest] = {}
         self._stats = AdaServeStats()
 
     def register_slo(self, task_type: str, slo: SLOTarget) -> None:

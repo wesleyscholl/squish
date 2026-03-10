@@ -31,7 +31,6 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -83,7 +82,7 @@ class LengthInterval:
 
     lo: int
     hi: int
-    point_estimate: Optional[int] = None
+    point_estimate: int | None = None
 
     def __post_init__(self) -> None:
         if self.lo < 0:
@@ -104,7 +103,7 @@ class LengthInterval:
         return int(alpha * self.hi + (1.0 - alpha) * self.lo)
 
     @classmethod
-    def from_point(cls, estimate: int, uncertainty: float = 0.25) -> "LengthInterval":
+    def from_point(cls, estimate: int, uncertainty: float = 0.25) -> LengthInterval:
         """Build interval from a point estimate with fractional uncertainty."""
         margin = max(1, int(estimate * uncertainty))
         return cls(
@@ -153,14 +152,14 @@ class AMaxScheduler:
 
     def __init__(self, config: RobustSchedulerConfig) -> None:
         self._config = config
-        self._queue: List[Request] = []
-        self._in_flight: List[Request] = []
+        self._queue: list[Request] = []
+        self._in_flight: list[Request] = []
         self._stats = RobustSchedulerStats()
 
     def enqueue(self, request: Request) -> None:
         self._queue.append(request)
 
-    def schedule_batch(self) -> List[Request]:
+    def schedule_batch(self) -> list[Request]:
         """Return the next batch of requests to execute.
 
         Selects requests from queue in ascending upper-bound order, stopping
@@ -170,7 +169,7 @@ class AMaxScheduler:
         # Sort by upper-bound tokens ascending (SUBF — Shortest Upper Bound First)
         candidates = sorted(self._queue, key=lambda r: r.tokens_at_hi)
 
-        batch: List[Request] = []
+        batch: list[Request] = []
         reserved_tokens = sum(r.tokens_at_hi for r in self._in_flight)
 
         for req in candidates:
@@ -199,7 +198,7 @@ class AMaxScheduler:
         return len(self._queue)
 
     @property
-    def stats(self) -> "RobustSchedulerStats":
+    def stats(self) -> RobustSchedulerStats:
         return self._stats
 
 
@@ -217,8 +216,8 @@ class ABalancedScheduler:
 
     def __init__(self, config: RobustSchedulerConfig) -> None:
         self._config = config
-        self._queue: List[Request] = []
-        self._in_flight: List[Request] = []
+        self._queue: list[Request] = []
+        self._in_flight: list[Request] = []
         self._alpha = config.alpha
         self._stats = RobustSchedulerStats()
         self._preemptions = 0
@@ -244,7 +243,7 @@ class ABalancedScheduler:
     def enqueue(self, request: Request) -> None:
         self._queue.append(request)
 
-    def schedule_batch(self) -> List[Request]:
+    def schedule_batch(self) -> list[Request]:
         """Return next batch using current alpha-blended length estimates."""
         self._adapt_alpha()
         cfg = self._config
@@ -255,7 +254,7 @@ class ABalancedScheduler:
             self._queue, key=lambda r: r.tokens_at_alpha(alpha)
         )
 
-        batch: List[Request] = []
+        batch: list[Request] = []
         reserved_tokens = sum(
             r.tokens_at_alpha(alpha) for r in self._in_flight
         )
@@ -296,7 +295,7 @@ class ABalancedScheduler:
         return len(self._queue)
 
     @property
-    def stats(self) -> "RobustSchedulerStats":
+    def stats(self) -> RobustSchedulerStats:
         return self._stats
 
 

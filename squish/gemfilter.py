@@ -28,11 +28,11 @@ This module provides:
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -62,7 +62,7 @@ class GemFilterConfig:
     """
 
     filter_layer: int = 15
-    top_k_tokens: Optional[int] = None
+    top_k_tokens: int | None = None
     top_k_fraction: float = 0.10
     always_keep_first: bool = True
     keep_prefix_tokens: int = 4
@@ -107,7 +107,7 @@ class AttentionScoreBuffer:
 
     def __init__(self, config: GemFilterConfig) -> None:
         self._config = config
-        self._attn_maps: List[np.ndarray] = []
+        self._attn_maps: list[np.ndarray] = []
         """Stored attention maps; each is (n_heads, n_queries, seq_len) or
         (n_queries, seq_len) for single-head."""
 
@@ -125,7 +125,7 @@ class AttentionScoreBuffer:
             return
         self._attn_maps.append(np.asarray(attn_map, dtype=np.float32))
 
-    def get_scores(self) -> Optional[np.ndarray]:
+    def get_scores(self) -> np.ndarray | None:
         """Aggregate all recorded attention maps to a 1-D per-token score.
 
         Returns:
@@ -135,7 +135,7 @@ class AttentionScoreBuffer:
             return None
 
         agg = self._config.aggregation
-        scores_list: List[np.ndarray] = []
+        scores_list: list[np.ndarray] = []
 
         for attn in self._attn_maps:
             # Normalise to 3-D: (n_heads, n_queries, seq_len)
@@ -182,7 +182,7 @@ class GemSelector:
         self._config = config
 
     def select(
-        self, scores: np.ndarray, seq_len: Optional[int] = None
+        self, scores: np.ndarray, seq_len: int | None = None
     ) -> np.ndarray:
         """Return sorted indices of tokens to keep.
 

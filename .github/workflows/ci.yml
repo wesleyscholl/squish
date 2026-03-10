@@ -65,3 +65,38 @@ jobs:
 
       - name: mypy check
         run: mypy squish/ --ignore-missing-imports --no-error-summary || true
+
+  test-linux:
+    name: Test Linux (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: |
+          ruff check squish/ tests/ --output-format github
+
+      - name: Run tests (Linux — MLX tests auto-skipped)
+        # MLX-dependent tests skip automatically on Linux via pytest.importorskip.
+        # Excluded from CI same as macOS job.
+        run: |
+          pytest tests/ \
+            --ignore=tests/test_int4_loader.py \
+            --ignore=tests/test_git_integration.py \
+            -v --tb=short -q

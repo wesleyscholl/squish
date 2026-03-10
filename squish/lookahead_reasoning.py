@@ -22,8 +22,9 @@ This module provides the orchestration layer and statistics tracking.
 from __future__ import annotations
 
 import enum
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -88,7 +89,7 @@ class LookaheadStep:
 class LookaheadBatch:
     """A batch of N draft steps generated in one lookahead cycle."""
 
-    steps: List[LookaheadStep]
+    steps: list[LookaheadStep]
     context_at_start: str
     n_accepted: int = 0
 
@@ -97,7 +98,7 @@ class LookaheadBatch:
         return len(self.steps)
 
     @property
-    def accepted_steps(self) -> List[LookaheadStep]:
+    def accepted_steps(self) -> list[LookaheadStep]:
         return [s for s in self.steps if s.accepted]
 
     @property
@@ -160,12 +161,12 @@ class LookaheadStats:
 
 # Callable type aliases
 DraftFn = Callable[[str], LookaheadStep]
-BatchVerifyFn = Callable[[List[LookaheadStep], str], List[float]]
+BatchVerifyFn = Callable[[list[LookaheadStep], str], list[float]]
 
 
 def _default_batch_verifier(
-    steps: List[LookaheadStep], context: str
-) -> List[float]:
+    steps: list[LookaheadStep], context: str
+) -> list[float]:
     """Default batch verifier using token Jaccard similarity."""
     c_tokens = set(context.lower().split())
     scores = []
@@ -195,13 +196,13 @@ class LookaheadReasoningEngine:
         self,
         config: LookaheadConfig,
         draft_fn: DraftFn,
-        batch_verify_fn: Optional[BatchVerifyFn] = None,
+        batch_verify_fn: BatchVerifyFn | None = None,
     ) -> None:
         self.config = config
         self._draft_fn = draft_fn
         self._verify_fn = batch_verify_fn or _default_batch_verifier
         self._stats = LookaheadStats()
-        self._all_accepted: List[LookaheadStep] = []
+        self._all_accepted: list[LookaheadStep] = []
 
     def run_cycle(self, context: str) -> LookaheadBatch:
         """Run one lookahead cycle: generate k drafts, verify in batch, accept prefix.
@@ -213,7 +214,7 @@ class LookaheadReasoningEngine:
             LookaheadBatch with acceptance annotations.
         """
         # Step 1: Generate k draft steps
-        draft_steps: List[LookaheadStep] = []
+        draft_steps: list[LookaheadStep] = []
         ctx = context
         for pos in range(self.config.lookahead_k):
             step = self._draft_fn(ctx)
@@ -234,7 +235,7 @@ class LookaheadReasoningEngine:
 
         # Step 3: Accept prefix (or all individually good steps)
         n_accepted = 0
-        for step, score in zip(draft_steps, scores):
+        for step, score in zip(draft_steps, scores, strict=False):
             step.score = score
             if score >= self.config.min_acceptance_score:
                 step.accepted = True
@@ -268,7 +269,7 @@ class LookaheadReasoningEngine:
 
     def generate_chain(
         self, initial_context: str, max_steps: int = 32
-    ) -> List[LookaheadStep]:
+    ) -> list[LookaheadStep]:
         """Generate a full reasoning chain.
 
         Args:
@@ -299,7 +300,7 @@ class LookaheadReasoningEngine:
         return self._stats
 
     @property
-    def all_accepted_steps(self) -> List[LookaheadStep]:
+    def all_accepted_steps(self) -> list[LookaheadStep]:
         return list(self._all_accepted)
 
     def reset(self) -> None:

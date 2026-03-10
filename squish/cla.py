@@ -21,7 +21,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -71,7 +70,7 @@ class CLALayerSpec:
     is_generator: bool
     """True → this layer computes and stores its own KV cache."""
 
-    borrows_from: Optional[int]
+    borrows_from: int | None
     """Layer index to borrow from (None if this layer is a generator)."""
 
     @property
@@ -98,12 +97,12 @@ class CLASchedule:
     Build via :meth:`from_config`.
     """
 
-    specs: List[CLALayerSpec]
+    specs: list[CLALayerSpec]
     config: CLAConfig
 
     # ------------------------------------------------------------------
     @classmethod
-    def from_config(cls, config: CLAConfig) -> "CLASchedule":
+    def from_config(cls, config: CLAConfig) -> CLASchedule:
         """Build the schedule from *config*.
 
         Each group of `sharing_factor` consecutive layers has exactly one
@@ -111,7 +110,7 @@ class CLASchedule:
         other layers in the group borrow from it.  Layer 0 is always a
         generator when `allow_first_layer_borrow=False`.
         """
-        specs: List[CLALayerSpec] = []
+        specs: list[CLALayerSpec] = []
         sf = config.sharing_factor
         gs = config.generator_stride
 
@@ -149,11 +148,11 @@ class CLASchedule:
         return self.specs[layer_idx]
 
     @property
-    def generator_layers(self) -> List[int]:
+    def generator_layers(self) -> list[int]:
         return [s.layer_idx for s in self.specs if s.is_generator]
 
     @property
-    def borrower_layers(self) -> List[int]:
+    def borrower_layers(self) -> list[int]:
         return [s.layer_idx for s in self.specs if s.is_borrower]
 
     @property

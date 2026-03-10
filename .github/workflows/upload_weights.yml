@@ -47,4 +47,4 @@ jobs:
           [[ -n "${{ inputs.tag }}" ]] && ARGS="$ARGS --tag ${{ inputs.tag }}"
           [[ "${{ inputs.int4 }}" == "true" ]] && ARGS="$ARGS --int4"
           [[ "${{ inputs.dry_run }}" == "true" ]] && ARGS="$ARGS --dry-run"
-          python3 scripts/upload_to_hub.py $ARGS
+          python3 dev/scripts/upload_to_hub.py $ARGS

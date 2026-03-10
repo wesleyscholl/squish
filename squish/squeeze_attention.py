@@ -22,11 +22,11 @@ This module provides:
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -115,7 +115,7 @@ class BudgetAllocator:
 
     def __init__(self, config: SqueezeConfig) -> None:
         self._config = config
-        self._salience: Dict[int, float] = {}
+        self._salience: dict[int, float] = {}
 
     def record_layer_salience(self, layer_idx: int, salience: float) -> None:
         """Record a salience score for *layer_idx* (e.g., mean attention entropy).
@@ -124,7 +124,7 @@ class BudgetAllocator:
         """
         self._salience[layer_idx] = float(salience)
 
-    def allocate(self) -> List[LayerKVBudget]:
+    def allocate(self) -> list[LayerKVBudget]:
         """Compute joint budget allocation and return one budget per layer."""
         cfg = self._config
         n = cfg.n_layers
@@ -158,7 +158,7 @@ class BudgetAllocator:
             )
 
         avg_budget = cfg.avg_tokens_per_layer
-        results: List[LayerKVBudget] = []
+        results: list[LayerKVBudget] = []
         for i in range(n):
             b = int(budgets[i])
             # Compression score: deviation from average budget, penalised for
@@ -186,16 +186,16 @@ class SqueezeKVCache:
     recency-based (most recent retained).
     """
 
-    def __init__(self, budgets: List[LayerKVBudget], config: SqueezeConfig) -> None:
-        self._budgets: Dict[int, LayerKVBudget] = {b.layer_idx: b for b in budgets}
+    def __init__(self, budgets: list[LayerKVBudget], config: SqueezeConfig) -> None:
+        self._budgets: dict[int, LayerKVBudget] = {b.layer_idx: b for b in budgets}
         self._config = config
         # layer_idx -> (keys list, values list, attn_scores list)
-        self._store: Dict[int, Tuple[List[np.ndarray], List[np.ndarray], List[float]]] = {}
+        self._store: dict[int, tuple[list[np.ndarray], list[np.ndarray], list[float]]] = {}
         self._stats = SqueezeStats()
 
     def _get_layer_store(
         self, layer_idx: int
-    ) -> Tuple[List[np.ndarray], List[np.ndarray], List[float]]:
+    ) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
         if layer_idx not in self._store:
             self._store[layer_idx] = ([], [], [])
         return self._store[layer_idx]
@@ -246,7 +246,7 @@ class SqueezeKVCache:
 
     def get_kv(
         self, layer_idx: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Return *(keys, values)* for *layer_idx*."""
         keys, values, _ = self._get_layer_store(layer_idx)
         if not keys:
@@ -265,7 +265,7 @@ class SqueezeKVCache:
         self._store.clear()
 
     @property
-    def stats(self) -> "SqueezeStats":
+    def stats(self) -> SqueezeStats:
         return self._stats
 
 

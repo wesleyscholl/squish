@@ -142,7 +142,7 @@ class BlockMask:
         return 1.0 - self.density
 
     @classmethod
-    def full(cls, n_q_blocks: int, n_k_blocks: int) -> "BlockMask":
+    def full(cls, n_q_blocks: int, n_k_blocks: int) -> BlockMask:
         return cls(
             n_q_blocks=n_q_blocks,
             n_k_blocks=n_k_blocks,
@@ -176,7 +176,7 @@ class SpargeAttnStats:
             return float("inf")
         return 1.0 / density
 
-    def merge(self, other: "SpargeAttnStats") -> "SpargeAttnStats":
+    def merge(self, other: SpargeAttnStats) -> SpargeAttnStats:
         return SpargeAttnStats(
             total_blocks=self.total_blocks + other.total_blocks,
             stage1_skipped=self.stage1_skipped + other.stage1_skipped,
@@ -188,7 +188,7 @@ def build_sparse_mask(
     q: np.ndarray,
     k: np.ndarray,
     config: SpargeAttnConfig,
-) -> Tuple[BlockMask, int]:
+) -> tuple[BlockMask, int]:
     """Stage 1: build the sparse block mask using compressed K representatives.
 
     Args:
@@ -233,7 +233,7 @@ def sparge_attention_forward(
     k: np.ndarray,
     v: np.ndarray,
     config: SpargeAttnConfig,
-) -> Tuple[np.ndarray, SpargeAttnStats]:
+) -> tuple[np.ndarray, SpargeAttnStats]:
     """Full SpargeAttn forward pass for all heads.
 
     Args:
@@ -325,7 +325,7 @@ class SpargeAttnEngine:
 
     def forward(
         self, q: np.ndarray, k: np.ndarray, v: np.ndarray
-    ) -> Tuple[np.ndarray, SpargeAttnStats]:
+    ) -> tuple[np.ndarray, SpargeAttnStats]:
         output, stats = sparge_attention_forward(q, k, v, self.config)
         self._cumulative_stats = self._cumulative_stats.merge(stats)
         return output, stats

@@ -55,8 +55,10 @@ import sys
 import types
 from unittest.mock import MagicMock, patch
 
-import mlx.core as mx
 import numpy as np
+import pytest
+
+mx = pytest.importorskip("mlx.core", reason="mlx not available (requires Apple Silicon)")
 
 from squish.grammar_engine import GrammarEngine
 from squish.tool_calling import parse_tool_calls_with_grammar

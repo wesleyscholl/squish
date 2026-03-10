@@ -78,9 +78,9 @@ class KSmoother:
     """
 
     config: SageAttentionConfig
-    _scales: Optional[np.ndarray] = field(default=None, repr=False)
+    _scales: np.ndarray | None = field(default=None, repr=False)
 
-    def update_and_smooth(self, k: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def update_and_smooth(self, k: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Update EMA scales and return (smoothed_k, scales_used).
 
         Args:
@@ -103,7 +103,7 @@ class KSmoother:
         self._scales = None
 
 
-def _quantize_to_int8(x: np.ndarray, clamp: float = 127.0) -> Tuple[np.ndarray, np.ndarray]:
+def _quantize_to_int8(x: np.ndarray, clamp: float = 127.0) -> tuple[np.ndarray, np.ndarray]:
     """Symmetric per-block INT8 quantization.
 
     Args:
@@ -128,8 +128,8 @@ def simulate_sage_qk(
     q: np.ndarray,
     k: np.ndarray,
     config: SageAttentionConfig,
-    k_scales: Optional[np.ndarray] = None,
-) -> Tuple[np.ndarray, "SageAttentionStats"]:
+    k_scales: np.ndarray | None = None,
+) -> tuple[np.ndarray, SageAttentionStats]:
     """Simulate the SageAttention INT8 QK^T computation.
 
     Implements the algorithmic core:
@@ -166,7 +166,6 @@ def simulate_sage_qk(
 
         # Block quantization of Q
         q_blocks = _block_split(q_h, config.block_size)  # list of (bs, d)
-        k_blocks = _block_split(k_h, config.block_size)
 
         block_logits = np.zeros((seq_q, seq_k), dtype=np.float32)
 
@@ -245,7 +244,7 @@ class SageAttentionStats:
             self.fallback_rate * 1.0 + self.int_compute_fraction * (1.0 / int_speedup)
         )
 
-    def merge(self, other: "SageAttentionStats") -> "SageAttentionStats":
+    def merge(self, other: SageAttentionStats) -> SageAttentionStats:
         """Return merged stats from two forward passes."""
         return SageAttentionStats(
             total_blocks=self.total_blocks + other.total_blocks,
@@ -273,7 +272,7 @@ class SageAttentionKernel:
 
     def forward(
         self, q: np.ndarray, k: np.ndarray, v: np.ndarray
-    ) -> Tuple[np.ndarray, SageAttentionStats]:
+    ) -> tuple[np.ndarray, SageAttentionStats]:
         """Run SageAttention forward pass.
 
         Args:

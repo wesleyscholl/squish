@@ -30,7 +30,7 @@ cat <<'BANNER'
   ╚══════╝ ╚══▀▀═╝  ╚═════╝ ╚═╝╚══════╝╚═╝  ╚═╝
 
   Local LLM inference · 54× faster cold load · No cloud · No API key
-  Apple Silicon native · OpenAI + Ollama drop-in compatible
+  Apple Silicon native · Linux x86_64/arm64 · OpenAI + Ollama drop-in compatible
 
 BANNER
 
@@ -38,15 +38,18 @@ BANNER
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 
-if [[ "$OS" != "Darwin" ]]; then
-    echo -e "${RED}  ✗  Squish currently requires macOS (Apple Silicon).${RESET}"
-    echo "     Linux/Windows support is planned. Track: github.com/wesleyscholl/squish"
+if [[ "$OS" == "Darwin" ]]; then
+    if [[ "$ARCH" != "arm64" ]]; then
+        echo -e "${YELLOW}  ⚠  x86_64 Mac detected — MLX requires Apple Silicon (M1–M5).${RESET}"
+        echo "     Install will continue but inference will fall back to CPU."
+    fi
+    BACKEND="macos"
+elif [[ "$OS" == "Linux" ]]; then
+    BACKEND="linux"
+    echo -e "${CYAN}  ▸ Linux detected — will install torch/bitsandbytes backend.${RESET}"
+else
+    echo -e "${RED}  ✗  Unsupported OS: ${OS}.  Squish supports macOS and Linux.${RESET}"
     exit 1
-fi
-
-if [[ "$ARCH" != "arm64" ]]; then
-    echo -e "${YELLOW}  ⚠  x86_64 Mac detected — MLX requires Apple Silicon (M1–M5).${RESET}"
-    echo "     Install will continue but inference will fall back to CPU."
 fi
 
 echo -e "${CYAN}  ▸ Platform : ${OS} / ${ARCH}${RESET}"
@@ -83,9 +86,9 @@ echo -e "${CYAN}  ▸ Installing squish …${RESET}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || pwd)"
 if [[ -f "$SCRIPT_DIR/pyproject.toml" ]] && grep -q 'name = "squish"' "$SCRIPT_DIR/pyproject.toml" 2>/dev/null; then
     echo -e "${DIM}    (local checkout detected — installing in editable mode)${RESET}"
-    "$PYTHON" -m pip install --quiet -e "$SCRIPT_DIR"
+    "$PYTHON" -m pip install --quiet -e "$SCRIPT_DIR[${BACKEND}]"
 else
-    "$PYTHON" -m pip install --quiet --upgrade squish
+    "$PYTHON" -m pip install --quiet --upgrade "squish[${BACKEND}]"
 fi
 
 echo -e "${GREEN}  ✓ squish installed${RESET}"

@@ -262,87 +262,16 @@ _active_backend: "_InferenceBackend | None" = None  # set in main() when dispatc
 _scheduler       = None  # BatchScheduler | None — set in main() when --batch-scheduler given
 _QueueFullError  = None  # QueueFullError class — imported alongside BatchScheduler
 
-# ── Terminal colours & ASCII art ──────────────────────────────────────────────
-_TTY: bool = sys.stdout.isatty()
-_TTY_ERR: bool = sys.stderr.isatty()
+# ── Terminal colours & ASCII art ─────────────────────────────────────────────
+from squish._term import LOGO_GRAD as _LOGO_GRAD
+from squish._term import C as _C  # noqa: E402
+from squish._term import gradient as _gradient
+from squish._term import has_truecolor as _has_truecolor  # noqa: E402
 
-# True only when the terminal reliably renders 24-bit (true) colour.
-# Terminals that remap the ANSI palette via a colour profile will corrupt
-# 24-bit codes that get quantised down to palette indices.  We guard against
-# this by requiring an explicit true-colour signal (COLORTERM env-var or a
-# known terminal program) before emitting gradient escape sequences.
-# Respects the NO_COLOR convention (https://no-color.org).
-def _has_truecolor(tty: bool) -> bool:
-    """Return True when the terminal reliably renders 24-bit RGB escape codes."""
-    return (
-        tty
-        and "NO_COLOR" not in os.environ
-        and (
-            os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit")
-            or os.environ.get("TERM_PROGRAM", "") in (
-                "iTerm.app", "WezTerm", "Ghostty", "Hyper", "vscode", "warp",
-                "Apple_Terminal",
-            )
-            or "kitty" in os.environ.get("TERM", "")
-            or "direct" in os.environ.get("TERM", "")
-            or bool(os.environ.get("FORCE_COLOR", ""))
-        )
-    )
-
-_TRUE_COLOR:     bool = _has_truecolor(_TTY)
-_TRUE_COLOR_ERR: bool = _has_truecolor(_TTY_ERR)
-
-
-class _C:
-    """ANSI 24-bit colour constants.  Empty strings on non-true-colour TTYs."""
-    _k = lambda s: s if _TRUE_COLOR else ""  # noqa: E731
-    DP  = _k("\033[38;2;88;28;135m")    # deep purple   #581C87
-    P   = _k("\033[38;2;124;58;237m")   # purple        #7C3AED
-    V   = _k("\033[38;2;139;92;246m")   # violet        #8B5CF6
-    L   = _k("\033[38;2;167;139;250m")  # lilac         #A78BFA
-    MG  = _k("\033[38;2;192;132;252m")  # med-purple    #C084FC
-    PK  = _k("\033[38;2;236;72;153m")   # pink          #EC4899
-    LPK = _k("\033[38;2;249;168;212m")  # light pink    #F9A8D4
-    T   = _k("\033[38;2;34;211;238m")   # teal          #22D3EE
-    LT  = _k("\033[38;2;165;243;252m")  # light teal    #A5F3FC
-    G   = _k("\033[38;2;52;211;153m")   # mint green    #34D399
-    W   = _k("\033[38;2;248;250;252m")  # near-white    #F8FAFC
-    SIL = _k("\033[38;2;180;185;210m")  # silver        #B4B9D2
-    DIM = _k("\033[38;2;100;116;139m")  # dim slate     #64748B
-    B   = _k("\033[1m")                 # bold
-    R   = _k("\033[0m")                 # reset all
-
-
-def _gradient(text: str, stops: list) -> str:
-    """Interpolate a left-to-right RGB gradient across *text* (true-colour TTY only)."""
-    if not _TRUE_COLOR or not text:
-        return text
-    n = len(text)
-    k = len(stops) - 1
-    out: list[str] = []
-    for i, ch in enumerate(text):
-        t = i / max(n - 1, 1)
-        seg = min(int(t * k), k - 1)
-        frac = t * k - seg
-        r1, g1, b1 = stops[seg]
-        r2, g2, b2 = stops[seg + 1]
-        r = int(r1 + (r2 - r1) * frac)
-        g = int(g1 + (g2 - g1) * frac)
-        b = int(b1 + (b2 - b1) * frac)
-        out.append(f"\033[38;2;{r};{g};{b}m{ch}")
-    out.append("\033[0m")
-    return "".join(out)
-
-
-# Purple → pink → teal gradient used for the big logo and accent lines
-_LOGO_GRAD = [
-    ( 88,  28, 135),   # deep purple
-    (124,  58, 237),   # purple
-    (139,  92, 246),   # violet
-    (192, 100, 220),   # lavender-pink
-    (236,  72, 153),   # pink
-    ( 34, 211, 238),   # teal
-]
+_TTY:           bool = sys.stdout.isatty()
+_TTY_ERR:       bool = sys.stderr.isatty()
+_TRUE_COLOR:     bool = _has_truecolor(sys.stdout.fileno() if hasattr(sys.stdout, "fileno") else 1)
+_TRUE_COLOR_ERR: bool = _has_truecolor(sys.stderr.fileno() if hasattr(sys.stderr, "fileno") else 2)
 
 
 def _cprint(color: str, label: str, value: str = "", end: str = "\n") -> None:
@@ -2895,7 +2824,7 @@ Examples:
 
     if getattr(args, "ada_serve", False):
         try:
-            from squish.ada_serve import AdaServeConfig, AdaServeScheduler, BUILT_IN_SLOS
+            from squish.ada_serve import BUILT_IN_SLOS, AdaServeConfig, AdaServeScheduler
             _slo_name = getattr(args, "ada_serve_slo", "general")
             _ada_slo = BUILT_IN_SLOS.get(_slo_name, BUILT_IN_SLOS["general"])
             _ada_cfg = AdaServeConfig()
@@ -2919,7 +2848,7 @@ Examples:
 
     if getattr(args, "kv_share", False):
         try:
-            from squish.kvsharer import KVSharerConfig, KVShareMap
+            from squish.kvsharer import KVShareMap, KVSharerConfig
             _kvshr_cfg = KVSharerConfig(share_every_n_layers=getattr(args, "kv_share_every", 2))
             _kvsharer_map = KVShareMap(_kvshr_cfg)
             _info("kv-share", f"every={_kvshr_cfg.share_every_n_layers} layers")
@@ -2936,7 +2865,7 @@ Examples:
 
     if getattr(args, "paris_kv", False):
         try:
-            from squish.paris_kv import ParisKVConfig, ParisKVCodebook
+            from squish.paris_kv import ParisKVCodebook, ParisKVConfig
             _paris_cfg = ParisKVConfig(n_centroids=getattr(args, "paris_kv_centroids", 64))
             _paris_kv_codebook = ParisKVCodebook(_paris_cfg)
             _info("paris-kv", f"centroids={_paris_cfg.n_centroids}")
@@ -2963,7 +2892,7 @@ Examples:
 
     if getattr(args, "small_kv", False):
         try:
-            from squish.smallkv import SmallKVConfig, SmallKVCache
+            from squish.smallkv import SmallKVCache, SmallKVConfig
             _smallkv_cfg = SmallKVConfig()
             _smallkv_cache = SmallKVCache(_smallkv_cfg)
             _info("small-kv", f"budget={_smallkv_cfg.kv_budget_fraction}  recall_k={_smallkv_cfg.recall_top_k}")
@@ -3016,7 +2945,7 @@ Examples:
 
     if getattr(args, "squeeze_attention", False):
         try:
-            from squish.squeeze_attention import SqueezeConfig, SqueezeKVCache, LayerKVBudget
+            from squish.squeeze_attention import LayerKVBudget, SqueezeConfig, SqueezeKVCache
             _sq_cfg = SqueezeConfig()
             _sq_budgets = [
                 LayerKVBudget(layer_idx=i, token_budget=_sq_cfg.total_kv_budget // _sq_cfg.n_layers)
@@ -3057,7 +2986,7 @@ Examples:
 
     if getattr(args, "robust_scheduler", False):
         try:
-            from squish.robust_scheduler import RobustSchedulerConfig, AMaxScheduler
+            from squish.robust_scheduler import AMaxScheduler, RobustSchedulerConfig
             _robust_sched = AMaxScheduler(RobustSchedulerConfig())
             _info("robust-scheduler", f"A-max scheduling enabled  (max_batch_tokens={_robust_sched.config.max_batch_tokens})")
         except Exception as _e:
@@ -3122,9 +3051,9 @@ Examples:
         try:
             from squish.diffusion_draft import DiffusionDraftModel
             _diffusion_draft_model = DiffusionDraftModel(
-                model_path=getattr(args, "diffusion_draft"),
+                model_path=args.diffusion_draft,
             )
-            _info("diffusion-draft", f"diffusion speculative model: {getattr(args, 'diffusion_draft')}")
+            _info("diffusion-draft", f"diffusion speculative model: {args.diffusion_draft}")
         except Exception as _e:
             _warn(f"[diffusion-draft] Skipped: {_e}")
 
@@ -3178,8 +3107,8 @@ Examples:
         try:
             from squish.lora_manager import LoRAManager
             _lora_mgr = LoRAManager()
-            _lora_mgr.load(getattr(args, "lora_adapter"))
-            _info("lora-adapter", f"{getattr(args, 'lora_adapter')}")
+            _lora_mgr.load(args.lora_adapter)
+            _info("lora-adapter", f"{args.lora_adapter}")
         except Exception as _e:
             _warn(f"[lora-adapter] Skipped: {_e}")
 

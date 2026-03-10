@@ -128,7 +128,12 @@ def _rss_mb_throttled(interval: float = 1.0) -> float:
 
 
 # squish.quantizer is the self-contained replacement for vectro/python/interface.py
-import mlx.core as mx  # noqa: E402
+try:
+    import mlx.core as mx  # noqa: E402
+    _MLX_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    mx = None  # type: ignore[assignment]
+    _MLX_AVAILABLE = False
 from transformers import AutoTokenizer  # noqa: E402
 
 from squish.quantizer import QuantizationResult, reconstruct_embeddings  # noqa: E402
@@ -146,6 +151,8 @@ from squish.quantizer import QuantizationResult, reconstruct_embeddings  # noqa:
 # limit before raising an error, preventing spurious OOM on bursty batches.
 def _configure_metal_memory() -> None:  # pragma: no cover
     """Raise the MLX Metal allocator ceiling to SQUISH_METAL_FRACTION of total RAM."""
+    if not _MLX_AVAILABLE:
+        return
     try:
         fraction = float(os.environ.get("SQUISH_METAL_FRACTION", "0.90"))
         if not (0.5 <= fraction <= 0.99):

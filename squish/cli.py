@@ -96,52 +96,7 @@ except Exception:  # pragma: no cover
 
 
 # ── Terminal colours ─────────────────────────────────────────────────────────
-# 24-bit ANSI RGB codes bypass the terminal's colour theme palette entirely —
-# theme profiles only remap the 16 named ANSI indices, not direct RGB.  So the
-# squish brand colours always render correctly on any true-colour terminal,
-# regardless of theme.  On terminals without true-colour support we fall back
-# to no colour at all — clean and compatible.  Respects NO_COLOR convention.
-_CLI_TTY: bool = sys.stdout.isatty()
-
-
-def _has_truecolor_cli() -> bool:
-    return (
-        _CLI_TTY
-        and "NO_COLOR" not in os.environ
-        and (
-            os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit")
-            or os.environ.get("TERM_PROGRAM", "") in (
-                "iTerm.app", "WezTerm", "Ghostty", "Hyper", "vscode", "warp",
-                "Apple_Terminal",
-            )
-            or "kitty" in os.environ.get("TERM", "")
-            or "direct" in os.environ.get("TERM", "")
-            or bool(os.environ.get("FORCE_COLOR", ""))
-        )
-    )
-
-
-_CLI_TRUE_COLOR: bool = _has_truecolor_cli()
-
-
-class _C:  # noqa: N801
-    """ANSI 24-bit colour constants.  Empty strings on non-true-colour TTYs."""
-    _k = lambda s: s if _CLI_TRUE_COLOR else ""  # noqa: E731
-    DP  = _k("\033[38;2;88;28;135m")   # deep purple  #581C87
-    P   = _k("\033[38;2;124;58;237m")  # purple       #7C3AED
-    V   = _k("\033[38;2;139;92;246m")  # violet       #8B5CF6
-    L   = _k("\033[38;2;167;139;250m") # lilac        #A78BFA
-    MG  = _k("\033[38;2;192;132;252m") # med-purple   #C084FC
-    PK  = _k("\033[38;2;236;72;153m")  # pink         #EC4899
-    LPK = _k("\033[38;2;249;168;212m") # light pink   #F9A8D4
-    T   = _k("\033[38;2;34;211;238m")  # teal         #22D3EE
-    G   = _k("\033[38;2;52;211;153m")  # mint green   #34D399
-    W   = _k("\033[38;2;248;250;252m") # near-white   #F8FAFC
-    SIL = _k("\033[38;2;180;185;210m") # silver       #B4B9D2
-    DIM = _k("\033[38;2;100;116;139m") # dim slate    #64748B
-    B   = _k("\033[1m")                # bold
-    R   = _k("\033[0m")                # reset all
-
+from squish._term import C as _C  # noqa: E402
 
 # ── Model registry ───────────────────────────────────────────────────────────
 

@@ -16,7 +16,6 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-
 # INT4 clamp constant (symmetric: -7 .. +7 to avoid min-int issues)
 _INT4_CLAMP = 7.0
 _INT8_CLAMP = 127.0
@@ -137,8 +136,8 @@ def simulate_sage2_attention(
     k: np.ndarray,
     v: np.ndarray,
     config: SageAttention2Config,
-    k_scales: Optional[np.ndarray] = None,
-) -> Tuple[np.ndarray, "SageAttention2Stats"]:
+    k_scales: np.ndarray | None = None,
+) -> tuple[np.ndarray, SageAttention2Stats]:
     """Full SageAttention2 forward pass simulation.
 
     Args:
@@ -253,7 +252,7 @@ class SageAttention2Stats:
             self.int4_rate / 3.1 + self.int8_rate / 2.1
         )
 
-    def merge(self, other: "SageAttention2Stats") -> "SageAttention2Stats":
+    def merge(self, other: SageAttention2Stats) -> SageAttention2Stats:
         return SageAttention2Stats(
             total_blocks=self.total_blocks + other.total_blocks,
             int4_blocks=self.int4_blocks + other.int4_blocks,
@@ -267,7 +266,7 @@ class SageAttention2Kernel:
 
     def __init__(self, config: SageAttention2Config) -> None:
         self.config = config
-        self._k_scales: Optional[np.ndarray] = None
+        self._k_scales: np.ndarray | None = None
         self._cumulative_stats = SageAttention2Stats(used_fp8_pv=config.use_fp8_pv)
 
     def _update_k_scales(self, k: np.ndarray) -> np.ndarray:
@@ -283,7 +282,7 @@ class SageAttention2Kernel:
 
     def forward(
         self, q: np.ndarray, k: np.ndarray, v: np.ndarray
-    ) -> Tuple[np.ndarray, SageAttention2Stats]:
+    ) -> tuple[np.ndarray, SageAttention2Stats]:
         k_scales = self._update_k_scales(k)
         output, stats = simulate_sage2_attention(q, k, v, self.config, k_scales)
         self._cumulative_stats = self._cumulative_stats.merge(stats)

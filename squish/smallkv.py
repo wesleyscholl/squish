@@ -79,9 +79,9 @@ class SaliencyTracker:
 
     config: SmallKVConfig
     layer_idx: int
-    _scores: Optional[np.ndarray] = field(default=None, repr=False)
-    _prev_scores: Optional[np.ndarray] = field(default=None, repr=False)
-    _evicted: Set[int] = field(default_factory=set)
+    _scores: np.ndarray | None = field(default=None, repr=False)
+    _prev_scores: np.ndarray | None = field(default=None, repr=False)
+    _evicted: set[int] = field(default_factory=set)
 
     def update_scores(self, small_model_attn: np.ndarray) -> None:
         """Update EMA scores from small model attention on the current step.
@@ -102,7 +102,7 @@ class SaliencyTracker:
             a = self.config.score_ema_alpha
             self._scores = (1 - a) * self._scores + a * scores
 
-    def detect_saliency_shifts(self) -> List[int]:
+    def detect_saliency_shifts(self) -> list[int]:
         """Return token indices that have experienced significant saliency increase.
 
         Returns:
@@ -122,11 +122,11 @@ class SaliencyTracker:
         shifts.sort(key=lambda i: -self._scores[i])
         return shifts[: self.config.recall_top_k]
 
-    def mark_evicted(self, token_indices: List[int]) -> None:
+    def mark_evicted(self, token_indices: list[int]) -> None:
         """Record newly evicted tokens."""
         self._evicted.update(token_indices)
 
-    def mark_recalled(self, token_indices: List[int]) -> None:
+    def mark_recalled(self, token_indices: list[int]) -> None:
         """Remove recalled tokens from evicted set."""
         for i in token_indices:
             self._evicted.discard(i)
@@ -136,7 +136,7 @@ class SaliencyTracker:
         return len(self._evicted)
 
     @property
-    def current_scores(self) -> Optional[np.ndarray]:
+    def current_scores(self) -> np.ndarray | None:
         return self._scores
 
     def reset(self) -> None:
@@ -168,10 +168,10 @@ class SmallKVCache:
     def __init__(self, config: SmallKVConfig) -> None:
         self.config = config
         # layer_idx -> {token_idx: (k_vec, v_vec) or None (v-only)}
-        self._kv_store: Dict[int, Dict[int, Optional[Tuple[np.ndarray, np.ndarray]]]] = {}
+        self._kv_store: dict[int, dict[int, tuple[np.ndarray, np.ndarray] | None]] = {}
         # layer_idx -> {token_idx: MarginalVCache}
-        self._v_only_store: Dict[int, Dict[int, MarginalVCache]] = {}
-        self._trackers: Dict[int, SaliencyTracker] = {
+        self._v_only_store: dict[int, dict[int, MarginalVCache]] = {}
+        self._trackers: dict[int, SaliencyTracker] = {
             l: SaliencyTracker(config=config, layer_idx=l)
             for l in range(config.n_layers)
         }
@@ -231,7 +231,7 @@ class SmallKVCache:
 
     def check_and_recall(
         self, layer_idx: int, small_model_attn: np.ndarray
-    ) -> List[int]:
+    ) -> list[int]:
         """Update saliency tracker and recall shifted tokens.
 
         Args:
@@ -253,7 +253,7 @@ class SmallKVCache:
 
     def get_kv(
         self, layer_idx: int, token_idx: int
-    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    ) -> tuple[np.ndarray | None, np.ndarray | None]:
         """Retrieve (K, V) for a token.  Returns (None, None) if evicted."""
         kv = self._kv_store.get(layer_idx, {}).get(token_idx)
         if kv is not None:
@@ -264,7 +264,7 @@ class SmallKVCache:
             return None, vc.v_vector
         return None, None
 
-    def reset(self, layer_idx: Optional[int] = None) -> None:
+    def reset(self, layer_idx: int | None = None) -> None:
         if layer_idx is not None:
             self._kv_store.pop(layer_idx, None)
             self._v_only_store.pop(layer_idx, None)
@@ -277,7 +277,7 @@ class SmallKVCache:
                 t.reset()
 
     @property
-    def stats(self) -> "SmallKVStats":
+    def stats(self) -> SmallKVStats:
         return self._stats
 
 

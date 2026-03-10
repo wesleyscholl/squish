@@ -20,7 +20,6 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -76,7 +75,7 @@ class KVSharerCalibrator:
 
     def __post_init__(self) -> None:
         # layer_idx -> list of KV mean vectors (one per calibration batch)
-        self._kv_means: Dict[int, List[np.ndarray]] = {}
+        self._kv_means: dict[int, list[np.ndarray]] = {}
 
     # ------------------------------------------------------------------
     def record_layer_kv(
@@ -123,7 +122,7 @@ class KVSharerCalibrator:
         return float(np.dot(a, b) / denom)
 
     # ------------------------------------------------------------------
-    def compute_share_map(self) -> "KVShareMap":
+    def compute_share_map(self) -> KVShareMap:
         """Run the calibration algorithm and return a :class:`KVShareMap`.
 
         Algorithm:
@@ -139,12 +138,12 @@ class KVSharerCalibrator:
         n = cfg.n_layers
         max_recipients = max(1, int(n * cfg.max_share_fraction))
 
-        centroids: Dict[int, np.ndarray] = {
+        centroids: dict[int, np.ndarray] = {
             i: self._layer_centroid(i) for i in range(n)
         }
 
         # All pairs (donor != recipient)
-        pairs: List[Tuple[float, int, int]] = []
+        pairs: list[tuple[float, int, int]] = []
         for donor in range(n):
             for recipient in range(n):
                 if donor == recipient:
@@ -157,8 +156,8 @@ class KVSharerCalibrator:
         # Sort most-dissimilar first or most-similar first
         pairs.sort(key=lambda x: x[0], reverse=cfg.prefer_dissimilar)
 
-        share_map: Dict[int, int] = {}  # recipient -> donor
-        donor_recipients: Dict[int, List[int]] = {}
+        share_map: dict[int, int] = {}  # recipient -> donor
+        donor_recipients: dict[int, list[int]] = {}
         assigned_recipients: set = set()
 
         for dist, donor, recipient in pairs:
@@ -199,10 +198,10 @@ class KVShareMap:
     should reuse the KV cache of the donor layer instead of computing its own.
     """
 
-    share_map: Dict[int, int]
+    share_map: dict[int, int]
     """Maps recipient layer index → donor layer index."""
 
-    donor_recipients: Dict[int, List[int]]
+    donor_recipients: dict[int, list[int]]
     """Maps donor layer index → list of layers that borrow from it."""
 
     n_layers: int
@@ -220,12 +219,12 @@ class KVShareMap:
         return self.n_shared / max(1, self.n_layers)
 
     @property
-    def donor_layers(self) -> List[int]:
+    def donor_layers(self) -> list[int]:
         """Layers that compute (and lend) their own KV cache."""
         return sorted(self.donor_recipients.keys())
 
     @property
-    def recipient_layers(self) -> List[int]:
+    def recipient_layers(self) -> list[int]:
         """Layers whose KV computation is eliminated."""
         return sorted(self.share_map.keys())
 
@@ -268,7 +267,7 @@ class KVLayerCache:
 
     def __init__(self, share_map: KVShareMap) -> None:
         self._share_map = share_map
-        self._store: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
+        self._store: dict[int, tuple[np.ndarray, np.ndarray]] = {}
         self._stats = KVSharerStats()
 
     # ------------------------------------------------------------------
@@ -282,7 +281,7 @@ class KVLayerCache:
 
     def retrieve(
         self, layer_idx: int
-    ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    ) -> tuple[np.ndarray, np.ndarray] | None:
         """Retrieve KV for *layer_idx* (redirected to donor if shared)."""
         effective = self._share_map.donor_for(layer_idx)
         result = self._store.get(effective)
@@ -297,7 +296,7 @@ class KVLayerCache:
         self._store.clear()
 
     @property
-    def stats(self) -> "KVSharerStats":
+    def stats(self) -> KVSharerStats:
         return self._stats
 
     @property

@@ -25,8 +25,9 @@ from __future__ import annotations
 
 import enum
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 class StepVerdict(enum.Enum):
@@ -181,16 +182,16 @@ class SpecReasonOrchestrator:
         config: SpecReasonConfig,
         draft_fn: Callable[[str], ReasoningStep],
         target_fn: Callable[[str], ReasoningStep],
-        scorer_fn: Optional[SemanticScorerFn] = None,
+        scorer_fn: SemanticScorerFn | None = None,
     ) -> None:
         self.config = config
         self._draft_fn = draft_fn
         self._target_fn = target_fn
         self._scorer_fn = scorer_fn or _cosine_sim_scorer
         self._stats = SpecReasonStats()
-        self._accepted_steps: List[ReasoningStep] = []
+        self._accepted_steps: list[ReasoningStep] = []
 
-    def generate_step(self, context: str) -> Tuple[ReasoningStep, StepVerdict]:
+    def generate_step(self, context: str) -> tuple[ReasoningStep, StepVerdict]:
         """Generate the next reasoning step using draft-then-verify.
 
         Args:
@@ -248,7 +249,7 @@ class SpecReasonOrchestrator:
 
     def generate_chain(
         self, initial_context: str, max_steps: int = 16
-    ) -> List[ReasoningStep]:
+    ) -> list[ReasoningStep]:
         """Generate a full reasoning chain up to max_steps.
 
         Args:
@@ -271,7 +272,7 @@ class SpecReasonOrchestrator:
         return self._stats
 
     @property
-    def accepted_steps(self) -> List[ReasoningStep]:
+    def accepted_steps(self) -> list[ReasoningStep]:
         return list(self._accepted_steps)
 
     def reset(self) -> None:

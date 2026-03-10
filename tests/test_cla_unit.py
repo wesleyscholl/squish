@@ -1,13 +1,13 @@
 """Unit tests for squish.cla — Cross-Layer Attention architecture."""
 
 import pytest
+
 from squish.cla import (
     CLAConfig,
     CLALayerSpec,
     CLASchedule,
     CLAStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # TestCLAConfig
@@ -32,7 +32,6 @@ class TestCLAConfig:
             CLAConfig(sharing_factor=2, generator_stride=2)
 
     def test_n_cross_attn_layers_property(self):
-        cfg = CLAConfig(n_layers=16, sharing_factor=2)
         # n_self_attn_layers is not a property of CLAConfig, test schedule property
         cfg2 = CLAConfig(n_layers=16, sharing_factor=2)
         schedule = CLASchedule.from_config(cfg2)

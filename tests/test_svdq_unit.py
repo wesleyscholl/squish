@@ -1,15 +1,15 @@
 """Unit tests for squish.svdq — SVD per-head key cache mixed precision."""
 
-import pytest
 import numpy as np
+import pytest
+
 from squish.svdq import (
-    SVDqConfig,
     HeadSVDProfile,
     SVDqCalibrator,
+    SVDqConfig,
     SVDqPrecisionMap,
     SVDqStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

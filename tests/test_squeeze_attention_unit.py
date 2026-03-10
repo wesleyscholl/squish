@@ -1,15 +1,15 @@
 """Unit tests for squish.squeeze_attention — Joint 2D KV budget management."""
 
-import pytest
 import numpy as np
+import pytest
+
 from squish.squeeze_attention import (
-    SqueezeConfig,
-    LayerKVBudget,
     BudgetAllocator,
+    LayerKVBudget,
+    SqueezeConfig,
     SqueezeKVCache,
     SqueezeStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -32,14 +32,19 @@ squish_fp16/
 
 # Eval outputs (all root-level and nested)
 eval_output*/
-results/
+dev/results/
 nohup.out
 /tmp/squish_*.log
 *.log
 
+# Generated coverage / test artifacts
+coverage.json
+.coverage
+htmlcov/
+
 # Paper / research tooling artifacts
 *.cast
-demos/squish_demo.cast
+dev/demos/squish_demo.cast
 
 # Paper drafts and unpublished writing in docs/final/
 docs/final/

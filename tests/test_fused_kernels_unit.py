@@ -5,9 +5,9 @@ import importlib
 import math
 import sys
 
-import mlx.core as mx
 import pytest
 
+mx = pytest.importorskip("mlx.core", reason="mlx not available (requires Apple Silicon)")
 import squish.fused_kernels as fk
 from squish.fused_kernels import FusedAttention, FusedFFNGate
 

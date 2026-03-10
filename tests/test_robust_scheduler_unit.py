@@ -1,15 +1,15 @@
 """Unit tests for squish.robust_scheduler — Interval-based robust scheduling."""
 
 import pytest
+
 from squish.robust_scheduler import (
-    RobustSchedulerConfig,
+    ABalancedScheduler,
+    AMaxScheduler,
     LengthInterval,
     Request,
-    AMaxScheduler,
-    ABalancedScheduler,
+    RobustSchedulerConfig,
     RobustSchedulerStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -24,7 +24,6 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -36,7 +35,7 @@ class SVDqConfig:
     n_layers: int = 32
     n_heads: int = 32
     head_dim: int = 128
-    candidate_bits: Tuple[int, ...] = (2, 4, 8)
+    candidate_bits: tuple[int, ...] = (2, 4, 8)
     target_avg_bits: float = 4.0
     energy_threshold: float = 0.95
     """Fraction of total singular value energy to retain.  A head whose top-k
@@ -114,7 +113,7 @@ class SVDqCalibrator:
     def __init__(self, config: SVDqConfig) -> None:
         self.config = config
         # (layer, head) -> list of key matrices
-        self._key_samples: Dict[Tuple[int, int], List[np.ndarray]] = {}
+        self._key_samples: dict[tuple[int, int], list[np.ndarray]] = {}
 
     def record_head_keys(
         self, layer_idx: int, head_idx: int, key_matrix: np.ndarray
@@ -153,10 +152,10 @@ class SVDqCalibrator:
             singular_values=svs,
         )
 
-    def search(self) -> "SVDqPrecisionMap":
+    def search(self) -> SVDqPrecisionMap:
         """Run SVD on all heads and assign per-head bit-widths and ranks."""
         cfg = self.config
-        profiles: Dict[Tuple[int, int], HeadSVDProfile] = {}
+        profiles: dict[tuple[int, int], HeadSVDProfile] = {}
         for li in range(cfg.n_layers):
             for hi in range(cfg.n_heads):
                 profiles[(li, hi)] = self._profile_head(li, hi)
@@ -171,8 +170,8 @@ class SVDqCalibrator:
             key=lambda k: profiles[k].compressibility(cfg.energy_threshold),
         )
 
-        bits_map: Dict[Tuple[int, int], int] = {}
-        rank_map: Dict[Tuple[int, int], int] = {}
+        bits_map: dict[tuple[int, int], int] = {}
+        rank_map: dict[tuple[int, int], int] = {}
         bits_used = 0.0
 
         for rank_pos, (li, hi) in enumerate(head_order):
@@ -215,13 +214,13 @@ class SVDqCalibrator:
 class SVDqPrecisionMap:
     """Per-head SVD rank and bit-width assignments."""
 
-    bits_map: Dict[Tuple[int, int], int]
+    bits_map: dict[tuple[int, int], int]
     """(layer_idx, head_idx) → key-cache bits."""
 
-    rank_map: Dict[Tuple[int, int], int]
+    rank_map: dict[tuple[int, int], int]
     """(layer_idx, head_idx) → effective SVD rank."""
 
-    profiles: Dict[Tuple[int, int], HeadSVDProfile]
+    profiles: dict[tuple[int, int], HeadSVDProfile]
     config: SVDqConfig
 
     def bits_for_head(self, layer_idx: int, head_idx: int) -> int:

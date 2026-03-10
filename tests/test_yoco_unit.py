@@ -1,15 +1,15 @@
 """Unit tests for squish.yoco — You Only Cache Once."""
 
-import pytest
 import numpy as np
+import pytest
+
 from squish.yoco import (
     YOCOConfig,
+    YOCOKVStore,
     YOCOLayerSpec,
     YOCOSchedule,
-    YOCOKVStore,
     YOCOStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # TestYOCOConfig

@@ -74,6 +74,7 @@ _server_src = SERVER_PY.read_text()
 
 # Pre-parse __all__
 import squish as _squish_pkg
+
 _ALL = set(_squish_pkg.__all__)
 
 
@@ -178,8 +179,14 @@ class TestIntegrationSmoke:
     """Instantiate the most important cross-wave objects with default config."""
 
     def test_ada_serve_scheduler_smoke(self):
-        from squish.ada_serve import AdaServeConfig, AdaServeScheduler, AdaServeRequest, BUILT_IN_SLOS
         import time
+
+        from squish.ada_serve import (
+            BUILT_IN_SLOS,
+            AdaServeConfig,
+            AdaServeRequest,
+            AdaServeScheduler,
+        )
         sched = AdaServeScheduler(AdaServeConfig())
         sched.register_slo("general", BUILT_IN_SLOS["general"])
         req = AdaServeRequest(request_id="req-1", slo=BUILT_IN_SLOS["general"], arrival_time_ms=time.time() * 1000)
@@ -189,6 +196,7 @@ class TestIntegrationSmoke:
 
     def test_conf_spec_verifier_smoke(self):
         import numpy as np
+
         from squish.conf_spec import ConfSpecConfig, ConfSpecVerifier
         verifier = ConfSpecVerifier(ConfSpecConfig())
         logits = np.zeros(32000, dtype=np.float32)
@@ -198,6 +206,7 @@ class TestIntegrationSmoke:
 
     def test_prompt_lookup_decoder_smoke(self):
         import numpy as np
+
         from squish.prompt_lookup import PromptLookupConfig, PromptLookupDecoder
         prompt_ids = [1, 2, 3, 4, 5, 1, 2]
         def _fwd(ids):
@@ -216,7 +225,8 @@ class TestIntegrationSmoke:
 
     def test_smallkv_smoke(self):
         import numpy as np
-        from squish.smallkv import SmallKVConfig, SmallKVCache
+
+        from squish.smallkv import SmallKVCache, SmallKVConfig
         cache = SmallKVCache(SmallKVConfig(n_layers=4))
         k = np.random.randn(4, 64).astype(np.float32)
         v = np.random.randn(4, 64).astype(np.float32)
@@ -227,6 +237,7 @@ class TestIntegrationSmoke:
 
     def test_diffkv_policy_mgr_smoke(self):
         import numpy as np
+
         from squish.diffkv import DiffKVConfig, DiffKVPolicyManager
         mgr = DiffKVPolicyManager(DiffKVConfig(n_layers=4, n_heads=4))
         w = np.abs(np.random.randn(4, 8)).astype(np.float32)
@@ -237,6 +248,7 @@ class TestIntegrationSmoke:
 
     def test_streaming_sink_smoke(self):
         import numpy as np
+
         from squish.streaming_sink import SinkConfig, SinkKVCache
         cache = SinkKVCache(SinkConfig(num_sinks=4, window_size=32, head_dim=32))
         k = np.random.randn(32).astype(np.float32)
@@ -246,7 +258,9 @@ class TestIntegrationSmoke:
 
     def test_lookahead_engine_smoke(self):
         from squish.lookahead_reasoning import (
-            LookaheadConfig, LookaheadReasoningEngine, LookaheadStep,
+            LookaheadConfig,
+            LookaheadReasoningEngine,
+            LookaheadStep,
         )
         def _draft(ctx):
             return LookaheadStep(text="step", source="draft", confidence=0.8, tokens_used=5)
@@ -258,7 +272,7 @@ class TestIntegrationSmoke:
         assert batch.n_steps == 2
 
     def test_spec_reason_smoke(self):
-        from squish.spec_reason import SpecReasonConfig, SpecReasonOrchestrator, ReasoningStep
+        from squish.spec_reason import ReasoningStep, SpecReasonConfig, SpecReasonOrchestrator
         def _draft(ctx):
             return ReasoningStep(text="draft answer", source="draft",
                                  confidence=0.9, tokens_used=10, step_idx=0)
@@ -271,6 +285,7 @@ class TestIntegrationSmoke:
 
     def test_sage_attention_smoke(self):
         import numpy as np
+
         from squish.sage_attention import SageAttentionConfig, SageAttentionKernel
         cfg = SageAttentionConfig(head_dim=32, n_heads=2, block_size=8)
         kern = SageAttentionKernel(cfg)
@@ -282,6 +297,7 @@ class TestIntegrationSmoke:
 
     def test_sparge_attn_smoke(self):
         import numpy as np
+
         from squish.sparge_attn import SpargeAttnConfig, SpargeAttnEngine
         cfg = SpargeAttnConfig(head_dim=32, n_heads=2, block_size=8)
         engine = SpargeAttnEngine(cfg)
@@ -299,7 +315,6 @@ class TestIntegrationSmoke:
 def _report():
     import squish as sq
     all_exports = set(sq.__all__)
-    server_src = SERVER_PY.read_text()
 
     tiers = {"A": [], "B": [], "C": []}
     seen = set()

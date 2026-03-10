@@ -23,7 +23,7 @@
 
 ## Demo
 
-![](demos/squish-demo.gif)
+![](dev/demos/squish-demo.gif)
 
 ## Install
 
@@ -113,12 +113,12 @@ Squish cached = after one-time 19s conversion; all subsequent runs.
 > **54× faster cold load.  15× less RAM.  Statistically identical outputs.**
 
 <p align="center">
-  <img src="figures/fig1_load_times.png" alt="Load time comparison: cold mlx_lm vs reference vs Squish cached" width="720"/>
+  <img src="dev/figures/fig1_load_times.png" alt="Load time comparison: cold mlx_lm vs reference vs Squish cached" width="720"/>
   <br/><em>Figure 1 — Cold-start load time comparison across three configurations</em>
 </p>
 
 <p align="center">
-  <img src="figures/fig2_ram_comparison.png" alt="RAM usage comparison" width="720"/>
+  <img src="dev/figures/fig2_ram_comparison.png" alt="RAM usage comparison" width="720"/>
   <br/><em>Figure 2 — Peak RAM during model load</em>
 </p>
 
@@ -162,7 +162,7 @@ No CPU heap allocation.  No dtype conversion.  Direct Metal virtual-address mapp
 | **2** | **`squish_weights.safetensors` (bf16 MLX)** | **0.33–0.53s** |
 
 <p align="center">
-  <img src="figures/fig4_architecture.png" alt="Squish three-tier cache architecture" width="720"/>
+  <img src="dev/figures/fig4_architecture.png" alt="Squish three-tier cache architecture" width="720"/>
   <br/><em>Figure 4 — Squish three-tier weight cache architecture</em>
 </p>
 
@@ -186,7 +186,7 @@ Winogrande improved by 1.5% — INT8 quantisation noise is uncorrelated with tas
 Full reproducibility commands and multi-seed results are in [docs/RESULTS.md](docs/RESULTS.md).
 
 <p align="center">
-  <img src="figures/fig3_accuracy_multi_model.png" alt="Benchmark accuracy across multiple models" width="720"/>
+  <img src="dev/figures/fig3_accuracy_multi_model.png" alt="Benchmark accuracy across multiple models" width="720"/>
   <br/><em>Figure 3 — Accuracy delta vs fp16 baseline across benchmarks and models</em>
 </p>
 
@@ -358,14 +358,14 @@ if response.choices[0].finish_reason == "tool_calls":
 
 ## Integrations
 
-Ready-made config templates live in `configs/`.  Start Squish once, then point
+Ready-made config templates live in `dev/configs/`.  Start Squish once, then point
 any of these tools at it — **no cloud API key needed for any of them**.
 
 ### Continue.dev (VS Code / JetBrains AI assistant)
 
 ```bash
 # Copy config to Continue.dev's config directory
-cp configs/continue.json ~/.continue/config.json
+cp dev/configs/continue.json ~/.continue/config.json
 squish run 7b
 # Re-open VS Code → Continue sidebar → Squish model appears automatically
 ```
@@ -377,10 +377,10 @@ pip install aider-chat
 squish run 7b
 
 # Use the bundled config
-aider --config configs/aider.yml
+aider --config dev/configs/aider.yml
 
 # Or install globally
-cp configs/aider.yml ~/.aider.conf.yml
+cp dev/configs/aider.yml ~/.aider.conf.yml
 aider   # picks up config automatically
 ```
 
@@ -390,7 +390,7 @@ aider   # picks up config automatically
 pip install litellm
 squish run 7b
 
-litellm --config configs/litellm.yaml --port 4000
+litellm --config dev/configs/litellm.yaml --port 4000
 # → all OpenAI clients pointing at localhost:4000 now use Squish
 ```
 
@@ -453,16 +453,16 @@ squish bench --markdown --save bench_results.md
 | `squish/layerwise_loader.py` | Layer-wise weight streaming loader |
 | `squish/split_loader.py` | Sharded model loader (multi-file checkpoints) |
 | `compressed_loader.py` | Three-tier weight loader (INT8 → f16 → bf16 MLX) |
-| `scripts/upload_to_hub.py` | Batch compress + upload to squish-community HuggingFace org |
-| `demos/tool_calling_demo.py` | Tool calling walkthrough (full round-trip example) |
-| `demos/run_inference.py` | Minimal inference example (no server needed) |
+| `dev/scripts/upload_to_hub.py` | Batch compress + upload to squish-community HuggingFace org |
+| `dev/demos/tool_calling_demo.py` | Tool calling walkthrough (full round-trip example) |
+| `dev/demos/run_inference.py` | Minimal inference example (no server needed) |
 | `squish_quant_rs/` | Rust/PyO3 ARM NEON INT8 quantiser (optional, 6 GB/s) |
 | `docs/ARCHITECTURE.md` | Technical deep-dive: why these numbers are real |
 | `docs/RESULTS.md` | Every measured number with reproducibility commands |
 | `docs/benchmark_multi_model.md` | Multi-model benchmark comparison table |
-| `configs/continue.json` | Continue.dev config (VS Code / JetBrains AI) |
-| `configs/litellm.yaml` | LiteLLM proxy config (unified multi-provider endpoint) |
-| `configs/aider.yml` | aider config (AI pair programming CLI) |
+| `dev/configs/continue.json` | Continue.dev config (VS Code / JetBrains AI) |
+| `dev/configs/litellm.yaml` | LiteLLM proxy config (unified multi-provider endpoint) |
+| `dev/configs/aider.yml` | aider config (AI pair programming CLI) |
 
 ---
 

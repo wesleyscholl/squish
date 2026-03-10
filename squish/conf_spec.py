@@ -25,8 +25,9 @@ reasoning steps, reserving the full 8B forward pass for genuinely hard ones.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -80,7 +81,7 @@ class ConfSpecConfig:
 def compute_confidence(
     logits: np.ndarray,
     metric: str,
-    vocab_size: Optional[int] = None,
+    vocab_size: int | None = None,
 ) -> float:
     """Compute a confidence score in [0, 1] from next-token logits.
 
@@ -137,7 +138,7 @@ class ConfSpecDecision:
     confidence: float
     routing: str
     accepted: bool
-    score: Optional[float] = None
+    score: float | None = None
 
 
 @dataclass
@@ -242,14 +243,14 @@ class ConfSpecVerifier:
     def __init__(
         self,
         config: ConfSpecConfig,
-        lightweight_fn: Optional[LightweightVerifierFn] = None,
-        full_fn: Optional[FullVerifierFn] = None,
+        lightweight_fn: LightweightVerifierFn | None = None,
+        full_fn: FullVerifierFn | None = None,
     ) -> None:
         self.config = config
         self._lightweight = lightweight_fn or _jaccard_verifier
         self._full = full_fn or _jaccard_verifier
         self._stats = ConfSpecStats()
-        self._recent_confidences: List[float] = []
+        self._recent_confidences: list[float] = []
 
     def verify_step(
         self,

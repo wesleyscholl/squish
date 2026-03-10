@@ -35,7 +35,7 @@ Exported singleton
 from __future__ import annotations
 
 import sys
-from typing import Iterator
+from collections.abc import Iterator
 
 import numpy as np
 
@@ -148,6 +148,7 @@ class _AppleBackend:
         """Raise the MLX Metal allocator ceiling (macOS only)."""
         try:
             import ctypes
+
             import mlx.core as mx
 
             if not (0.5 <= fraction <= 0.99):
@@ -267,6 +268,7 @@ class _TorchBackend:
     ) -> Iterator[tuple[str, str | None]]:
         """Yield (text_chunk, finish_reason) tuples."""
         import threading
+
         import torch
         from transformers import TextIteratorStreamer
 

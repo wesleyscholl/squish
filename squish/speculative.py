@@ -39,7 +39,10 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 
-import mlx.core as mx
+try:
+    import mlx.core as mx
+except ImportError:  # pragma: no cover
+    mx = None  # type: ignore[assignment]
 import numpy as np
 
 logger = logging.getLogger(__name__)

@@ -24,11 +24,11 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass, field
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -56,7 +56,7 @@ class KVTunerConfig:
     """
 
     n_layers: int = 32
-    candidate_bits: Tuple[int, ...] = (2, 3, 4, 8)
+    candidate_bits: tuple[int, ...] = (2, 3, 4, 8)
     target_avg_bits: float = 4.0
     key_priority: float = 1.5
     n_calibration_samples: int = 512
@@ -155,8 +155,8 @@ class KVTunerCalibrator:
 
     def __init__(self, config: KVTunerConfig) -> None:
         self.config = config
-        self._key_samples: Dict[int, List[np.ndarray]] = {}
-        self._val_samples: Dict[int, List[np.ndarray]] = {}
+        self._key_samples: dict[int, list[np.ndarray]] = {}
+        self._val_samples: dict[int, list[np.ndarray]] = {}
 
     # ------------------------------------------------------------------
     def record_layer(
@@ -185,7 +185,7 @@ class KVTunerCalibrator:
         key_data = self._key_samples.get(layer_idx)
         val_data = self._val_samples.get(layer_idx)
 
-        def _layer_sensitivity(samples: Optional[List[np.ndarray]]) -> float:
+        def _layer_sensitivity(samples: list[np.ndarray] | None) -> float:
             if not samples:
                 # No data → assign heuristic sensitivity based on layer position
                 # (middle layers tend to be more sensitive)
@@ -212,7 +212,7 @@ class KVTunerCalibrator:
         )
 
     # ------------------------------------------------------------------
-    def search(self) -> "KVQuantConfig":
+    def search(self) -> KVQuantConfig:
         """Run the search and return the optimal per-layer KV precision config.
 
         Algorithm:
@@ -224,7 +224,7 @@ class KVTunerCalibrator:
         5. Keys always receive ≥ value bits (asymmetric K/V assignment).
         """
         cfg = self.config
-        sensitivities: List[LayerSensitivity] = [
+        sensitivities: list[LayerSensitivity] = [
             self._measure_sensitivity(i) for i in range(cfg.n_layers)
         ]
 
@@ -238,8 +238,8 @@ class KVTunerCalibrator:
         bits_sorted = sorted(cfg.candidate_bits)  # ascending
         total_bit_budget = cfg.target_avg_bits * cfg.n_layers
 
-        k_bits_map: Dict[int, int] = {}
-        v_bits_map: Dict[int, int] = {}
+        k_bits_map: dict[int, int] = {}
+        v_bits_map: dict[int, int] = {}
         bits_used = 0.0
 
         for rank, layer_idx in enumerate(order):
@@ -284,17 +284,17 @@ class KVQuantConfig:
     Produced by :class:`KVTunerCalibrator`.  Save to JSON; load at runtime.
     """
 
-    k_bits: Dict[int, int]
+    k_bits: dict[int, int]
     """key-cache bits per layer."""
 
-    v_bits: Dict[int, int]
+    v_bits: dict[int, int]
     """value-cache bits per layer."""
 
-    sensitivities: List[LayerSensitivity]
+    sensitivities: list[LayerSensitivity]
     config: KVTunerConfig
 
     # ------------------------------------------------------------------
-    def bits_for_layer(self, layer_idx: int) -> Tuple[int, int]:
+    def bits_for_layer(self, layer_idx: int) -> tuple[int, int]:
         """Return *(key_bits, value_bits)* for *layer_idx*."""
         k = self.k_bits.get(layer_idx, 4)
         v = self.v_bits.get(layer_idx, 4)
@@ -322,7 +322,7 @@ class KVQuantConfig:
             json.dump(data, f, indent=2)
 
     @classmethod
-    def load(cls, path: str, config: Optional[KVTunerConfig] = None) -> "KVQuantConfig":
+    def load(cls, path: str, config: KVTunerConfig | None = None) -> KVQuantConfig:
         with open(path) as f:
             data = json.load(f)
         k_bits = {int(k): v for k, v in data["k_bits"].items()}

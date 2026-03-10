@@ -32,4 +32,4 @@ python compare_outputs.py --ref ../reference_output.json --cmp ../compressed_out
 
 ---
 
-> **Note**: If you are looking for the main CLI, demos, or evaluation harness, see `squish/cli.py`, `demos/`, and `squish[eval]` respectively.
+> **Note**: If you are looking for the main CLI, demos, or evaluation harness, see `squish/cli.py`, `dev/demos/`, and `squish[eval]` respectively.

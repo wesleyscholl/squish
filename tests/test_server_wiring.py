@@ -120,7 +120,7 @@ class TestSageAttentionWiring:
         assert 0 < cfg.sparse_threshold < 1
 
     def test_squeeze_init(self):
-        from squish.squeeze_attention import SqueezeConfig, SqueezeKVCache, LayerKVBudget
+        from squish.squeeze_attention import LayerKVBudget, SqueezeConfig, SqueezeKVCache
         cfg = SqueezeConfig(n_layers=4, total_kv_budget=1024)
         budgets = [LayerKVBudget(layer_idx=i, token_budget=256) for i in range(4)]
         cache = SqueezeKVCache(budgets=budgets, config=cfg)
@@ -190,7 +190,7 @@ class TestYOCOWiring:
         assert cfg.target_avg_bits > 0
 
     def test_robust_scheduler_init(self):
-        from squish.robust_scheduler import RobustSchedulerConfig, AMaxScheduler
+        from squish.robust_scheduler import AMaxScheduler, RobustSchedulerConfig
         sched = AMaxScheduler(RobustSchedulerConfig())
         assert sched is not None
         assert sched._config.max_batch_tokens > 0
@@ -212,7 +212,12 @@ class TestYOCOWiring:
 class TestRobustSchedulerOps:
     def test_amax_scheduler_enqueue(self):
         """AMaxScheduler.enqueue should accept a Request."""
-        from squish.robust_scheduler import RobustSchedulerConfig, AMaxScheduler, Request, LengthInterval
+        from squish.robust_scheduler import (
+            AMaxScheduler,
+            LengthInterval,
+            Request,
+            RobustSchedulerConfig,
+        )
         sched = AMaxScheduler(RobustSchedulerConfig(max_batch_tokens=512, max_batch_size=4))
         req = Request(
             request_id="r0",
@@ -223,7 +228,11 @@ class TestRobustSchedulerOps:
         assert sched.queue_size == 1
 
     def test_amax_scheduler_stats_is_stats_object(self):
-        from squish.robust_scheduler import RobustSchedulerConfig, AMaxScheduler, RobustSchedulerStats
+        from squish.robust_scheduler import (
+            AMaxScheduler,
+            RobustSchedulerConfig,
+            RobustSchedulerStats,
+        )
         sched = AMaxScheduler(RobustSchedulerConfig())
         # stats is a property returning a RobustSchedulerStats dataclass
         assert isinstance(sched.stats, RobustSchedulerStats)
@@ -269,8 +278,9 @@ class TestSparseSpecWiring:
 class TestSparseSpecOps:
     def test_sparse_spec_decoder_init(self):
         """SparseSpecDecoder requires a drafter and target_fn."""
-        from squish.sparse_spec import SparseSpecConfig, SparseSpecDecoder, SparseSpecDrafter
         import inspect
+
+        from squish.sparse_spec import SparseSpecConfig, SparseSpecDecoder, SparseSpecDrafter
         # Verify the constructor signature (drafter, target_fn, config)
         sig = inspect.signature(SparseSpecDecoder.__init__)
         assert "drafter" in sig.parameters
@@ -337,7 +347,7 @@ class TestAdaptiveLayerOps:
         assert predictor is not None
 
     def test_forelen_egtp_predictor_init(self):
-        from squish.forelen import ForelenConfig, EGTPPredictor
+        from squish.forelen import EGTPPredictor, ForelenConfig
         predictor = EGTPPredictor(ForelenConfig())
         assert predictor is not None
 
@@ -366,7 +376,7 @@ class TestAdaptiveLayerOps:
         assert tracker is not None
 
     def test_ipw_measurement_record(self):
-        from squish.ipw import IPWConfig, IPWTracker, IPWMeasurement
+        from squish.ipw import IPWConfig, IPWMeasurement, IPWTracker
         tracker = IPWTracker(IPWConfig())
         m = IPWMeasurement(quality_score=0.9, energy_mj=12.5, time_ms=25.0,
                            tokens_generated=5, task_type="default")
@@ -551,7 +561,7 @@ class TestBackendShim:
 
     def test_torch_backend_array(self):
         """On Linux (where this test suite runs) we use _TorchBackend."""
-        from squish.backend import BE, _IS_APPLE, _StubBackend
+        from squish.backend import _IS_APPLE, BE, _StubBackend
         if _IS_APPLE:
             pytest.skip("Only tests torch path")
         if isinstance(BE, _StubBackend):
@@ -562,7 +572,7 @@ class TestBackendShim:
         assert np_arr.shape == (3,)
 
     def test_torch_backend_eval_noop(self):
-        from squish.backend import BE, _IS_APPLE, _StubBackend
+        from squish.backend import _IS_APPLE, BE, _StubBackend
         if _IS_APPLE:
             pytest.skip("Only tests torch path")
         if isinstance(BE, _StubBackend):
@@ -609,7 +619,7 @@ class TestAlreadyWiredTierB:
         assert v is not None
 
     def test_kv_share_map_init(self):
-        from squish.kvsharer import KVSharerConfig, KVShareMap
+        from squish.kvsharer import KVShareMap, KVSharerConfig
         cfg = KVSharerConfig()
         # share_map: {layer_idx: donor_layer}, donor_recipients: {donor: [recipients]}
         m = KVShareMap(
@@ -626,7 +636,7 @@ class TestAlreadyWiredTierB:
         assert a is not None
 
     def test_paris_kv_codebook_init(self):
-        from squish.paris_kv import ParisKVConfig, ParisKVCodebook
+        from squish.paris_kv import ParisKVCodebook, ParisKVConfig
         # ParisKVCodebook(dim, n_codes, config)
         cb = ParisKVCodebook(dim=64, n_codes=16, config=ParisKVConfig())
         assert cb is not None
@@ -642,13 +652,14 @@ class TestAlreadyWiredTierB:
         assert mgr is not None
 
     def test_smallkv_cache_init(self):
-        from squish.smallkv import SmallKVConfig, SmallKVCache
+        from squish.smallkv import SmallKVCache, SmallKVConfig
         cache = SmallKVCache(SmallKVConfig(n_layers=4))
         assert cache is not None
 
     def test_lookahead_engine_init(self):
-        from squish.lookahead_reasoning import LookaheadConfig, LookaheadReasoningEngine
         import inspect
+
+        from squish.lookahead_reasoning import LookaheadConfig, LookaheadReasoningEngine
         sig = inspect.signature(LookaheadReasoningEngine.__init__)
         # Verify constructor takes config + draft_fn
         assert "config" in sig.parameters

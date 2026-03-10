@@ -6,10 +6,10 @@ Generates an asciinema v2 .cast file from the 1.5B eval results,
 then converts to GIF using agg.
 
 Usage:
-    python3 demos/record_demo.py                  # generate + convert to GIF
-    python3 demos/record_demo.py --cast-only       # only write the .cast file
-    python3 demos/record_demo.py --out demos/squish_demo.gif
-    python3 demos/record_demo.py --results eval_output/eval_meta.json
+    python3 dev/demos/record_demo.py                  # generate + convert to GIF
+    python3 dev/demos/record_demo.py --cast-only       # only write the .cast file
+    python3 dev/demos/record_demo.py --out dev/demos/squish_demo.gif
+    python3 dev/demos/record_demo.py --results eval_output/eval_meta.json
 """
 
 import argparse
@@ -266,10 +266,10 @@ def build_cast(ref_load: float, comp_load: float, rows: list) -> Cast:
 
 def main():
     ap = argparse.ArgumentParser(description="Generate Squish demo GIF")
-    ap.add_argument("--out",        default="demos/squish_demo.gif",
-                    help="Output GIF path (default: demos/squish_demo.gif)")
-    ap.add_argument("--cast-out",   default="demos/squish_demo.cast",
-                    help="Output .cast path (default: demos/squish_demo.cast)")
+    ap.add_argument("--out",        default="dev/demos/squish_demo.gif",
+                    help="Output GIF path (default: dev/demos/squish_demo.gif)")
+    ap.add_argument("--cast-out",   default="dev/demos/squish_demo.cast",
+                    help="Output .cast path (default: dev/demos/squish_demo.cast)")
     ap.add_argument("--cast-only",  action="store_true",
                     help="Write .cast only, skip GIF conversion")
     ap.add_argument("--results",    default="eval_output",

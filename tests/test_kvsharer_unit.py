@@ -1,15 +1,15 @@
 """Unit tests for squish.kvsharer — KVSharer cross-layer KV cache sharing."""
 
-import pytest
 import numpy as np
+import pytest
+
 from squish.kvsharer import (
-    KVSharerConfig,
-    KVSharerCalibrator,
-    KVShareMap,
     KVLayerCache,
+    KVShareMap,
+    KVSharerCalibrator,
+    KVSharerConfig,
     KVSharerStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

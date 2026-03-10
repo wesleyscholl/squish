@@ -18,13 +18,13 @@ agentic frameworks like OpenClaw:
 squish serve qwen3:8b
 
 # run all suites
-python3 benchmarks/bench_agent_8b.py
+python3 dev/benchmarks/bench_agent_8b.py
 
 # options
-python3 benchmarks/bench_agent_8b.py --port 11435 --model squish --verbose
-python3 benchmarks/bench_agent_8b.py --suite tools       # tools only
-python3 benchmarks/bench_agent_8b.py --suite reasoning   # reasoning only
-python3 benchmarks/bench_agent_8b.py --suite agentic     # agentic only
+python3 dev/benchmarks/bench_agent_8b.py --port 11435 --model squish --verbose
+python3 dev/benchmarks/bench_agent_8b.py --suite tools       # tools only
+python3 dev/benchmarks/bench_agent_8b.py --suite reasoning   # reasoning only
+python3 dev/benchmarks/bench_agent_8b.py --suite agentic     # agentic only
 ```
 
 **Readiness thresholds:**
@@ -59,14 +59,14 @@ security patch, env var cleanup, multi-file feature.
 
 ```bash
 # default: test 1.5b and 7b
-python3 benchmarks/bench_commit.py
+python3 dev/benchmarks/bench_commit.py
 
 # options
-python3 benchmarks/bench_commit.py --models squish:1.5b squish:7b squish:8b
-python3 benchmarks/bench_commit.py --rounds 3         # best of 3 per diff
-python3 benchmarks/bench_commit.py --csv results.csv  # save to CSV
-python3 benchmarks/bench_commit.py --diff bug_fix     # single diff
-python3 benchmarks/bench_commit.py --verbose          # show each generation
+python3 dev/benchmarks/bench_commit.py --models squish:1.5b squish:7b squish:8b
+python3 dev/benchmarks/bench_commit.py --rounds 3         # best of 3 per diff
+python3 dev/benchmarks/bench_commit.py --csv results.csv  # save to CSV
+python3 dev/benchmarks/bench_commit.py --diff bug_fix     # single diff
+python3 dev/benchmarks/bench_commit.py --verbose          # show each generation
 ```
 
 **Exit code:** `0` if any model averages ≥70% quality, `1` otherwise.
@@ -80,8 +80,8 @@ python3 benchmarks/bench_commit.py --verbose          # show each generation
 squish serve qwen3:8b
 
 # terminal 2 — agent bench
-python3 benchmarks/bench_agent_8b.py --verbose
+python3 dev/benchmarks/bench_agent_8b.py --verbose
 
 # terminal 2 — commit bench (switch model between runs via squish serve)
-python3 benchmarks/bench_commit.py --models squish:1.5b squish:7b --rounds 3 --csv commit_results.csv
+python3 dev/benchmarks/bench_commit.py --models squish:1.5b squish:7b --rounds 3 --csv commit_results.csv
 ```

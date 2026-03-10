@@ -323,99 +323,184 @@ except (ImportError, OSError):
     pass
 
 # Sixth Wave — SubSpec: NVMe-offload speculative decoding (NeurIPS 2025)
-from squish.sub_spec import (  # noqa: F401
-    SubSpecConfig,
-    SubstituteLayerProxy,
-    SubSpecStats,
-    SubSpecDecoder,
-)
-
-# Sixth Wave — LongSpec: long-context shared-KV speculative decoding (ICML 2025)
-from squish.long_spec import (  # noqa: F401
-    LongSpecConfig,
-    LongSpecHead,
-    LongSpecStats,
-    LongSpecDecoder,
-)
-
-# Sixth Wave — TokenSwift: ultra-long generation with multi-token heads (ICML 2025)
-from squish.token_swift import (  # noqa: F401
-    TokenSwiftConfig,
-    MultiTokenHead,
-    PartialKVManager,
-    TokenSwiftStats,
-    TokenSwiftDecoder,
-)
-
-# Sixth Wave — QSpec: W4A8 draft / W4A16 verify complementary quantization (arXiv:2410.11305)
-from squish.qspec import (  # noqa: F401
-    QSpecConfig,
-    ActivationQuantizer,
-    QSpecStats,
-    QSpecDecoder,
-)
-
-# Seventh Wave — Mirror-SD: GPU+NPU dual-pipeline speculative decoding (arXiv:2510.13161)
-from squish.mirror_sd import (  # noqa: F401
-    MirrorSDConfig,
-    MirrorFuture,
-    MirrorDraftPipeline,
-    MirrorVerifyPipeline,
-    MirrorSDStats,
-    MirrorSDDecoder,
+# Ninth Wave — CLA: Cross-Layer Attention architecture (Brandon et al., 2024)
+from squish.cla import (  # noqa: F401
+    CLAConfig,
+    CLALayerSpec,
+    CLASchedule,
+    CLAStats,
 )
 
 # Seventh Wave — Dovetail: CPU verification + GPU drafting (EMNLP 2025, arXiv:2412.18934)
 from squish.dovetail import (  # noqa: F401
     DovetailConfig,
-    DovetailDraftRunner,
     DovetailCPUVerifier,
-    DovetailStats,
     DovetailDecoder,
+    DovetailDraftRunner,
+    DovetailStats,
 )
 
 # Seventh Wave — DuoDecoding: dynamic multi-sequence heterogeneous spec decode (arXiv:2503.00784)
 from squish.duo_decoding import (  # noqa: F401
-    DuoDecodingConfig,
     DuoCandidate,
-    DuoScheduler,
     DuoCPUVerifier,
-    DuoDecodingStats,
+    DuoDecodingConfig,
     DuoDecodingDecoder,
+    DuoDecodingStats,
+    DuoScheduler,
+)
+
+# Eighth Wave — ForeLen: entropy-guided output length prediction (ICLR 2026)
+from squish.forelen import (  # noqa: F401
+    EGTPPredictor,
+    ForelenConfig,
+    ForelenStats,
+    PLPPredictor,
+)
+
+# Ninth Wave — GemFilter: early-layer input token compression (ICLR 2025)
+from squish.gemfilter import (  # noqa: F401
+    AttentionScoreBuffer,
+    GemFilterConfig,
+    GemFilterStats,
+    GemSelector,
 )
 
 # Seventh Wave — Heterogeneous Vocabulary SD: any-model draft for any target (ICML 2025)
 from squish.hetero_vocab_sd import (  # noqa: F401
     HeteroVocabConfig,
-    VocabMapper,
+    HeteroVocabDecoder,
     HeteroVocabDrafter,
     HeteroVocabStats,
-    HeteroVocabDecoder,
+    VocabMapper,
+)
+
+# Eighth Wave — IPW: Intelligence Per Watt evaluation framework (arXiv:2511.07885)
+from squish.ipw import (  # noqa: F401
+    IPWConfig,
+    IPWMeasurement,
+    IPWSummary,
+    IPWTracker,
+)
+
+# Ninth Wave — KVSharer: cross-layer KV sharing with dissimilar-pair heuristic (ICLR 2025)
+from squish.kvsharer import (  # noqa: F401
+    KVLayerCache,
+    KVShareMap,
+    KVSharerCalibrator,
+    KVSharerConfig,
+    KVSharerStats,
+)
+
+# Ninth Wave — KVTuner: sensitivity-aware automated KV quantization search (ICML 2025)
+from squish.kvtuner import (  # noqa: F401
+    KVQuantConfig,
+    KVTunerCalibrator,
+    KVTunerConfig,
+    KVTunerStats,
+    LayerSensitivity,
+)
+
+# Sixth Wave — LongSpec: long-context shared-KV speculative decoding (ICML 2025)
+from squish.long_spec import (  # noqa: F401
+    LongSpecConfig,
+    LongSpecDecoder,
+    LongSpecHead,
+    LongSpecStats,
+)
+
+# Seventh Wave — Mirror-SD: GPU+NPU dual-pipeline speculative decoding (arXiv:2510.13161)
+from squish.mirror_sd import (  # noqa: F401
+    MirrorDraftPipeline,
+    MirrorFuture,
+    MirrorSDConfig,
+    MirrorSDDecoder,
+    MirrorSDStats,
+    MirrorVerifyPipeline,
+)
+
+# Sixth Wave — QSpec: W4A8 draft / W4A16 verify complementary quantization (arXiv:2410.11305)
+from squish.qspec import (  # noqa: F401
+    ActivationQuantizer,
+    QSpecConfig,
+    QSpecDecoder,
+    QSpecStats,
+)
+
+# Ninth Wave — Robust Scheduler: interval-prediction A_max + A_balanced (Aug 2025)
+from squish.robust_scheduler import (  # noqa: F401
+    ABalancedScheduler,
+    AMaxScheduler,
+    LengthInterval,
+    Request,
+    RobustSchedulerConfig,
+    RobustSchedulerStats,
+)
+
+# Eighth Wave — Sequence Packing: barrel effect elimination
+from squish.seq_packing import (  # noqa: F401
+    PackedBatch,
+    PackingConfig,
+    PackingStats,
+    SequencePacker,
 )
 
 # Eighth Wave — SparseSpec: dynamic sparse self-speculation for reasoning (arXiv:2512.01278)
 from squish.sparse_spec import (  # noqa: F401
-    SparseSpecConfig,
     PillarAttnCache,
+    SparseSpecConfig,
+    SparseSpecDecoder,
     SparseSpecDrafter,
     SparseSpecStats,
-    SparseSpecDecoder,
 )
 
 # Eighth Wave — Sparse Verification Framework (arXiv:2512.21911)
 from squish.sparse_verify import (  # noqa: F401
-    SparseVerifyConfig,
     InterDraftReuseCache,
+    SparseVerifyConfig,
     SparseVerifyPass,
     SparseVerifyStats,
 )
 
-# Eighth Wave — ForeLen: entropy-guided output length prediction (ICLR 2026)
-from squish.forelen import (  # noqa: F401
-    ForelenConfig,
-    EGTPPredictor,
-    PLPPredictor,
-    ForelenStats,
+# Eighth Wave — SpeContext: distilled model as KV retrieval algorithm (ASPLOS 2026)
+from squish.specontext import (  # noqa: F401
+    DistilledRetrievalHead,
+    SpeContextCache,
+    SpeContextConfig,
+    SpeContextStats,
+)
+
+# Ninth Wave — SqueezeAttention: joint 2D KV budget management (2025)
+from squish.squeeze_attention import (  # noqa: F401
+    BudgetAllocator,
+    LayerKVBudget,
+    SqueezeConfig,
+    SqueezeKVCache,
+    SqueezeStats,
+)
+from squish.sub_spec import (  # noqa: F401
+    SubSpecConfig,
+    SubSpecDecoder,
+    SubSpecStats,
+    SubstituteLayerProxy,
+)
+
+# Ninth Wave — SVDq: per-head SVD key cache mixed precision (2025)
+from squish.svdq import (  # noqa: F401
+    HeadSVDProfile,
+    SVDqCalibrator,
+    SVDqConfig,
+    SVDqPrecisionMap,
+    SVDqStats,
+)
+
+# Sixth Wave — TokenSwift: ultra-long generation with multi-token heads (ICML 2025)
+from squish.token_swift import (  # noqa: F401
+    MultiTokenHead,
+    PartialKVManager,
+    TokenSwiftConfig,
+    TokenSwiftDecoder,
+    TokenSwiftStats,
 )
 
 # Eighth Wave — TRAIL: recycled embedding length predictor (ICLR 2025)
@@ -426,105 +511,22 @@ from squish.trail import (  # noqa: F401
     TrailStats,
 )
 
-# Eighth Wave — SpeContext: distilled model as KV retrieval algorithm (ASPLOS 2026)
-from squish.specontext import (  # noqa: F401
-    SpeContextConfig,
-    DistilledRetrievalHead,
-    SpeContextCache,
-    SpeContextStats,
-)
-
-# Eighth Wave — IPW: Intelligence Per Watt evaluation framework (arXiv:2511.07885)
-from squish.ipw import (  # noqa: F401
-    IPWConfig,
-    IPWMeasurement,
-    IPWTracker,
-    IPWSummary,
-)
-
-# Eighth Wave — Sequence Packing: barrel effect elimination
-from squish.seq_packing import (  # noqa: F401
-    PackingConfig,
-    SequencePacker,
-    PackedBatch,
-    PackingStats,
-)
-
-# Ninth Wave — KVSharer: cross-layer KV sharing with dissimilar-pair heuristic (ICLR 2025)
-from squish.kvsharer import (  # noqa: F401
-    KVSharerConfig,
-    KVSharerCalibrator,
-    KVShareMap,
-    KVLayerCache,
-    KVSharerStats,
-)
-
-# Ninth Wave — CLA: Cross-Layer Attention architecture (Brandon et al., 2024)
-from squish.cla import (  # noqa: F401
-    CLAConfig,
-    CLALayerSpec,
-    CLASchedule,
-    CLAStats,
-)
-
 # Ninth Wave — YOCO: You Only Cache Once architecture (Sun et al., 2024)
 from squish.yoco import (  # noqa: F401
     YOCOConfig,
+    YOCOKVStore,
     YOCOLayerSpec,
     YOCOSchedule,
-    YOCOKVStore,
     YOCOStats,
-)
-
-# Ninth Wave — KVTuner: sensitivity-aware automated KV quantization search (ICML 2025)
-from squish.kvtuner import (  # noqa: F401
-    KVTunerConfig,
-    LayerSensitivity,
-    KVTunerCalibrator,
-    KVQuantConfig,
-    KVTunerStats,
-)
-
-# Ninth Wave — SVDq: per-head SVD key cache mixed precision (2025)
-from squish.svdq import (  # noqa: F401
-    SVDqConfig,
-    HeadSVDProfile,
-    SVDqCalibrator,
-    SVDqPrecisionMap,
-    SVDqStats,
-)
-
-# Ninth Wave — GemFilter: early-layer input token compression (ICLR 2025)
-from squish.gemfilter import (  # noqa: F401
-    GemFilterConfig,
-    AttentionScoreBuffer,
-    GemSelector,
-    GemFilterStats,
-)
-
-# Ninth Wave — Robust Scheduler: interval-prediction A_max + A_balanced (Aug 2025)
-from squish.robust_scheduler import (  # noqa: F401
-    RobustSchedulerConfig,
-    LengthInterval,
-    Request,
-    AMaxScheduler,
-    ABalancedScheduler,
-    RobustSchedulerStats,
-)
-
-# Ninth Wave — SqueezeAttention: joint 2D KV budget management (2025)
-from squish.squeeze_attention import (  # noqa: F401
-    SqueezeConfig,
-    LayerKVBudget,
-    BudgetAllocator,
-    SqueezeKVCache,
-    SqueezeStats,
 )
 
 # Tenth Wave — SageAttention
 try:
     from .sage_attention import (  # noqa: F401
-        SageAttentionConfig, KSmoother, SageAttentionStats, SageAttentionKernel,
+        KSmoother,
+        SageAttentionConfig,
+        SageAttentionKernel,
+        SageAttentionStats,
     )
 except (ImportError, OSError):
     pass
@@ -532,7 +534,10 @@ except (ImportError, OSError):
 # Tenth Wave — SageAttention2
 try:
     from .sage_attention2 import (  # noqa: F401
-        SageAttention2Config, WarpQuantResult, SageAttention2Stats, SageAttention2Kernel,
+        SageAttention2Config,
+        SageAttention2Kernel,
+        SageAttention2Stats,
+        WarpQuantResult,
     )
 except (ImportError, OSError):
     pass
@@ -540,7 +545,10 @@ except (ImportError, OSError):
 # Tenth Wave — SpargeAttn
 try:
     from .sparge_attn import (  # noqa: F401
-        SpargeAttnConfig, BlockMask, SpargeAttnStats, SpargeAttnEngine,
+        BlockMask,
+        SpargeAttnConfig,
+        SpargeAttnEngine,
+        SpargeAttnStats,
     )
 except (ImportError, OSError):
     pass
@@ -548,8 +556,13 @@ except (ImportError, OSError):
 # Tenth Wave — DiffKV
 try:
     from .diffkv import (  # noqa: F401
-        DiffKVConfig, HeadSparsityProfile, TokenImportanceTier, DiffKVPolicy,
-        DiffKVPolicyManager, CompactedKVSlot, DiffKVStats,
+        CompactedKVSlot,
+        DiffKVConfig,
+        DiffKVPolicy,
+        DiffKVPolicyManager,
+        DiffKVStats,
+        HeadSparsityProfile,
+        TokenImportanceTier,
     )
 except (ImportError, OSError):
     pass
@@ -557,7 +570,11 @@ except (ImportError, OSError):
 # Tenth Wave — SmallKV
 try:
     from .smallkv import (  # noqa: F401
-        SmallKVConfig, SaliencyTracker, MarginalVCache, SmallKVCache, SmallKVStats,
+        MarginalVCache,
+        SaliencyTracker,
+        SmallKVCache,
+        SmallKVConfig,
+        SmallKVStats,
     )
 except (ImportError, OSError):
     pass
@@ -565,7 +582,11 @@ except (ImportError, OSError):
 # Tenth Wave — SpecReason
 try:
     from .spec_reason import (  # noqa: F401
-        ReasoningStep, SpecReasonConfig, SpecReasonStats, SpecReasonOrchestrator, StepVerdict,
+        ReasoningStep,
+        SpecReasonConfig,
+        SpecReasonOrchestrator,
+        SpecReasonStats,
+        StepVerdict,
     )
 except (ImportError, OSError):
     pass
@@ -573,8 +594,11 @@ except (ImportError, OSError):
 # Tenth Wave — LookaheadReasoning
 try:
     from .lookahead_reasoning import (  # noqa: F401
-        LookaheadConfig, LookaheadStep, LookaheadBatch, LookaheadStats,
+        LookaheadBatch,
+        LookaheadConfig,
         LookaheadReasoningEngine,
+        LookaheadStats,
+        LookaheadStep,
     )
 except (ImportError, OSError):
     pass
@@ -582,7 +606,11 @@ except (ImportError, OSError):
 # Tenth Wave — AdaServe
 try:
     from .ada_serve import (  # noqa: F401
-        SLOTarget, AdaServeConfig, AdaServeRequest, AdaServeStats, AdaServeScheduler,
+        AdaServeConfig,
+        AdaServeRequest,
+        AdaServeScheduler,
+        AdaServeStats,
+        SLOTarget,
     )
 except (ImportError, OSError):
     pass
@@ -590,7 +618,10 @@ except (ImportError, OSError):
 # Tenth Wave — ConfSpec
 try:
     from .conf_spec import (  # noqa: F401
-        ConfSpecConfig, ConfSpecDecision, ConfSpecStats, ConfSpecVerifier,
+        ConfSpecConfig,
+        ConfSpecDecision,
+        ConfSpecStats,
+        ConfSpecVerifier,
     )
 except (ImportError, OSError):
     pass
@@ -600,21 +631,27 @@ except (ImportError, OSError):
 # Tier C — paged_attention and radix_cache (server imports directly; add to __all__)
 try:
     from .paged_attention import (  # noqa: F401
-        PagedKVCache, PageBlockTable, BlockAllocator,
+        BlockAllocator,
+        PageBlockTable,
+        PagedKVCache,
     )
 except (ImportError, OSError):
     pass
 
 try:
     from .radix_cache import (  # noqa: F401
-        RadixTree, RadixNode,
+        RadixNode,
+        RadixTree,
     )
 except (ImportError, OSError):
     pass
 
 try:
     from .layer_skip import (  # noqa: F401
-        EarlyExitConfig, EarlyExitDecoder, EarlyExitStats, ConfidenceEstimator,
+        ConfidenceEstimator,
+        EarlyExitConfig,
+        EarlyExitDecoder,
+        EarlyExitStats,
     )
 except (ImportError, OSError):
     pass
@@ -626,49 +663,65 @@ except (ImportError, OSError):
 
 try:
     from .fr_spec import (  # noqa: F401
-        FRSpecConfig, FreqTokenSubset, FRSpecHead, FRSpecCalibrator, FRSpecStats,
+        FreqTokenSubset,
+        FRSpecCalibrator,
+        FRSpecConfig,
+        FRSpecHead,
+        FRSpecStats,
     )
 except (ImportError, OSError):
     pass
 
 try:
     from .kv_slab import (  # noqa: F401
-        KVPage, KVSlabAllocator,
+        KVPage,
+        KVSlabAllocator,
     )
 except (ImportError, OSError):
     pass
 
 try:
     from .lora_manager import (  # noqa: F401
-        LoRAManager, DareTiesConfig, DareTiesMerger,
+        DareTiesConfig,
+        DareTiesMerger,
+        LoRAManager,
     )
 except (ImportError, OSError):
     pass
 
 try:
     from .paris_kv import (  # noqa: F401
-        ParisKVConfig, ParisKVCodebook,
+        ParisKVCodebook,
+        ParisKVConfig,
     )
 except (ImportError, OSError):
     pass
 
 try:
     from .prompt_lookup import (  # noqa: F401
-        PromptLookupConfig, NGramIndex, PromptLookupStats, PromptLookupDecoder,
+        NGramIndex,
+        PromptLookupConfig,
+        PromptLookupDecoder,
+        PromptLookupStats,
     )
 except (ImportError, OSError):
     pass
 
 try:
     from .seq_packing import (  # noqa: F401
-        PackingConfig, PackedBatch, SequencePacker, PackingStats,
+        PackedBatch,
+        PackingConfig,
+        PackingStats,
+        SequencePacker,
     )
 except (ImportError, OSError):
     pass
 
 try:
     from .streaming_sink import (  # noqa: F401
-        SinkConfig, SinkKVCache, SinkStats,
+        SinkConfig,
+        SinkKVCache,
+        SinkStats,
     )
 except (ImportError, OSError):
     pass
