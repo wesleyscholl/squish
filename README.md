@@ -25,6 +25,15 @@
 
 ![](dev/demos/squish-demo.gif)
 
+### Wave 13+14 — Ultra-Long Context · Adaptive Spec-Decode · Quantisation
+
+![](dev/demos/squish-wave13-14-demo.gif)
+
+> Waves 13+14 add 25 new modules: DuoAttention, ShadowKV, PQCache, KnapSpec, TokenMerging,
+> DFloat11, SqueezeLLM, NF4, QSpec, CopySpec, VisionPrefixCache, and more.  
+> 10–30× KV memory reduction · 55% draft acceptance · 5–10× weight compression · 13.5× vision cache speedup.  
+> See [`docs/benchmark_wave13_14.md`](docs/benchmark_wave13_14.md) and [`dev/results/wave13_14_bench.json`](dev/results/wave13_14_bench.json) for full numbers.
+
 ### Wave 12 — Reasoning-Aware KV + INT3 + Async I/O
 
 ![](dev/demos/squish-wave12-demo.gif)
