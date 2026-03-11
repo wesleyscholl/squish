@@ -12,7 +12,6 @@ Wave 16 modules (Heterogeneous Compute + Advanced Spec-Decode):
 import numpy as np
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Dovetail (CPU+GPU heterogeneous spec decode)
 # ---------------------------------------------------------------------------
@@ -53,7 +52,12 @@ class TestDovetailWiring:
         assert abs(probs.sum() - 1.0) < 0.01
 
     def test_decoder_generate_returns_tokens_and_stats(self):
-        from squish.dovetail import DovetailConfig, DovetailCPUVerifier, DovetailDecoder, DovetailDraftRunner
+        from squish.dovetail import (
+            DovetailConfig,
+            DovetailCPUVerifier,
+            DovetailDecoder,
+            DovetailDraftRunner,
+        )
         rng   = np.random.default_rng(1)
         vocab = 16
         cfg   = DovetailConfig(gamma=2)
@@ -214,7 +218,7 @@ class TestMobileMoEWiring:
 
 class TestOnlineSDWiring:
     def test_import(self):
-        from squish.online_sd import OnlineSDConfig, OnlineDraftUpdater
+        from squish.online_sd import OnlineDraftUpdater, OnlineSDConfig
         cfg     = OnlineSDConfig(buffer_capacity=128, update_every=32)
         updater = OnlineDraftUpdater(cfg)
         assert updater is not None
@@ -228,7 +232,7 @@ class TestOnlineSDWiring:
         assert cfg.lora_rank >= 1
 
     def test_record_and_should_update(self):
-        from squish.online_sd import OnlineSDConfig, OnlineDraftUpdater
+        from squish.online_sd import OnlineDraftUpdater, OnlineSDConfig
         rng     = np.random.default_rng(0)
         # hidden_dim and vocab_size are args of OnlineDraftUpdater, not OnlineSDConfig
         cfg     = OnlineSDConfig(buffer_capacity=16, update_every=4)
@@ -241,7 +245,7 @@ class TestOnlineSDWiring:
         assert isinstance(flag, bool)
 
     def test_apply_update_preserves_shape(self):
-        from squish.online_sd import OnlineSDConfig, OnlineDraftUpdater
+        from squish.online_sd import OnlineDraftUpdater, OnlineSDConfig
         rng     = np.random.default_rng(1)
         hdim, vsize = 8, 16
         cfg     = OnlineSDConfig(buffer_capacity=8, update_every=4)
@@ -263,7 +267,6 @@ class TestLookaheadReasoningWiring:
     def test_import(self):
         from squish.lookahead_reasoning import LookaheadConfig, LookaheadReasoningEngine
         cfg = LookaheadConfig(lookahead_k=4, min_acceptance_score=0.7)
-        rng = np.random.default_rng(0)
 
         def draft_fn(context):
             return "step token"
@@ -281,7 +284,9 @@ class TestLookaheadReasoningWiring:
 
     def test_run_cycle_returns_batch(self):
         from squish.lookahead_reasoning import (
-            LookaheadConfig, LookaheadReasoningEngine, LookaheadStep
+            LookaheadConfig,
+            LookaheadReasoningEngine,
+            LookaheadStep,
         )
         cfg = LookaheadConfig(lookahead_k=2, max_step_tokens=8)
         call_count = [0]
@@ -302,7 +307,9 @@ class TestLookaheadReasoningWiring:
 
     def test_stats_and_reset(self):
         from squish.lookahead_reasoning import (
-            LookaheadConfig, LookaheadReasoningEngine, LookaheadStep
+            LookaheadConfig,
+            LookaheadReasoningEngine,
+            LookaheadStep,
         )
         cfg = LookaheadConfig(lookahead_k=2)
 
@@ -324,7 +331,7 @@ class TestLookaheadReasoningWiring:
 
 class TestSparseSpecWiring:
     def test_import(self):
-        from squish.sparse_spec import SparseSpecConfig, PillarAttnCache
+        from squish.sparse_spec import PillarAttnCache, SparseSpecConfig
         cfg   = SparseSpecConfig(gamma=4, top_k_ratio=0.1)
         cache = PillarAttnCache(capacity=256)
         assert cfg is not None
@@ -358,7 +365,10 @@ class TestSparseSpecWiring:
 
     def test_decoder_generate(self):
         from squish.sparse_spec import (
-            SparseSpecConfig, SparseSpecDecoder, SparseSpecDrafter, PillarAttnCache
+            PillarAttnCache,
+            SparseSpecConfig,
+            SparseSpecDecoder,
+            SparseSpecDrafter,
         )
         rng   = np.random.default_rng(2)
         vocab = 16
@@ -391,7 +401,7 @@ class TestSparseSpecWiring:
 
 class TestFRSpecWiring:
     def test_import(self):
-        from squish.fr_spec import FRSpecConfig, FRSpecCalibrator
+        from squish.fr_spec import FRSpecCalibrator, FRSpecConfig
         cfg = FRSpecConfig(vocab_size=1000, top_k_fraction=0.25)
         cal = FRSpecCalibrator(cfg)
         assert cal is not None
@@ -404,7 +414,7 @@ class TestFRSpecWiring:
         assert cfg.min_frequent_tokens >= 1
 
     def test_calibrate_and_build_subset(self):
-        from squish.fr_spec import FRSpecConfig, FRSpecCalibrator, FreqTokenSubset
+        from squish.fr_spec import FreqTokenSubset, FRSpecCalibrator, FRSpecConfig
         rng = np.random.default_rng(0)
         # min_frequent_tokens must not exceed vocab_size
         cfg = FRSpecConfig(vocab_size=100, top_k_fraction=0.3, min_frequent_tokens=10)
@@ -417,8 +427,7 @@ class TestFRSpecWiring:
         assert len(subset.indices) >= cfg.min_frequent_tokens
 
     def test_freq_subset_coverage(self):
-        from squish.fr_spec import FRSpecConfig, FRSpecCalibrator
-        rng = np.random.default_rng(1)
+        from squish.fr_spec import FRSpecCalibrator, FRSpecConfig
         cfg = FRSpecConfig(vocab_size=64, top_k_fraction=0.5)
         cal = FRSpecCalibrator(cfg)
         tokens = list(range(64)) * 4
@@ -428,7 +437,7 @@ class TestFRSpecWiring:
         assert 0.0 <= cov <= 1.0
 
     def test_frspec_head_compress_expand(self):
-        from squish.fr_spec import FRSpecConfig, FRSpecCalibrator, FRSpecHead
+        from squish.fr_spec import FRSpecCalibrator, FRSpecConfig, FRSpecHead
         rng   = np.random.default_rng(2)
         vocab = 32
         hdim  = 8
@@ -476,7 +485,7 @@ class TestLongSpecWiring:
         assert logits.shape == (vocab,)
 
     def test_decoder_generate(self):
-        from squish.long_spec import LongSpecConfig, LongSpecHead, LongSpecDecoder
+        from squish.long_spec import LongSpecConfig, LongSpecDecoder, LongSpecHead
         rng   = np.random.default_rng(1)
         vocab = 32
         hdim  = 8
@@ -500,7 +509,7 @@ class TestLongSpecWiring:
 
 class TestForelenWiring:
     def test_import(self):
-        from squish.forelen import ForelenConfig, EGTPPredictor, PLPPredictor
+        from squish.forelen import EGTPPredictor, ForelenConfig, PLPPredictor
         cfg  = ForelenConfig(entropy_bins=16, n_length_buckets=8, max_length=1024)
         egtp = EGTPPredictor(cfg)
         plp  = PLPPredictor(initial_prediction=256, config=cfg)
@@ -516,7 +525,7 @@ class TestForelenWiring:
         assert 0.0 < cfg.plp_decay <= 1.0
 
     def test_egtp_fit_and_predict(self):
-        from squish.forelen import ForelenConfig, EGTPPredictor
+        from squish.forelen import EGTPPredictor, ForelenConfig
         rng  = np.random.default_rng(0)
         cfg  = ForelenConfig(entropy_bins=8, n_length_buckets=4, max_length=256)
         egtp = EGTPPredictor(cfg)
@@ -539,7 +548,7 @@ class TestForelenWiring:
         plp = PLPPredictor(initial_prediction=128, config=cfg)
         assert plp.current_estimate == 128
         for step in range(8):
-            new_est = plp.update(current_len=step * 16, step_entropy=0.5)
+            plp.update(current_len=step * 16, step_entropy=0.5)
         assert plp.n_updates >= 1
         assert plp.current_estimate > 0
 
@@ -550,11 +559,13 @@ class TestForelenWiring:
 
 class TestRASDWiring:
     def test_import(self):
-        from squish.rasd import RASDConfig, CorpusIndex, DraftTree, RASDBatcher
+        from squish.rasd import CorpusIndex, DraftTree, RASDBatcher, RASDConfig
         cfg    = RASDConfig(beam_width=4, max_retrieval_candidates=8, min_prefix_len=2)
         corpus = CorpusIndex(min_prefix_len=2)
         tree   = DraftTree(max_depth=6)
         batcher = RASDBatcher(cfg)
+        assert corpus is not None
+        assert tree is not None
         assert batcher is not None
 
     def test_config_defaults(self):
@@ -566,8 +577,7 @@ class TestRASDWiring:
         assert cfg.max_tree_depth >= 1
 
     def test_corpus_index_add_and_search(self):
-        from squish.rasd import RASDConfig, CorpusIndex
-        cfg    = RASDConfig(min_prefix_len=2)
+        from squish.rasd import CorpusIndex
         corpus = CorpusIndex(min_prefix_len=2)
         corpus.add_sequence([1, 2, 3, 4, 5])
         corpus.add_sequence([1, 2, 6, 7, 8])
@@ -587,7 +597,7 @@ class TestRASDWiring:
         assert len(paths) >= 2
 
     def test_batcher_build_and_prune_tree(self):
-        from squish.rasd import RASDConfig, CorpusIndex, RASDBatcher
+        from squish.rasd import CorpusIndex, RASDBatcher, RASDConfig
         cfg    = RASDConfig(beam_width=2, min_prefix_len=2, max_tree_depth=4)
         corpus = CorpusIndex(min_prefix_len=2)
         for seq in [[1, 2, 3, 4], [1, 2, 5, 6], [7, 8, 9]]:

@@ -12,14 +12,13 @@ Wave 15 modules (Serving Intelligence + KV Architecture Evolution):
 import numpy as np
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # AdaServe
 # ---------------------------------------------------------------------------
 
 class TestAdaServeWiring:
     def test_import(self):
-        from squish.ada_serve import AdaServeConfig, SLOTarget, AdaServeScheduler
+        from squish.ada_serve import AdaServeConfig, AdaServeScheduler, SLOTarget
         cfg  = AdaServeConfig(min_gamma=1, max_gamma=8, base_gamma=4)
         slo  = SLOTarget(task_type="chat", time_to_first_token_ms=200.0)
         sched = AdaServeScheduler(cfg, slo_registry={"chat": slo})
@@ -34,7 +33,7 @@ class TestAdaServeWiring:
         assert 0.0 < cfg.goodput_weight < 1.0
 
     def test_register_slo_and_get_gamma(self):
-        from squish.ada_serve import AdaServeConfig, SLOTarget, AdaServeScheduler, AdaServeRequest
+        from squish.ada_serve import AdaServeConfig, AdaServeRequest, AdaServeScheduler, SLOTarget
         cfg  = AdaServeConfig(min_gamma=1, max_gamma=8)
         slo  = SLOTarget(task_type="chat", time_to_first_token_ms=200.0)
         sched = AdaServeScheduler(cfg)
@@ -45,7 +44,7 @@ class TestAdaServeWiring:
         assert cfg.min_gamma <= gamma <= cfg.max_gamma
 
     def test_complete_and_stats(self):
-        from squish.ada_serve import AdaServeConfig, SLOTarget, AdaServeScheduler, AdaServeRequest
+        from squish.ada_serve import AdaServeConfig, AdaServeRequest, AdaServeScheduler, SLOTarget
         cfg  = AdaServeConfig()
         slo  = SLOTarget(task_type="code")
         sched = AdaServeScheduler(cfg)
@@ -131,7 +130,7 @@ class TestSeqPackingWiring:
         assert isinstance(cfg.allow_partial, bool)
 
     def test_pack_sequences(self):
-        from squish.seq_packing import PackingConfig, SequencePacker, PackedBatch
+        from squish.seq_packing import PackedBatch, PackingConfig, SequencePacker
         cfg    = PackingConfig(max_packed_length=32)
         packer = SequencePacker(cfg)
         seqs   = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
@@ -158,7 +157,7 @@ class TestSeqPackingWiring:
 
 class TestMetaReasonerWiring:
     def test_import(self):
-        from squish.meta_reasoner import MetaReasonerConfig, MetaReasoner
+        from squish.meta_reasoner import MetaReasoner, MetaReasonerConfig
         cfg = MetaReasonerConfig(think_start_token_id=151667,
                                   think_end_token_id=151668)
         mr  = MetaReasoner(cfg)
@@ -172,7 +171,7 @@ class TestMetaReasonerWiring:
         assert cfg.max_think_tokens > cfg.min_think_tokens
 
     def test_step_produces_bool(self):
-        from squish.meta_reasoner import MetaReasonerConfig, MetaReasoner
+        from squish.meta_reasoner import MetaReasoner, MetaReasonerConfig
         rng = np.random.default_rng(42)
         cfg = MetaReasonerConfig(entropy_threshold=1.5, entropy_high_threshold=4.0)
         mr  = MetaReasoner(cfg)
@@ -190,7 +189,7 @@ class TestMetaReasonerWiring:
         assert abs(entropy - np.log(4)) < 0.01
 
     def test_reset_clears_state(self):
-        from squish.meta_reasoner import MetaReasonerConfig, MetaReasoner
+        from squish.meta_reasoner import MetaReasoner, MetaReasonerConfig
         rng = np.random.default_rng(0)
         cfg = MetaReasonerConfig()
         mr  = MetaReasoner(cfg)
@@ -273,7 +272,7 @@ class TestCLAWiring:
         assert cfg.sharing_factor >= 1
 
     def test_schedule_generates_correct_specs(self):
-        from squish.cla import CLAConfig, CLASchedule, CLALayerSpec
+        from squish.cla import CLAConfig, CLALayerSpec, CLASchedule
         cfg   = CLAConfig(n_layers=8, sharing_factor=2)
         sched = CLASchedule.from_config(cfg)
         for i in range(cfg.n_layers):
@@ -305,7 +304,7 @@ class TestCLAWiring:
 
 class TestKVSharerWiring:
     def test_import(self):
-        from squish.kvsharer import KVSharerConfig, KVSharerCalibrator
+        from squish.kvsharer import KVSharerCalibrator, KVSharerConfig
         cfg  = KVSharerConfig(n_layers=8, similarity_threshold=0.95)
         cal  = KVSharerCalibrator(cfg)
         assert cal is not None
@@ -318,7 +317,7 @@ class TestKVSharerWiring:
         assert cfg.n_layers >= 2
 
     def test_record_and_compute_share_map(self):
-        from squish.kvsharer import KVSharerConfig, KVSharerCalibrator, KVShareMap
+        from squish.kvsharer import KVShareMap, KVSharerCalibrator, KVSharerConfig
         rng = np.random.default_rng(0)
         cfg = KVSharerConfig(n_layers=4, similarity_threshold=0.80)
         cal = KVSharerCalibrator(cfg)
@@ -331,7 +330,7 @@ class TestKVSharerWiring:
         assert share_map.n_layers == 4
 
     def test_share_map_kv_ops_fraction(self):
-        from squish.kvsharer import KVSharerConfig, KVSharerCalibrator
+        from squish.kvsharer import KVSharerCalibrator, KVSharerConfig
         rng = np.random.default_rng(1)
         cfg = KVSharerConfig(n_layers=6, similarity_threshold=0.70)
         cal = KVSharerCalibrator(cfg)
@@ -366,7 +365,7 @@ class TestDiffKVWiring:
         assert 0.0 <= cfg.critical_fraction + cfg.marginal_fraction <= 1.0
 
     def test_get_policy_returns_diffkv_policy(self):
-        from squish.diffkv import DiffKVConfig, DiffKVPolicyManager, DiffKVPolicy
+        from squish.diffkv import DiffKVConfig, DiffKVPolicy, DiffKVPolicyManager
         cfg = DiffKVConfig(n_layers=4, n_heads=4,
                            critical_k_bits=8, critical_v_bits=4,
                            marginal_k_bits=4, marginal_v_bits=2)
@@ -394,7 +393,7 @@ class TestDiffKVWiring:
 
 class TestParisKVWiring:
     def test_import(self):
-        from squish.paris_kv import ParisKVConfig, ParisKVCodebook
+        from squish.paris_kv import ParisKVCodebook, ParisKVConfig
         # n_codes belongs to ParisKVCodebook, not ParisKVConfig
         cfg      = ParisKVConfig(learning_rate=0.05)
         codebook = ParisKVCodebook(dim=16, n_codes=8, config=cfg)
@@ -409,7 +408,7 @@ class TestParisKVWiring:
         assert cfg.drift_window >= 1
 
     def test_fit_encode_decode_roundtrip(self):
-        from squish.paris_kv import ParisKVConfig, ParisKVCodebook
+        from squish.paris_kv import ParisKVCodebook, ParisKVConfig
         rng      = np.random.default_rng(0)
         cfg      = ParisKVConfig()
         dim      = 16
@@ -423,7 +422,7 @@ class TestParisKVWiring:
         assert codebook.quantization_error >= 0.0  # property, not method
 
     def test_online_update_adjusts_codebook(self):
-        from squish.paris_kv import ParisKVConfig, ParisKVCodebook
+        from squish.paris_kv import ParisKVCodebook, ParisKVConfig
         rng      = np.random.default_rng(1)
         cfg      = ParisKVConfig(learning_rate=0.1)
         codebook = ParisKVCodebook(dim=8, n_codes=4, config=cfg)
@@ -441,7 +440,7 @@ class TestParisKVWiring:
 
 class TestKVTunerWiring:
     def test_import(self):
-        from squish.kvtuner import KVTunerConfig, KVTunerCalibrator
+        from squish.kvtuner import KVTunerCalibrator, KVTunerConfig
         cfg = KVTunerConfig(n_layers=8, candidate_bits=(2, 4, 8),
                              target_avg_bits=4.0)
         cal = KVTunerCalibrator(cfg)
@@ -456,7 +455,7 @@ class TestKVTunerWiring:
         assert cfg.key_priority > 0.0
 
     def test_record_and_search(self):
-        from squish.kvtuner import KVTunerConfig, KVTunerCalibrator, KVQuantConfig
+        from squish.kvtuner import KVQuantConfig, KVTunerCalibrator, KVTunerConfig
         rng = np.random.default_rng(0)
         cfg = KVTunerConfig(n_layers=4, candidate_bits=(2, 4, 8),
                              target_avg_bits=4.0)
@@ -470,7 +469,7 @@ class TestKVTunerWiring:
         assert result.n_layers == cfg.n_layers
 
     def test_avg_bits_respects_target(self):
-        from squish.kvtuner import KVTunerConfig, KVTunerCalibrator
+        from squish.kvtuner import KVTunerCalibrator, KVTunerConfig
         rng = np.random.default_rng(2)
         n   = 8
         cfg = KVTunerConfig(n_layers=n, candidate_bits=(2, 4, 8),

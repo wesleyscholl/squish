@@ -340,7 +340,11 @@ def _dequantize_npy(tensor_dir: Path, sk: str) -> np.ndarray:
             blob   = _load_npy_path(s4_df11_path, mmap_mode=None).tobytes()
             blocks = pickle.loads(blob)
             comp   = DFloat11Compressor()
-            scales = comp.decompress_array(blocks).astype(np.float32)
+            # decompress_array returns a flat 1-D array; reshape to 2-D (N, n_groups)
+            # so dequantize_int4_grouped (Rust) receives PyReadonlyArray2 as required.
+            scales = np.ascontiguousarray(
+                comp.decompress_array(blocks).astype(np.float32).reshape(packed.shape[0], -1)
+            )
         else:
             scales = np.ascontiguousarray(_load_npy_path(s4_path, mmap_mode=None), dtype=np.float32)
         return dequantize_int4(packed, scales, group_size=64)

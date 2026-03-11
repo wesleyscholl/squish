@@ -228,7 +228,7 @@ class TestDELDecoderWiring:
 
 class TestDFloat11Wiring:
     def test_import(self):
-        from squish.dfloat11 import DFloat11Config, DFloat11Compressor
+        from squish.dfloat11 import DFloat11Compressor, DFloat11Config
         cfg  = DFloat11Config(block_size=64)
         comp = DFloat11Compressor(cfg)
         assert comp is not None
@@ -240,7 +240,7 @@ class TestDFloat11Wiring:
         assert cfg.min_symbol_freq >= 1
 
     def test_compress_decompress_roundtrip(self):
-        from squish.dfloat11 import DFloat11Config, DFloat11Compressor
+        from squish.dfloat11 import DFloat11Compressor, DFloat11Config
         rng = np.random.default_rng(0)
         cfg  = DFloat11Config(block_size=64)
         comp = DFloat11Compressor(cfg)
@@ -423,7 +423,7 @@ class TestSqueezeLLMWiring:
         assert 0.0 <= cfg.sparsity_ratio < 1.0
 
     def test_compress_returns_layer(self):
-        from squish.squeeze_llm import SqueezeLLMConfig, SqueezeLLMQuantizer, SqueezeLLMLayer
+        from squish.squeeze_llm import SqueezeLLMConfig, SqueezeLLMLayer, SqueezeLLMQuantizer
         rng   = np.random.default_rng(0)
         cfg   = SqueezeLLMConfig(quant_bits=4, sparsity_ratio=0.01, n_fit_iters=2)
         quant = SqueezeLLMQuantizer(cfg)
@@ -441,7 +441,7 @@ class TestSqueezeLLMWiring:
 
 class TestNF4QuantWiring:
     def test_import(self):
-        from squish.nf4_quant import NF4_LEVELS, quantize_nf4, dequantize_nf4
+        from squish.nf4_quant import NF4_LEVELS, dequantize_nf4, quantize_nf4
         assert len(NF4_LEVELS) == 16
 
     def test_nf4_levels_sorted(self):
@@ -458,7 +458,7 @@ class TestNF4QuantWiring:
         assert scales is not None
 
     def test_roundtrip_error_small(self):
-        from squish.nf4_quant import quantize_nf4, dequantize_nf4
+        from squish.nf4_quant import dequantize_nf4, quantize_nf4
         rng = np.random.default_rng(1)
         # n_cols must be divisible by group_size=64
         W   = rng.standard_normal((4, 64)).astype(np.float32)
@@ -487,7 +487,7 @@ class TestSpinQuantWiring:
         assert np.allclose(prod, np.eye(8), atol=1e-5)
 
     def test_cayley_update_preserves_orthogonality(self):
-        from squish.spin_quant import _random_orthogonal, _riemannian_grad, _cayley_update
+        from squish.spin_quant import _cayley_update, _random_orthogonal, _riemannian_grad
         rng = np.random.default_rng(1)
         W   = rng.standard_normal((8, 8)).astype(np.float32)
         R   = _random_orthogonal(dim=8, rng=rng)
@@ -505,8 +505,10 @@ class TestSpinQuantWiring:
 class TestHeteroVocabSDWiring:
     def test_import(self):
         from squish.hetero_vocab_sd import (
-            HeteroVocabConfig, HeteroVocabDecoder,
-            HeteroVocabDrafter, VocabMapper,
+            HeteroVocabConfig,
+            HeteroVocabDecoder,
+            HeteroVocabDrafter,
+            VocabMapper,
         )
         d_vocab, t_vocab = 16, 32
         cfg     = HeteroVocabConfig(gamma=2, draft_vocab_size=d_vocab, target_vocab_size=t_vocab)
@@ -532,8 +534,10 @@ class TestHeteroVocabSDWiring:
 
     def test_generate_returns_tokens(self):
         from squish.hetero_vocab_sd import (
-            HeteroVocabConfig, HeteroVocabDecoder,
-            HeteroVocabDrafter, VocabMapper,
+            HeteroVocabConfig,
+            HeteroVocabDecoder,
+            HeteroVocabDrafter,
+            VocabMapper,
         )
         d_vocab = t_vocab = 16
         cfg     = HeteroVocabConfig(gamma=2, draft_vocab_size=d_vocab, target_vocab_size=t_vocab)
@@ -558,7 +562,7 @@ class TestHeteroVocabSDWiring:
 
 class TestHeadInferWiring:
     def test_import(self):
-        from squish.head_infer import HeadInferConfig, HeadAwareKVStore
+        from squish.head_infer import HeadAwareKVStore, HeadInferConfig
         cfg   = HeadInferConfig(n_layers=4, n_heads=4, window_size=32)
         store = HeadAwareKVStore(cfg)
         assert store is not None
@@ -572,7 +576,7 @@ class TestHeadInferWiring:
         assert 0.0 < cfg.retrieval_threshold < 1.0
 
     def test_put_and_get(self):
-        from squish.head_infer import HeadInferConfig, HeadAwareKVStore
+        from squish.head_infer import HeadAwareKVStore, HeadInferConfig
         rng   = np.random.default_rng(0)
         cfg   = HeadInferConfig(n_layers=2, n_heads=2, window_size=8)
         store = HeadAwareKVStore(cfg)
@@ -583,7 +587,7 @@ class TestHeadInferWiring:
         assert keys.ndim >= 1
 
     def test_classifier_import(self):
-        from squish.head_infer import HeadInferConfig, HeadClassifier
+        from squish.head_infer import HeadClassifier, HeadInferConfig
         cfg = HeadInferConfig(n_layers=2, n_heads=4)
         clf = HeadClassifier(cfg)
         arr = clf.to_labels_array()

@@ -5,6 +5,62 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [3.0.0] — 2026-03-11
+
+### Added — Wave 17: Attention Architecture
+
+- **SageAttention2** (`squish/sage_attention2.py`) — INT4/INT8 warp-tile quantised attention via `SageAttention2Kernel.forward()` + `warp_quantize_int4()`. 672 µs forward (4 heads, seq=32, d=64); bandwidth-optimal for long sequences.
+- **StreamingSink** (`squish/streaming_sink.py`) — Attention-sink KV eviction cache via `StreamingSinkCache`. Keeps `num_sinks` initial tokens + a sliding window; bounded memory at any context length.
+- **KVSlab** (`squish/kv_slab.py`) — Pre-allocated slab page allocator for KV via `KVSlabAllocator`. 0.87 µs alloc+free round-trip; eliminates per-token malloc fragmentation.
+- **SqueezeAttention** (`squish/squeeze_attention.py`) — Joint 2D KV budget allocation (token × layer axes) via `BudgetAllocator.allocate()` + `SqueezeKVCache`. Pareto-optimal vs. independent axis compression.
+- **SmallKV** (`squish/smallkv.py`) — Saliency-compensated KV recall for small models via `SmallKVStore`. 39 µs ingest, 8 µs check-and-recall; protects quality under aggressive KV budgets.
+- **SpeContext** (`squish/specontext.py`) — Speculative-decode context retrieval cache via `SpeContextCache`. Cosine-similarity top-k retrieve at 3.3 ms; eliminates context re-fetch per draft step.
+- **SVDq** (`squish/svdq.py`) — Head-wise SVD low-rank K quantisation via `SVDqCalibrator.search()`. 62 ms one-time calibration; mixed-precision K across layers and heads.
+- **CommVQ** (`squish/comm_vq.py`) — Communal vector-quantised KV codebook via `CommVQCodebook`. 55 µs encode, 68 µs decode; shared codebook eliminates per-layer redundancy.
+- **ChunkedPrefill** (`squish/chunked_prefill.py`) — Interleaved chunked prefill iterator via `ChunkedPrefillIterator`. Bounded per-chunk latency; prevents decoding stalls during long prefills.
+- **GemFilter** (`squish/gemfilter.py`) — Attention-score KV token selector via `GemSelector.select()` + `AttentionScoreBuffer`. 0.90× compression ratio, 50 µs selection for 512-token contexts.
+- **MInferencePatch** (`squish/minference_patch.py`) — Dynamic sparse attention patcher via `patch_model_minference()`. Sub-quadratic attention for 1M+ token contexts via vertical/diagonal/slash patterns.
+- **PromptCompressor** (`squish/prompt_compressor.py`) — TF-IDF sentence-level prompt compression via `PromptCompressor.compress()`. 686 µs for 50 sentences at ratio=0.3; preserves query-relevant content.
+- **PromptLookup** (`squish/prompt_lookup.py`) — N-gram speculative draft generator via `PromptLookupBuffer`. 0.8 µs find, 3.3 µs push; zero-model spec-decode from prompt n-grams.
+- **TRAIL** (`squish/trail.py`) — Output-length linear-probe predictor via `TrailLinearProbe.predict()` + `TrailPredictor.srpt_priority()`. 10 µs predict; feeds SRPT scheduling queue.
+
+### Added — Wave 18: Adaptive Compute
+
+- **VPTQ** (`squish/vptq.py`) — Vector-product tree quantisation via `VPTQCodebook` + `VPTQQuantizer`. 15 µs decode, 133 ms one-time compress (W=32×32); captures intra-vector correlations.
+- **LayerSkip** (`squish/layer_skip.py`) — Confidence-gated early exit via `LayerSkipEstimator`. 266 µs estimate; exits before `lm_head` when token confidence exceeds threshold=0.85.
+- **SWIFT** (`squish/swift.py`) — Weight-irrelevant FFN layer skip via `SWIFTCalibrator.calibrate()`. 162 µs calibrate; identifies and skips 34% of functionally redundant FFN layers.
+- **SpecReason** (`squish/spec_reason.py`) — Speculative reasoning step orchestrator via `SpecReasonOrchestrator.generate_step()`. 6.6 µs per step; pipelines draft+target verification.
+- **MirrorSD** (`squish/mirror_sd.py`) — Mirror speculative decode pipeline via `MirrorDraftPipeline.step()`. 867 µs step (vocab=32k); runs parallel draft branches to capture acceptance bursts.
+- **SparseVerify** (`squish/sparse_verify.py`) — Inter-draft KV reuse cache via `InterDraftReuseCache`. 0.28 µs `query_reuse()`; near-zero overhead for skipping re-verified identical KV slices.
+- **RobustScheduler** (`squish/robust_scheduler.py`) — A-balanced SRPT request scheduler via `RobustScheduler.schedule_batch()`. 3.7 µs schedule 32 requests; prevents priority inversions under bursty workloads.
+- **BlockExpertArchive** (`squish/block_expert_archive.py`) — Block-expert weight archive and router via `ExpertRouter.route()`. 73 µs route 8 experts; enables offline expert delta caching.
+- **DISCRouter** (`squish/disc_router.py`) — Decomposed inference sub-task planner via `DISCRouter.plan()` + `execute_plan()`. 22.9 µs plan, 3.1 µs execute; parallelises independent sub-tasks.
+- **SelfLearning** (`squish/self_learning.py`) — LoRA-free online domain adaptation via `SelfLearner.learn_from_examples()`. 6 ms per 4-example step; absorbs domain examples without full fine-tuning.
+- **SemanticCache** (`squish/semantic_cache.py`) — sqlite-vec semantic response cache via `SemanticCache`. Cosine-similarity hit short-circuits full inference for semantically equivalent queries.
+- **IPW** (`squish/ipw.py`) — Inference performance-per-watt tracker via `IPWTracker`. 0.16 µs record, 4.6 ms `summary()`; tracks tokens/watt across workloads.
+- **PowerMonitor** (`squish/power_monitor.py`) — Apple Silicon power source advisor via `PowerMonitor`. 0.5 µs `get_power_source()` + `get_recommended_mode()`; adjusts compute policy for battery vs. AC.
+- **DiffusionDraft** (`squish/diffusion_draft.py`) — Diffusion-model draft head capability gate via `DiffusionDraftHead`. `is_available()` + `is_suitable_for_task()`; enables parallel diffusion-based speculation.
+
+### Tests
+
+- Added `tests/test_wave17_server_wiring.py` — 56 tests covering all 14 Wave 17 module import, instantiation, and core API paths.
+- Added `tests/test_wave18_server_wiring.py` — 56 tests covering all 14 Wave 18 module import, instantiation, and core API paths.
+- Total tests: **4 166 passing**, 16 skipped, 0 failures.
+
+### Benchmarks
+
+- Added `dev/benchmarks/bench_wave17_18.py` — micro-benchmark suite for all 28 Wave 17+18 modules.
+- Added `dev/results/wave17_18_bench.json` — machine-readable benchmark output.
+- Added `docs/benchmark_wave17_18.md` — human-readable results table.
+
+### Docs
+
+- Updated `README.md` with v5 section, Wave 17+18 module tables, and combined stack CLI examples.
+- Updated `PLAN.md` to mark v5 complete and note v6 roadmap.
+- Added `dev/demos/record_v5_demo.py` — v5 demo GIF generator.
+
+---
+
 ## [2.0.0] — 2026-03-12
 
 ### Added — Wave 15: Serving Intelligence + KV Architecture Evolution

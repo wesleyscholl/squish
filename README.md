@@ -25,6 +25,16 @@
 
 ![](dev/demos/squish-demo.gif)
 
+### v5 — Attention Architecture · Adaptive Compute
+
+![](dev/demos/squish-v5-demo.gif)
+
+> v5 adds 28 new modules across Wave 17 and Wave 18.
+> Wave 17 (Attention Architecture): SageAttention2, StreamingSink, KVSlab, SqueezeAttention, SmallKV, SpeContext, SVDq, CommVQ, ChunkedPrefill, GemFilter, MInferencePatch, PromptCompressor, PromptLookup, TRAIL.
+> Wave 18 (Adaptive Compute): VPTQ, LayerSkip, SWIFT, SpecReason, MirrorSD, SparseVerify, RobustScheduler, BlockExpertArchive, DISCRouter, SelfLearning, SemanticCache, IPW, PowerMonitor, DiffusionDraft.
+> INT4-quantised attention · joint 2D KV budget · slab allocator · online domain adaptation · perplexity-per-watt tracking.
+> See [`docs/benchmark_wave17_18.md`](docs/benchmark_wave17_18.md) and [`dev/results/wave17_18_bench.json`](dev/results/wave17_18_bench.json) for full numbers.
+
 ### v4 — Serving Intelligence · KV Architecture · Heterogeneous Compute · Spec-Decode
 
 ![](dev/demos/squish-v4-demo.gif)
@@ -365,8 +375,79 @@ squish run qwen3:8b \
   --forelen --rasd
 ```
 
-v4 benchmark results: [`docs/benchmark_wave15_16.md`](docs/benchmark_wave15_16.md)  
+v4 benchmark results: [`docs/benchmark_wave15_16.md`](docs/benchmark_wave15_16.md)
 Raw data: [`dev/results/wave15_16_bench.json`](dev/results/wave15_16_bench.json)
+
+---
+
+## v5 — Optimisation Modules: Attention Architecture
+
+v5 (Wave 17) focuses on **INT4/INT8 attention kernels**, **slab-allocated KV storage**, **joint 2D KV budget management**, and **context-aware speculative prefetching**, shipping 14 new modules:
+
+| Module | Flag | Problem Solved | Key Number |
+|--------|------|----------------|------------|
+| **SageAttention2** | `--sage-attn2` | Full-precision attention is bandwidth-bound for long sequences | **INT4/INT8 warp-tile quantisation** · 672 µs forward (4h/seq32/d64) |
+| **StreamingSink** | `--streaming-sink` | Unbounded KV growth at long contexts | **Attention-sink eviction** — bounded memory at any context length |
+| **KVSlab** | `--kv-slab` | Per-token malloc/free causes fragmentation under scale | **Pre-allocated slab allocator** · 0.87 µs alloc+free round-trip |
+| **SqueezeAttention** | `--squeeze-attn` | Independent token/layer KV compression compounds quality loss | **Joint 2D Pareto-optimal budget** allocation across both axes |
+| **SmallKV** | `--small-kv` | Aggressive KV compression degrades small-model quality | **Saliency-compensated** recall · 39 µs ingest · 8 µs check-and-recall |
+| **SpeContext** | `--spe-context` | Speculative decode wastes context retrieval at each draft step | **Cosine-similarity context cache** · 3.3 ms retrieve top-32 |
+| **SVDq** | `--svdq` | Uniform K quantisation ignores per-head SVD structure | **Head-wise mixed-precision K search** · 62 ms one-time calibration |
+| **CommVQ** | `--comm-vq` | Per-layer VQ codebooks waste memory building near-identical codebooks | **Shared communal codebook** · 55 µs encode · 68 µs decode |
+| **ChunkedPrefill** | `--chunked-prefill` | Long prefills block decoding requests for the full context length | **Interleaved chunked prefill** — bounded latency per chunk |
+| **GemFilter** | `--gemfilter` | KV eviction without attention-score feedback drops important tokens | **Top-K attention-score selector** · 0.90× cR · 50 µs select |
+| **MInferencePatch** | `--minference` | Full O(n²) attention is infeasible for 1M+ token contexts | **Dynamic sparse patterns** — sub-quadratic attention at ultra-long context |
+| **PromptCompressor** | `--prompt-compress` | Long system prompts and RAG context waste prefill FLOPs | **TF-IDF sentence-level compression** · 686 µs for 50-sentence input |
+| **PromptLookup** | `--prompt-lookup` | No-draft-model baseline has no spec-decode path | **N-gram copy speculation** from prompt · 0.8 µs find · 3.3 µs push |
+| **TRAIL** | `--trail` | Output-length prediction is too slow for real-time SRPT scheduling | **Linear-probe predictor** · 10 µs predict · feeds SRPT priority queue |
+
+Full v5 (Wave 17) stack (attention architecture):
+
+```bash
+squish run qwen3:8b \
+  --sage-attn2 --streaming-sink --kv-slab \
+  --squeeze-attn --small-kv --spe-context \
+  --svdq --comm-vq --chunked-prefill \
+  --gemfilter --minference \
+  --prompt-compress --prompt-lookup --trail
+```
+
+---
+
+## v5 — Optimisation Modules: Adaptive Compute
+
+v5 (Wave 18) focuses on **vector-product quantisation**, **confidence-gated early exit**, **online domain adaptation**, and **energy-aware scheduling**, shipping 14 new modules:
+
+| Module | Flag | Problem Solved | Key Number |
+|--------|------|----------------|------------|
+| **VPTQ** | `--vptq` | Scalar quantisation loses intra-vector correlations | **Vector-product tree quant** · 15 µs decode · 133 ms one-time compress |
+| **LayerSkip** | `--layer-skip` | All tokens pass through all layers regardless of difficulty | **Confidence-gated early exit** · 266 µs estimate · exit at threshold=0.85 |
+| **SWIFT** | `--swift` | All FFN layers execute even when weights are functionally redundant | **Calibration-based FFN skip** · 162 µs calibrate · 34% layers skipped |
+| **SpecReason** | `--spec-reason` | Reasoning chains serialise draft+verify round trips | **Pipelined draft+target step** · 6.6 µs per orchestrated step |
+| **MirrorSD** | `--mirror-sd` | Single-draft spec-decode misses acceptance bursts | **Mirror pipeline** (parallel draft branches) · 867 µs step vocab=32k |
+| **SparseVerify** | `--sparse-verify` | Re-verifying identical KV slices across draft iterations wastes compute | **Inter-draft KV reuse cache** · 0.28 µs query · near-zero overhead |
+| **RobustScheduler** | `--robust-sched` | Priority inversions under bursty load hurt P99 latency | **A-balanced SRPT scheduler** · 3.7 µs schedule 32 requests |
+| **BlockExpertArchive** | `--block-expert` | MoE expert routing is static and disk-bandwidth-bound | **Archived block-expert router** · 73 µs route 8 experts |
+| **DISCRouter** | `--disc-router` | Monolithic inference ignores sub-task decomposition opportunities | **Decomposed sub-task planner** · 22.9 µs plan · 3.1 µs execute |
+| **SelfLearning** | `--self-learning` | Domain adaptation requires expensive LoRA fine-tuning runs | **LoRA-free online delta absorption** · 6 ms per 4-example learn step |
+| **SemanticCache** | `--semantic-cache` | Repeated semantically-equivalent queries re-run full inference | **sqlite-vec semantic cache** · short-circuit on cosine similarity hit |
+| **IPW** | `--ipw` | No per-inference energy accounting available on-device | **Perf-per-watt tracker** · 0.16 µs record · 4.6 ms full summary |
+| **PowerMonitor** | `--power-monitor` | Compute policy ignores battery vs. AC power state | **Apple Silicon power advisor** · 0.5 µs get recommended mode |
+| **DiffusionDraft** | `--diffusion-draft` | AR draft models cannot exploit diffusion-model parallel generation | **Diffusion draft head** · availability gate for suitable tasks |
+
+Full v5 (Wave 18) stack (adaptive compute):
+
+```bash
+squish run qwen3:8b \
+  --vptq --layer-skip --swift \
+  --spec-reason --mirror-sd --sparse-verify \
+  --robust-sched --block-expert --disc-router \
+  --self-learning --semantic-cache \
+  --ipw --power-monitor --diffusion-draft
+```
+
+v5 benchmark results: [`docs/benchmark_wave17_18.md`](docs/benchmark_wave17_18.md)
+Raw data: [`dev/results/wave17_18_bench.json`](dev/results/wave17_18_bench.json)
 
 ---
 
@@ -689,6 +770,38 @@ squish bench --markdown --save bench_results.md
 | `squish/long_spec.py` | **v4** LongSpecHead long-context zero-KV-overhead draft head |
 | `squish/forelen.py` | **v4** EGTPPredictor + PLPPredictor entropy-guided length pred |
 | `squish/rasd.py` | **v4** RASDBatcher retrieval-augmented speculative decode |
+| `squish/sage_attention2.py` | **v5** SageAttention2 INT4/INT8 warp-tile quantised attention kernel |
+| `squish/streaming_sink.py` | **v5** StreamingSink attention-sink KV eviction cache |
+| `squish/kv_slab.py` | **v5** KVSlab pre-allocated slab page allocator for KV |
+| `squish/squeeze_attention.py` | **v5** SqueezeAttention joint 2D KV budget allocator |
+| `squish/smallkv.py` | **v5** SmallKV saliency-compensated KV recall for small models |
+| `squish/specontext.py` | **v5** SpeContext speculative-decode context retrieval cache |
+| `squish/svdq.py` | **v5** SVDqCalibrator head-wise SVD low-rank K quantisation |
+| `squish/comm_vq.py` | **v5** CommVQCodebook communal vector-quantised KV codebook |
+| `squish/chunked_prefill.py` | **v5** ChunkedPrefillIterator interleaved chunked prefill |
+| `squish/gemfilter.py` | **v5** GemSelector attention-score KV token selector |
+| `squish/minference_patch.py` | **v5** patch_model_minference dynamic sparse attention patcher |
+| `squish/prompt_compressor.py` | **v5** PromptCompressor TF-IDF sentence-level compression |
+| `squish/prompt_lookup.py` | **v5** PromptLookupBuffer N-gram speculative draft generator |
+| `squish/trail.py` | **v5** TrailLinearProbe + TrailPredictor output-length predictor |
+| `squish/vptq.py` | **v5** VPTQCodebook + VPTQQuantizer vector-product tree quantisation |
+| `squish/layer_skip.py` | **v5** LayerSkipEstimator confidence-gated early exit |
+| `squish/swift.py` | **v5** SWIFTCalibrator weight-irrelevant FFN layer skip |
+| `squish/spec_reason.py` | **v5** SpecReasonOrchestrator speculative reasoning step pipeline |
+| `squish/mirror_sd.py` | **v5** MirrorDraftPipeline parallel mirror speculative decode |
+| `squish/sparse_verify.py` | **v5** InterDraftReuseCache inter-draft KV reuse verifier |
+| `squish/robust_scheduler.py` | **v5** RobustScheduler A-balanced SRPT request scheduler |
+| `squish/block_expert_archive.py` | **v5** BlockExpertArchive + ExpertRouter block-expert weight store |
+| `squish/disc_router.py` | **v5** DISCRouter decomposed inference sub-task planner |
+| `squish/self_learning.py` | **v5** SelfLearner LoRA-free online domain adaptation |
+| `squish/semantic_cache.py` | **v5** SemanticCache sqlite-vec semantic response cache |
+| `squish/ipw.py` | **v5** IPWTracker inference performance-per-watt tracker |
+| `squish/power_monitor.py` | **v5** PowerMonitor Apple Silicon power source advisor |
+| `squish/diffusion_draft.py` | **v5** DiffusionDraftHead diffusion-model draft capability |
+| `dev/benchmarks/bench_wave17_18.py` | **v5 micro-benchmark suite** for all 28 Wave 17+18 modules |
+| `dev/results/wave17_18_bench.json` | **v5 benchmark results** (machine-readable JSON) |
+| `docs/benchmark_wave17_18.md` | **v5 benchmark results** (human-readable Markdown table) |
+| `dev/demos/record_v5_demo.py` | **v5 demo GIF generator** |
 | `dev/demos/run_inference.py` | Minimal inference example (no server needed) |
 | `squish_quant_rs/` | Rust/PyO3 ARM NEON INT8 quantiser (optional, 6 GB/s) |
 | `docs/ARCHITECTURE.md` | Technical deep-dive: why these numbers are real |

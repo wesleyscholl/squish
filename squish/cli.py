@@ -1755,9 +1755,10 @@ def cmd_model_pack(args):
             --experts 4 \\
             --out ~/.squish/archives/qwen3-8b-experts
     """
-    from pathlib import Path as _Path
-    import numpy as _np
     import re as _re
+    from pathlib import Path as _Path
+
+    import numpy as _np
 
     try:
         from squish.block_expert_archive import (
@@ -1778,7 +1779,7 @@ def cmd_model_pack(args):
         _Path.home() / ".squish" / "archives" / (model_dir.name + f"-experts{n_experts}")
     )
 
-    print(f"\n  Squish Block-Expert Archive Packer")
+    print("\n  Squish Block-Expert Archive Packer")
     print(f"  Model : {model_dir}")
     print(f"  Output: {out_dir}")
     print(f"  K     : {n_experts} clusters per block")
@@ -1866,7 +1867,7 @@ def cmd_model_pack(args):
     archive.save()
 
     s = archive.stats
-    print(f"\n  Archive stats:")
+    print("\n  Archive stats:")
     print(f"    Blocks packed  : {s.n_blocks}")
     print(f"    Total experts  : {s.n_experts_total}")
     print(f"    Avg delta SNR  : {s.avg_delta_snr_db:.1f} dB")
@@ -1894,6 +1895,7 @@ def cmd_model_learn(args):
             --steps 50
     """
     from pathlib import Path as _Path
+
     import numpy as _np
 
     try:
@@ -1932,7 +1934,7 @@ def cmd_model_learn(args):
     domain = getattr(args, "domain", None) or "general"
     steps  = max(1, min(int(getattr(args, "steps", 50)), 500))
 
-    print(f"\n  Squish Self-Learning")
+    print("\n  Squish Self-Learning")
     print(f"  Archive : {archive_dir}")
     print(f"  Domain  : {domain}")
     print(f"  Steps   : {steps}")
@@ -1979,6 +1981,7 @@ def cmd_model_merge_archive(args):
             --out ~/.squish/archives/qwen3-combined
     """
     from pathlib import Path as _Path
+
     import numpy as _np
 
     try:
@@ -1996,7 +1999,7 @@ def cmd_model_merge_archive(args):
             print(f"\n  Error: not a valid archive: {p}")
             sys.exit(1)
 
-    print(f"\n  Squish Archive Merge")
+    print("\n  Squish Archive Merge")
     print(f"  Base  : {path1}")
     print(f"  Other : {path2}")
     print(f"  Output: {out}")

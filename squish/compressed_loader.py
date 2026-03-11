@@ -134,9 +134,13 @@ try:
 except ImportError:  # pragma: no cover
     mx = None  # type: ignore[assignment]
     _MLX_AVAILABLE = False
-from transformers import AutoTokenizer  # noqa: E402
-
 from squish.quantizer import QuantizationResult, reconstruct_embeddings  # noqa: E402
+
+
+def _get_auto_tokenizer():
+    """Lazily import AutoTokenizer to avoid the 20-second transformers startup penalty."""
+    from transformers import AutoTokenizer  # noqa: PLC0415
+    return AutoTokenizer
 
 
 # ---------------------------------------------------------------------------
@@ -394,7 +398,7 @@ def _load_finalized_cache(  # pragma: no cover
     model.load_weights(weight_tuples)
     del weight_tuples
 
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+    tokenizer = _get_auto_tokenizer().from_pretrained(model_dir, trust_remote_code=True)
     rss_final = _rss_mb()
 
     stats.update({
@@ -455,7 +459,7 @@ def _load_mlx_cache(  # pragma: no cover
     model.load_weights(weight_list)
     del weight_list
 
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+    tokenizer = _get_auto_tokenizer().from_pretrained(model_dir, trust_remote_code=True)
     rss_final = _rss_mb()
 
     stats.update({
@@ -1108,7 +1112,7 @@ def load_from_npy_dir(  # pragma: no cover
         if verbose:
             print(f"  → {auto_quantize_bits}-bit quantization complete ({q_s:.1f}s)")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+    tokenizer = _get_auto_tokenizer().from_pretrained(model_dir, trust_remote_code=True)
 
     rss_final = _rss_mb()
     stats.update({
@@ -1250,7 +1254,7 @@ def load_compressed_model(  # pragma: no cover
     rss_after_load = _rss_mb()
 
     # 6. Load tokenizer from model_dir
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+    tokenizer = _get_auto_tokenizer().from_pretrained(model_dir, trust_remote_code=True)
 
     rss_final = _rss_mb()
     stats.update({

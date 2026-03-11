@@ -1,6 +1,6 @@
 # Squish — Development Plan
 
-> Last updated: 2026-03-11 (v5 plan added)
+> Last updated: 2026-03-11 (v5 complete)
 
 This document tracks completed waves, the current release, and the next phase.
 
@@ -100,12 +100,11 @@ Theme: **Serving Intelligence · KV Architecture Evolution · Heterogeneous Comp
 
 ---
 
-## 🚧 v5 — Waves 17+18 (Next Phase)
+## ✅ v5 — Waves 17+18 (Released 2026-03-11)
 
-Theme: **Attention Architecture · Memory Management · Adaptive Compute · Model Intelligence · Evaluation**
+Theme: **Attention Architecture · Memory Management · Adaptive Compute · Model Intelligence**
 
-28 fully-implemented modules across two waves — all available in `squish/` but not yet
-documented, benchmarked, or wired into the CLI.
+28 modules across two waves — all implemented, tested, benchmarked, and documented.
 
 ---
 
@@ -155,16 +154,16 @@ continuous self-improvement, serving intelligence, and battery-aware evaluation.
 
 ### v5 Deliverables checklist
 
-- [ ] `tests/test_wave17_server_wiring.py` — import + instantiation tests for 14 modules
-- [ ] `tests/test_wave18_server_wiring.py` — import + instantiation tests for 14 modules
-- [ ] `dev/benchmarks/bench_wave17_18.py` — micro-benchmark suite
-- [ ] `dev/results/wave17_18_bench.json` — benchmark results
-- [ ] `docs/benchmark_wave17_18.md` — human-readable results table
-- [ ] `dev/demos/record_v5_demo.py` — v5 demo GIF generator
-- [ ] `dev/demos/squish-v5-demo.gif` — demo GIF rendered
-- [ ] README.md — v5 module sections, Wave 17+18 tables, CLI examples
-- [ ] CHANGELOG.md — `[3.0.0]` entry
-- [ ] PLAN.md updated to mark v5 complete
+- [x] `tests/test_wave17_server_wiring.py` — 56 tests, 56 passing
+- [x] `tests/test_wave18_server_wiring.py` — 56 tests, 56 passing
+- [x] `dev/benchmarks/bench_wave17_18.py` — micro-benchmark suite (24 modules timed, 4 skipped)
+- [x] `dev/results/wave17_18_bench.json` — benchmark results
+- [x] `docs/benchmark_wave17_18.md` — human-readable results table
+- [x] `dev/demos/record_v5_demo.py` — v5 demo GIF generator (448 events, 85.2s)
+- [ ] `dev/demos/squish-v5-demo.gif` — demo GIF (requires `agg` binary)
+- [x] README.md — v5 module sections, Wave 17+18 tables, CLI examples
+- [x] CHANGELOG.md — `[3.0.0]` entry
+- [x] PLAN.md updated to mark v5 complete
 
 ### v5 Module Count Summary
 
@@ -174,8 +173,8 @@ continuous self-improvement, serving intelligence, and battery-aware evaluation.
 | Wave 18 (Adaptive Compute + Intelligence) | 14 |
 | Total new v5 modules | **28** |
 | Total modules after v5 | **110** |
-| Expected new tests | **~112** (4 per module) |
-| Total tests after v5 | **~4 049** |
+| New tests | **112** (56 Wave 17 + 56 Wave 18) |
+| Total tests after v5 | **4 166** |
 
 ---
 

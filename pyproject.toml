@@ -117,8 +117,9 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts   = "-q --tb=short"
+testpaths  = ["tests"]
+pythonpath = ["."]
+addopts    = "-q --tb=short"
 
 [tool.coverage.run]
 source = ["squish"]

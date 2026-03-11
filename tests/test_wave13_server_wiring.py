@@ -58,7 +58,7 @@ class TestDuoAttentionWiring:
 
 class TestShadowKVWiring:
     def test_import(self):
-        from squish.shadow_kv import ShadowKVConfig, ShadowKVCache
+        from squish.shadow_kv import ShadowKVCache, ShadowKVConfig
         cfg   = ShadowKVConfig(svd_rank=8, n_landmarks=16)
         cache = ShadowKVCache(n_layers=2, n_heads=4, head_dim=16, config=cfg)
         assert cache is not None
@@ -76,7 +76,7 @@ class TestShadowKVWiring:
             ShadowKVConfig(svd_rank=0)
 
     def test_store_and_recall(self):
-        from squish.shadow_kv import ShadowKVConfig, ShadowKVCache
+        from squish.shadow_kv import ShadowKVCache, ShadowKVConfig
         rng = np.random.default_rng(0)
         cfg = ShadowKVConfig(svd_rank=4, n_landmarks=8, min_calibration_tokens=4)
         cache = ShadowKVCache(n_layers=1, n_heads=2, head_dim=8, config=cfg)
@@ -115,7 +115,7 @@ class TestPQCacheWiring:
         keys = rng.standard_normal((20, 8)).astype(np.float32)
         vals = rng.standard_normal((20, 8)).astype(np.float32)
         idx.fit(keys)
-        for i, (k, v) in enumerate(zip(keys, vals)):
+        for i, (k, v) in enumerate(zip(keys, vals, strict=True)):
             idx.add(k, i)
             st.add(i, v)
         q = rng.standard_normal(8).astype(np.float32)
@@ -129,7 +129,7 @@ class TestPQCacheWiring:
 
 class TestSpeCacheWiring:
     def test_import(self):
-        from squish.spe_cache import SpeCacheConfig, SpeCachePrefetcher, InMemoryBlockStore
+        from squish.spe_cache import InMemoryBlockStore, SpeCacheConfig, SpeCachePrefetcher
         cfg   = SpeCacheConfig(block_size=4, prefetch_budget=2)
         store = InMemoryBlockStore(block_size=4)
         pf    = SpeCachePrefetcher(cfg, store)
@@ -143,7 +143,7 @@ class TestSpeCacheWiring:
         assert cfg.sink_blocks >= 0
 
     def test_record_and_plan(self):
-        from squish.spe_cache import SpeCacheConfig, SpeCachePrefetcher, InMemoryBlockStore
+        from squish.spe_cache import InMemoryBlockStore, SpeCacheConfig, SpeCachePrefetcher
         cfg   = SpeCacheConfig(block_size=4, prefetch_budget=2, sink_blocks=0)
         store = InMemoryBlockStore(block_size=4)
         pf    = SpeCachePrefetcher(cfg, store)
@@ -153,7 +153,7 @@ class TestSpeCacheWiring:
         assert isinstance(plan, list)
 
     def test_predict_returns_list(self):
-        from squish.spe_cache import SpeCacheConfig, SpeCachePrefetcher, InMemoryBlockStore
+        from squish.spe_cache import InMemoryBlockStore, SpeCacheConfig, SpeCachePrefetcher
         cfg   = SpeCacheConfig(block_size=4, prefetch_budget=2)
         store = InMemoryBlockStore(block_size=4)
         pf    = SpeCachePrefetcher(cfg, store)
@@ -168,8 +168,10 @@ class TestSpeCacheWiring:
 class TestDuoDecodingWiring:
     def test_import(self):
         from squish.duo_decoding import (
-            DuoDecodingConfig, DuoDecodingDecoder,
-            DuoScheduler, DuoCPUVerifier,
+            DuoCPUVerifier,
+            DuoDecodingConfig,
+            DuoDecodingDecoder,
+            DuoScheduler,
         )
         cfg   = DuoDecodingConfig(gamma=2, k_max=2)
         rng   = np.random.default_rng(0)
@@ -194,8 +196,10 @@ class TestDuoDecodingWiring:
 
     def test_generate_returns_tokens(self):
         from squish.duo_decoding import (
-            DuoDecodingConfig, DuoDecodingDecoder,
-            DuoScheduler, DuoCPUVerifier,
+            DuoCPUVerifier,
+            DuoDecodingConfig,
+            DuoDecodingDecoder,
+            DuoScheduler,
         )
         rng   = np.random.default_rng(7)
         vocab = 16
@@ -324,7 +328,7 @@ class TestTokenSwiftWiring:
 
 class TestC2TWiring:
     def test_import(self):
-        from squish.c2t import C2TConfig, AdaptiveTreeBuilder
+        from squish.c2t import AdaptiveTreeBuilder, C2TConfig
         cfg     = C2TConfig(tree_depth=3)
         builder = AdaptiveTreeBuilder(cfg)
         assert builder is not None
@@ -337,7 +341,7 @@ class TestC2TWiring:
         assert cfg.narrow_branches >= 1
 
     def test_build_returns_tree(self):
-        from squish.c2t import C2TConfig, AdaptiveTreeBuilder
+        from squish.c2t import AdaptiveTreeBuilder, C2TConfig
         rng    = np.random.default_rng(0)
         vocab  = 32
         hidden = 8
