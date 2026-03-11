@@ -720,6 +720,47 @@ class TestIntegrationReportAllWired:
             "Each must have a 'from squish.X import' statement in main()."
         )
 
+    def test_all_61_modules_wired(self):
+        """Waves 1-14: all 61 modules must have a 'from squish.X import' in server.py."""
+        import re
+        server_src = (Path(__file__).parent.parent / "squish" / "server.py").read_text()
+
+        wave_1_12 = [
+            "paged_attention", "radix_cache",
+            "prompt_lookup", "seq_packing", "ada_serve", "conf_spec",
+            "kvsharer", "kv_slab", "paris_kv", "streaming_sink",
+            "diffkv", "smallkv", "sage_attention", "sage_attention2",
+            "sparge_attn", "squeeze_attention", "yoco", "cla", "kvtuner",
+            "robust_scheduler", "gemfilter", "svdq", "sparse_spec",
+            "sparse_verify", "trail", "specontext", "forelen", "ipw",
+            "layer_skip", "lookahead_reasoning", "spec_reason", "long_spec",
+            "fr_spec", "lora_manager", "diffusion_draft",
+        ]
+        wave_13 = [
+            "duo_attention", "shadow_kv", "pq_cache", "spe_cache",
+            "duo_decoding", "knapspec", "token_merging", "token_swift",
+            "c2t", "clasp",
+        ]
+        wave_14 = [
+            "soup_experts", "vision_cache", "vector_index", "sub_spec",
+            "del_decoder", "dfloat11", "rans_codec", "qspec", "quant_spec",
+            "copy_spec", "squeeze_llm", "nf4_quant", "spin_quant",
+            "hetero_vocab_sd", "head_infer", "life_model",
+        ]
+        all_modules = wave_1_12 + wave_13 + wave_14
+        assert len(all_modules) == 61, f"Expected 61 modules, got {len(all_modules)}"
+
+        unwired = []
+        for mod in all_modules:
+            pat = re.compile(r'from\s+squish\.' + re.escape(mod) + r'\s+import')
+            if not pat.search(server_src):
+                unwired.append(mod)
+
+        assert unwired == [], (
+            f"The following modules are NOT wired in server.py: {unwired}\n"
+            "Each must have a 'from squish.X import' statement in main()."
+        )
+
     def test_all_optimizations_flag_exists_in_server(self):
         server_src = (Path(__file__).parent.parent / "squish" / "server.py").read_text()
         assert "--all-optimizations" in server_src
