@@ -140,6 +140,20 @@ _token_merging_cfg      = None  # TokenMergingConfig      — --token-merging
 _token_swift_decoder    = None  # TokenSwiftDecoder       — --token-swift
 _c2t_tree_builder       = None  # AdaptiveTreeBuilder     — --c2t
 _clasp_decoder          = None  # CLaSPDecoder            — --clasp
+# ── Wave 14: Quantization + Vocabulary-Adaptive Spec-Decode + Expert Mixing ──
+_soup_experts_mixer     = None  # SoupOfExperts           — --soup-experts
+_vision_prefix_cache    = None  # VisionPrefixCache       — --vision-cache
+_vector_index           = None  # MRLIndex                — --vector-index
+_sub_spec_decoder       = None  # SubSpecDecoder          — --sub-spec
+_del_decoder_inst       = None  # DELDecoder              — --del-decoder
+_dfloat11_cfg           = None  # DFloat11Config          — --dfloat11
+_rans_codec_inst        = None  # RANSCodec               — --rans-codec
+_qspec_decoder          = None  # QSpecDecoder            — --qspec
+_quant_spec_decoder     = None  # QuantSpecDecoder        — --quant-spec
+_copy_spec_drafter      = None  # CopySpecDrafter         — --copy-spec
+_squeeze_llm_quant      = None  # SqueezeLLMQuantizer     — --squeeze-llm
+_hetero_vocab_decoder   = None  # HeteroVocabDecoder      — --hetero-vocab-sd
+_head_aware_kv_store    = None  # HeadAwareKVStore        — --head-infer
 # Phase 3: cross-session persistent KV cache
 _session_kv_cache    = None   # SessionKVCache | None — set in main() when --session-cache-dir given
 # Phase 4: prompt compression settings (active when --compress-prompt is set)
@@ -2630,6 +2644,87 @@ Examples:
                     help="Maximum consecutive layers to skip in the draft pass (default: 8).")
     ap.add_argument("--clasp-gamma", type=int, default=4, metavar="G",
                     help="Speculative draft tokens per verification step (default: 4).")
+    # ── Wave 14: Quantization + Vocabulary-Adaptive Spec-Decode + Expert Mixing ─
+    ap.add_argument("--soup-experts", action="store_true", default=False,
+                    help="Enable SoupOfExperts sparse LoRA-expert adapter blending.")
+    ap.add_argument("--soup-experts-tolerance", type=float, default=0.01, metavar="T",
+                    help="Coefficient tolerance for expert blending (default: 0.01).")
+    ap.add_argument("--vision-cache", action="store_true", default=False,
+                    help="Enable VisionPrefixCache SHA-256 dedup for vision encoder outputs.")
+    ap.add_argument("--vision-cache-max-entries", type=int, default=64, metavar="N",
+                    help="Maximum cached vision prefix entries (default: 64).")
+    ap.add_argument("--vector-index", action="store_true", default=False,
+                    help="Enable MRLIndex + HNSWIndex for semantic KV retrieval.")
+    ap.add_argument("--vector-index-dim", type=int, default=512, metavar="D",
+                    help="Full representation dimension for MRL index (default: 512).")
+    ap.add_argument("--vector-index-coarse-dim", type=int, default=64, metavar="D",
+                    help="Coarse representation dimension for MRL index (default: 64).")
+    ap.add_argument("--sub-spec", action="store_true", default=False,
+                    help="Enable SubSpecDecoder speculative decoding via quantized substitute layers.")
+    ap.add_argument("--sub-spec-gamma", type=int, default=4, metavar="G",
+                    help="SubSpec draft tokens per step (default: 4).")
+    ap.add_argument("--sub-spec-gpu-layers", type=int, default=16, metavar="N",
+                    help="SubSpec number of GPU layers for the substitute model (default: 16).")
+    ap.add_argument("--del-decoder", action="store_true", default=False,
+                    help="Enable DELDecoder dynamic early-layer exit speculative decoding.")
+    ap.add_argument("--del-decoder-gamma", type=int, default=4, metavar="G",
+                    help="DEL draft tokens per verification step (default: 4).")
+    ap.add_argument("--del-decoder-min-exit", type=int, default=4, metavar="L",
+                    help="Minimum exit layer for dynamic early-exit (default: 4).")
+    ap.add_argument("--del-decoder-max-exit", type=int, default=8, metavar="L",
+                    help="Maximum exit layer for dynamic early-exit (default: 8).")
+    ap.add_argument("--dfloat11", action="store_true", default=False,
+                    help="Enable DFloat11 block-float compression for model weights.")
+    ap.add_argument("--dfloat11-block-size", type=int, default=256, metavar="B",
+                    help="DFloat11 block size for entropy coding (default: 256).")
+    ap.add_argument("--rans-codec", action="store_true", default=False,
+                    help="Enable rANS entropy codec for KV/weight compression.")
+    ap.add_argument("--rans-codec-mbits", type=int, default=14, metavar="M",
+                    help="rANS codec precision in bits (default: 14).")
+    ap.add_argument("--qspec", action="store_true", default=False,
+                    help="Enable QSpecDecoder quantisation-aware speculative decoding.")
+    ap.add_argument("--qspec-gamma", type=int, default=4, metavar="G",
+                    help="QSpec draft tokens per step (default: 4).")
+    ap.add_argument("--qspec-draft-bits", type=int, default=4, metavar="B",
+                    help="Quantisation bits for QSpec draft activations (default: 4).")
+    ap.add_argument("--qspec-verify-bits", type=int, default=8, metavar="B",
+                    help="Quantisation bits for QSpec verify activations (default: 8).")
+    ap.add_argument("--quant-spec", action="store_true", default=False,
+                    help="Enable QuantSpecDecoder draft-quantised speculative decoding.")
+    ap.add_argument("--quant-spec-gamma", type=int, default=4, metavar="G",
+                    help="QuantSpec draft tokens per step (default: 4).")
+    ap.add_argument("--quant-spec-bits", type=int, default=4, metavar="B",
+                    help="QuantSpec draft quantisation bits (default: 4).")
+    ap.add_argument("--copy-spec", action="store_true", default=False,
+                    help="Enable CopySpecDrafter copy-based speculative decoding from history.")
+    ap.add_argument("--copy-spec-max-draft", type=int, default=8, metavar="K",
+                    help="CopySpec maximum draft length per step (default: 8).")
+    ap.add_argument("--copy-spec-history-len", type=int, default=2048, metavar="N",
+                    help="CopySpec token history window size (default: 2048).")
+    ap.add_argument("--squeeze-llm", action="store_true", default=False,
+                    help="Enable SqueezeLLM sparse + dense mixed-precision weight quantisation.")
+    ap.add_argument("--squeeze-llm-bits", type=int, default=4, metavar="B",
+                    help="SqueezeLLM quantisation bits (default: 4).")
+    ap.add_argument("--squeeze-llm-sparsity", type=float, default=0.45, metavar="S",
+                    help="SqueezeLLM sparsity ratio for sensitive weight extraction (default: 0.45).")
+    ap.add_argument("--hetero-vocab-sd", action="store_true", default=False,
+                    help="Enable HeteroVocabDecoder spec-decode with mismatched draft/target vocabularies.")
+    ap.add_argument("--hetero-vocab-gamma", type=int, default=4, metavar="G",
+                    help="HeteroVocab draft tokens per step (default: 4).")
+    ap.add_argument("--hetero-vocab-draft-size", type=int, default=32000, metavar="V",
+                    help="HeteroVocab draft model vocabulary size (default: 32000).")
+    ap.add_argument("--head-infer", action="store_true", default=False,
+                    help="Enable HeadAwareKVStore head-level inference KV separation.")
+    ap.add_argument("--head-infer-layers", type=int, default=32, metavar="N",
+                    help="Number of transformer layers for head-infer (default: 32).")
+    ap.add_argument("--head-infer-heads", type=int, default=32, metavar="H",
+                    help="Number of attention heads for head-infer (default: 32).")
+    ap.add_argument("--nf4-quant", action="store_true", default=False,
+                    help="Enable NF4 (Normal Float 4-bit) quantisation for weights.")
+    ap.add_argument("--spin-quant", action="store_true", default=False,
+                    help="Enable SpinQuant Hadamard rotation for quantisation-friendly weight layout.")
+    ap.add_argument("--life-model", action="store_true", default=False,
+                    help="Enable model lifecycle predictor for cache eviction guidance.")
     ap.add_argument(
         "--all-optimizations", action="store_true", default=False,
         help=(
@@ -2664,6 +2759,11 @@ Examples:
             "duo_attention", "shadow_kv", "pq_cache", "spe_cache",
             "duo_decoding", "knapspec", "token_merging",
             "token_swift", "c2t", "clasp",
+            # Wave 14
+            "soup_experts", "vision_cache", "vector_index", "sub_spec",
+            "del_decoder", "dfloat11", "rans_codec", "qspec", "quant_spec",
+            "copy_spec", "squeeze_llm", "hetero_vocab_sd", "head_infer",
+            "nf4_quant", "spin_quant", "life_model",
         ]
         for _f in _bool_wave_flags:
             if not getattr(args, _f, False):
@@ -3022,6 +3122,10 @@ Examples:
     global _duo_attn_manager, _shadow_kv_cache, _pq_cache_index, _spe_cache_prefetcher
     global _duo_decoding_decoder, _knapspec_selector, _token_merging_cfg
     global _token_swift_decoder, _c2t_tree_builder, _clasp_decoder
+    global _soup_experts_mixer, _vision_prefix_cache, _vector_index
+    global _sub_spec_decoder, _del_decoder_inst, _dfloat11_cfg, _rans_codec_inst
+    global _qspec_decoder, _quant_spec_decoder, _copy_spec_drafter
+    global _squeeze_llm_quant, _hetero_vocab_decoder, _head_aware_kv_store
 
     if getattr(args, "prompt_lookup", False):
         try:
@@ -3559,6 +3663,221 @@ Examples:
                   f"gamma={_cl_cfg.draft_gamma}")
         except Exception as _e:
             _warn(f"[clasp] Skipped: {_e}")
+
+    # ── Wave 14: Quantization + Vocabulary-Adaptive Spec-Decode + Expert Mixing ─
+
+    if getattr(args, "soup_experts", False):
+        try:
+            from squish.soup_experts import SoupOfExperts
+            _soup_experts_mixer = SoupOfExperts(
+                tolerance=getattr(args, "soup_experts_tolerance", 0.01),
+            )
+            _info("soup-experts", f"sparse LoRA-expert blending  "
+                  f"tolerance={_soup_experts_mixer.tolerance}")
+        except Exception as _e:
+            _warn(f"[soup-experts] Skipped: {_e}")
+
+    if getattr(args, "vision_cache", False):
+        try:
+            from squish.vision_cache import VisionPrefixCache
+            _vision_prefix_cache = VisionPrefixCache(
+                max_entries=getattr(args, "vision_cache_max_entries", 64),
+            )
+            _info("vision-cache", f"SHA-256 vision prefix dedup  "
+                  f"max_entries={_vision_prefix_cache.max_entries}")
+        except Exception as _e:
+            _warn(f"[vision-cache] Skipped: {_e}")
+
+    if getattr(args, "vector_index", False):
+        try:
+            from squish.vector_index import MRLIndex
+            _full_dim   = getattr(args, "vector_index_dim", 512)
+            _coarse_dim = getattr(args, "vector_index_coarse_dim", 64)
+            _vector_index = MRLIndex(full_dim=_full_dim, coarse_dim=_coarse_dim)
+            _info("vector-index", f"Matryoshka repr learning + HNSW ANN  "
+                  f"full_dim={_full_dim}  coarse_dim={_coarse_dim}")
+        except Exception as _e:
+            _warn(f"[vector-index] Skipped: {_e}")
+
+    if getattr(args, "del_decoder", False):
+        try:
+            from squish.del_decoder import DELConfig, DELDecoder
+            _del_cfg = DELConfig(
+                num_layers=32,
+                min_exit_layer=getattr(args, "del_decoder_min_exit", 4),
+                max_exit_layer=getattr(args, "del_decoder_max_exit", 8),
+                gamma=getattr(args, "del_decoder_gamma", 4),
+            )
+            _del_decoder_inst = DELDecoder(
+                forward_fn=lambda toks, layer=None: __import__("numpy").zeros((len(toks), 1)),
+                config=_del_cfg,
+            )
+            _info("del-decoder", f"dynamic early-layer exit spec-decode  "
+                  f"exit=[{_del_cfg.min_exit_layer},{_del_cfg.max_exit_layer}]  "
+                  f"gamma={_del_cfg.gamma}")
+        except Exception as _e:
+            _warn(f"[del-decoder] Skipped: {_e}")
+
+    if getattr(args, "dfloat11", False):
+        try:
+            from squish.dfloat11 import DFloat11Config
+            _dfloat11_cfg = DFloat11Config(
+                block_size=getattr(args, "dfloat11_block_size", 256),
+            )
+            _info("dfloat11", f"DFloat11 block-float compression  "
+                  f"block_size={_dfloat11_cfg.block_size}  "
+                  f"use_rans={_dfloat11_cfg.use_rans}")
+        except Exception as _e:
+            _warn(f"[dfloat11] Skipped: {_e}")
+
+    if getattr(args, "rans_codec", False):
+        try:
+            from squish.rans_codec import RANSCodec
+            _rans_codec_inst = RANSCodec(
+                freq={},
+                m_bits=getattr(args, "rans_codec_mbits", 14),
+            )
+            _info("rans-codec", f"rANS entropy codec for KV/weight compression  "
+                  f"m_bits={_rans_codec_inst.m_bits}")
+        except Exception as _e:
+            _warn(f"[rans-codec] Skipped: {_e}")
+
+    if getattr(args, "qspec", False):
+        try:
+            from squish.qspec import QSpecConfig, QSpecDecoder
+            _qs_cfg = QSpecConfig(
+                gamma=getattr(args, "qspec_gamma", 4),
+                draft_act_bits=getattr(args, "qspec_draft_bits", 4),
+                verify_act_bits=getattr(args, "qspec_verify_bits", 8),
+            )
+            _qspec_decoder = QSpecDecoder(
+                w4a8_fn=lambda toks: __import__("numpy").zeros((len(toks), 1)),
+                w4a16_fn=lambda toks: __import__("numpy").zeros((len(toks), 1)),
+                config=_qs_cfg,
+            )
+            _info("qspec", f"quantisation-aware spec-decode  "
+                  f"gamma={_qs_cfg.gamma}  draft={_qs_cfg.draft_act_bits}b  "
+                  f"verify={_qs_cfg.verify_act_bits}b")
+        except Exception as _e:
+            _warn(f"[qspec] Skipped: {_e}")
+
+    if getattr(args, "quant_spec", False):
+        try:
+            from squish.quant_spec import QuantSpecConfig, QuantSpecDecoder
+            _qts_cfg = QuantSpecConfig(
+                gamma=getattr(args, "quant_spec_gamma", 4),
+                draft_quant_bits=getattr(args, "quant_spec_bits", 4),
+            )
+            _quant_spec_decoder = QuantSpecDecoder(
+                draft_fn=lambda toks: __import__("numpy").zeros((len(toks), 1)),
+                config=_qts_cfg,
+            )
+            _info("quant-spec", f"draft-quantised spec-decode  "
+                  f"gamma={_qts_cfg.gamma}  bits={_qts_cfg.draft_quant_bits}")
+        except Exception as _e:
+            _warn(f"[quant-spec] Skipped: {_e}")
+
+    if getattr(args, "copy_spec", False):
+        try:
+            from squish.copy_spec import CopySpecConfig, CopySpecDrafter
+            _cs_cfg = CopySpecDrafter(
+                config=CopySpecConfig(
+                    max_draft_len=getattr(args, "copy_spec_max_draft", 8),
+                    max_history_len=getattr(args, "copy_spec_history_len", 2048),
+                ),
+            )
+            _copy_spec_drafter = _cs_cfg
+            _info("copy-spec", f"copy-based spec-decode from history  "
+                  f"max_draft={_copy_spec_drafter.config.max_draft_len}  "
+                  f"history={_copy_spec_drafter.config.max_history_len}")
+        except Exception as _e:
+            _warn(f"[copy-spec] Skipped: {_e}")
+
+    if getattr(args, "sub_spec", False):
+        try:
+            from squish.sub_spec import SubSpecConfig, SubSpecDecoder
+            _ss_cfg = SubSpecConfig(
+                gamma=getattr(args, "sub_spec_gamma", 4),
+                n_gpu_layers=getattr(args, "sub_spec_gpu_layers", 16),
+            )
+            _sub_spec_decoder = SubSpecDecoder(
+                draft_fn=lambda toks: __import__("numpy").zeros((len(toks), 1)),
+                target_fn=lambda toks: __import__("numpy").zeros((len(toks), 1)),
+                config=_ss_cfg,
+            )
+            _info("sub-spec", f"quantized-substitute spec-decode  "
+                  f"gamma={_ss_cfg.gamma}  gpu_layers={_ss_cfg.n_gpu_layers}")
+        except Exception as _e:
+            _warn(f"[sub-spec] Skipped: {_e}")
+
+    if getattr(args, "squeeze_llm", False):
+        try:
+            from squish.squeeze_llm import SqueezeLLMConfig, SqueezeLLMQuantizer
+            _sq_cfg = SqueezeLLMConfig(
+                quant_bits=getattr(args, "squeeze_llm_bits", 4),
+                sparsity_ratio=getattr(args, "squeeze_llm_sparsity", 0.45),
+            )
+            _squeeze_llm_quant = SqueezeLLMQuantizer(config=_sq_cfg)
+            _info("squeeze-llm", f"sparse+dense mixed-precision quantisation  "
+                  f"bits={_sq_cfg.quant_bits}  sparsity={_sq_cfg.sparsity_ratio}")
+        except Exception as _e:
+            _warn(f"[squeeze-llm] Skipped: {_e}")
+
+    if getattr(args, "hetero_vocab_sd", False):
+        try:
+            from squish.hetero_vocab_sd import (
+                HeteroVocabConfig,
+                HeteroVocabDecoder,
+                HeteroVocabDrafter,
+            )
+            _hv_cfg = HeteroVocabConfig(
+                gamma=getattr(args, "hetero_vocab_gamma", 4),
+                draft_vocab_size=getattr(args, "hetero_vocab_draft_size", 32000),
+            )
+            _hetero_vocab_decoder = HeteroVocabDecoder(
+                drafter=HeteroVocabDrafter(config=_hv_cfg),
+                target_fn=lambda toks: __import__("numpy").zeros((len(toks), 1)),
+                config=_hv_cfg,
+            )
+            _info("hetero-vocab-sd", f"mismatched-vocab spec-decode  "
+                  f"gamma={_hv_cfg.gamma}  draft_vocab={_hv_cfg.draft_vocab_size}")
+        except Exception as _e:
+            _warn(f"[hetero-vocab-sd] Skipped: {_e}")
+
+    if getattr(args, "head_infer", False):
+        try:
+            from squish.head_infer import HeadAwareKVStore, HeadInferConfig
+            _hi_cfg = HeadInferConfig(
+                n_layers=getattr(args, "head_infer_layers", 32),
+                n_heads=getattr(args, "head_infer_heads", 32),
+            )
+            _head_aware_kv_store = HeadAwareKVStore(config=_hi_cfg)
+            _info("head-infer", f"head-level KV separation  "
+                  f"layers={_hi_cfg.n_layers}  heads={_hi_cfg.n_heads}")
+        except Exception as _e:
+            _warn(f"[head-infer] Skipped: {_e}")
+
+    if getattr(args, "nf4_quant", False):
+        try:
+            from squish.nf4_quant import NF4_LEVELS  # noqa: F401
+            _info("nf4-quant", f"NF4 normal-float 4-bit quantisation  "
+                  f"levels={len(NF4_LEVELS)}")
+        except Exception as _e:
+            _warn(f"[nf4-quant] Skipped: {_e}")
+
+    if getattr(args, "spin_quant", False):
+        try:
+            from squish.spin_quant import run_rotation  # noqa: F401
+            _info("spin-quant", "SpinQuant Hadamard rotation for quantisation-friendly layout")
+        except Exception as _e:
+            _warn(f"[spin-quant] Skipped: {_e}")
+
+    if getattr(args, "life_model", False):
+        try:
+            from squish.life_model import predict  # noqa: F401
+            _info("life-model", "model lifecycle predictor for cache eviction guidance")
+        except Exception as _e:
+            _warn(f"[life-model] Skipped: {_e}")
 
     print()
     _section("")

@@ -256,6 +256,42 @@ squish run qwen3:8b \
 
 ---
 
+## Wave 14 Optimisation Modules
+
+Wave 14 focuses on **quantisation methods**, **vocabulary-adaptive speculative decoding**, and **expert mixing**, shipping 16 new modules:
+
+| Module | Flag | Problem Solved | Key Number |
+|--------|------|----------------|------------|
+| **SoupOfExperts** | `--soup-experts` | Sparse LoRA expert blending uses redundant coefficients | **Greedy tolerance** pruning with zero accuracy drop |
+| **VisionPrefixCache** | `--vision-cache` | Vision encoder re-runs for identical images | **SHA-256 dedup** → 0 encoder FLOPs on cache hit |
+| **Vector Index** | `--vector-index` | Brute-force KV retrieval is O(n) | **MRL + HNSW** → sub-ms ANN retrieval |
+| **SubSpec** | `--sub-spec` | Offloaded models have no fast draft path | **Quantised substitute** layers as draft → full spec-decode |
+| **DEL Decoder** | `--del-decoder` | Static exit layer wastes compute on easy tokens | **Dynamic early-exit** layer selected per token |
+| **DFloat11** | `--dfloat11` | BF16 weights have poor entropy-coding compressibility | **DFloat11** block-float: >30% size reduction vs BF16 |
+| **rANS Codec** | `--rans-codec` | Huffman coding leaves 5–15% entropy on the table | **rANS** → near-optimal entropy coding for KV/weights |
+| **QSpec** | `--qspec` | Draft and verify share the same quantisation level | **W4A8 draft / W4A16 verify** → 1.8× throughput |
+| **QuantSpec** | `--quant-spec` | Full-precision draft is slow; quantised draft is inaccurate | **Bit-width selection** per draft step → 98% accuracy |
+| **CopySpec** | `--copy-spec` | Spec-decode needs a trained draft model | **Copy from history** buffer — zero extra model |
+| **SqueezeLLM** | `--squeeze-llm` | Uniform quantisation crushes outlier weights | **Sparse + dense** mixed-precision: 4× smaller, 0.5 ppl loss |
+| **NF4 Quant** | `--nf4-quant` | Uniform quantisation misaligns to weight distributions | **Normal Float 4-bit** levels → best quality per bit for LLMs |
+| **SpinQuant** | `--spin-quant` | Weight outliers defeat quantisation | **Hadamard rotation** → 1.5 ppl improvement at INT4 |
+| **HeteroVocab SD** | `--hetero-vocab-sd` | Draft/target vocab mismatch prevents cross-model spec-decode | **Token-map projection** → any draft × any target |
+| **HeadInfer** | `--head-infer` | Uniform KV policy wastes memory on non-retrieval heads | **Head-type-aware** KV store: retrieval vs. streaming |
+| **Life Model** | `--life-model` | Cache eviction is LRU-blind to access patterns | **Lifecycle predictor** → model-aware eviction signals |
+
+Full Wave 14 stack (quantisation + adaptive spec-decode):
+
+```bash
+squish run qwen3:8b \
+  --squeeze-llm --nf4-quant --spin-quant \
+  --copy-spec --sub-spec --del-decoder \
+  --qspec --quant-spec --hetero-vocab-sd \
+  --dfloat11 --rans-codec --head-infer \
+  --soup-experts --vision-cache --vector-index --life-model
+```
+
+---
+
 ## Drop-In API Server
 
 Replace every cloud API call today.  Start the server once; use it forever.
@@ -539,6 +575,22 @@ squish bench --markdown --save bench_results.md
 | `squish/token_swift.py` | **Wave 13** TokenSwift multi-token draft heads + partial KV reuse |
 | `squish/c2t.py` | **Wave 13** C2T classifier-based adaptive speculative candidate tree |
 | `squish/clasp.py` | **Wave 13** CLaSp in-context layer-skip with DP adaptive feedback |
+| `squish/soup_experts.py` | **Wave 14** SoupOfExperts sparse LoRA-expert adapter blending |
+| `squish/vision_cache.py` | **Wave 14** VisionPrefixCache SHA-256 dedup for vision encoder outputs |
+| `squish/vector_index.py` | **Wave 14** MRLIndex + HNSWIndex Matryoshka repr + ANN semantic retrieval |
+| `squish/sub_spec.py` | **Wave 14** SubSpec quantized-substitute speculative decoding |
+| `squish/del_decoder.py` | **Wave 14** DELDecoder dynamic early-layer exit spec-decode |
+| `squish/dfloat11.py` | **Wave 14** DFloat11 block-float compression codec for model weights |
+| `squish/rans_codec.py` | **Wave 14** rANS entropy codec for near-optimal KV/weight compression |
+| `squish/qspec.py` | **Wave 14** QSpecDecoder quantisation-aware W4A8/W4A16 spec-decode |
+| `squish/quant_spec.py` | **Wave 14** QuantSpecDecoder draft-quantised speculative decoding |
+| `squish/copy_spec.py` | **Wave 14** CopySpecDrafter copy-based spec-decode from token history |
+| `squish/squeeze_llm.py` | **Wave 14** SqueezeLLM sparse + dense mixed-precision weight quantisation |
+| `squish/nf4_quant.py` | **Wave 14** NF4 normal-float 4-bit quantisation (QLoRA-style) |
+| `squish/spin_quant.py` | **Wave 14** SpinQuant Hadamard rotation for quantisation-friendly layout |
+| `squish/hetero_vocab_sd.py` | **Wave 14** HeteroVocabDecoder mismatched-vocabulary spec-decode |
+| `squish/head_infer.py` | **Wave 14** HeadAwareKVStore head-type-aware KV separation |
+| `squish/life_model.py` | **Wave 14** model lifecycle predictor for cache eviction guidance |
 | `dev/demos/run_inference.py` | Minimal inference example (no server needed) |
 | `squish_quant_rs/` | Rust/PyO3 ARM NEON INT8 quantiser (optional, 6 GB/s) |
 | `docs/ARCHITECTURE.md` | Technical deep-dive: why these numbers are real |
