@@ -125,7 +125,7 @@ class Cast:
 # ── Scene helpers ─────────────────────────────────────────────────────────────
 
 def _tick(c: Cast, label: str, value: str, unit: str = "",
-          colour: str = BGN, dt: float = 0.14) -> None:
+          colour: str = BGN, dt: float = 0.45) -> None:
     c.println(
         f"  {DIM}·{R}  {label:<44} {B}{colour}{value}{R}  {DIM}{unit}{R}",
         dt=dt,
@@ -134,7 +134,7 @@ def _tick(c: Cast, label: str, value: str, unit: str = "",
 
 def _section(c: Cast, title: str, subtitle: str = "",
              colour: str = BCY) -> None:
-    c.pause(0.25)
+    c.pause(0.6)
     c.hbar()
     c.println(f"  {B}{colour}{title}{R}", dt=0.05)
     if subtitle:
@@ -225,7 +225,7 @@ def scene_wave13_kv(c: Cast) -> None:
         ("Head 22–39  (18 heads)", "retrieval", BCY,  "full KV stored — last-N sink tokens"),
     ]
     for label, kind, col, note in heads:
-        c.println(f"    {label:<28}  {B}{col}{kind:>12}{R}  {DIM}{note}{R}", dt=0.2)
+        c.println(f"    {label:<28}  {B}{col}{kind:>12}{R}  {DIM}{note}{R}", dt=0.45)
 
     c.println()
     _tick(c, "Retrieval head fraction",        "56%",   "heads keep full KV")
@@ -253,7 +253,7 @@ def scene_wave13_kv(c: Cast) -> None:
         ("Codebooks      (16×16 centroids)", "16 × 4 × 16 B", "=  4.1 KB",BGN),
     ]
     for label, size, total, col in pq_rows:
-        c.println(f"    {label:<36}  {col}{size:<22}{R}  {DIM}{total}{R}", dt=0.2)
+        c.println(f"    {label:<36}  {col}{size:<22}{R}  {DIM}{total}{R}", dt=0.45)
 
     c.println()
     _tick(c, "Index memory vs raw FP32",        "0.016×",  "1-byte codes vs float32")
@@ -265,7 +265,7 @@ def scene_wave13_kv(c: Cast) -> None:
         f"  {B}{BGN}→  combined KV memory savings exceed 10–30× on 32-layer models{R}",
         dt=0.15,
     )
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 3: Wave 13 Speculative Decoding ────────────────────────────────────
@@ -295,7 +295,7 @@ def scene_wave13_spec(c: Cast) -> None:
     c.println(f"  {'─' * 62}")
     for ctx, skipped, rate, t in kn_rows:
         c.println(f"  {ctx:<14}  {DIM}{skipped:<22}{R}  {B}{BCY}{rate:>12}{R}  "
-                   f"{DIM}{t:>12}{R}", dt=0.2)
+                   f"{DIM}{t:>12}{R}", dt=0.45)
     c.println()
 
     # TokenMerging
@@ -310,7 +310,7 @@ def scene_wave13_spec(c: Cast) -> None:
             f"  seq={seq:<5}  "
             f"{BCY}{'█' * bar_left}{DIM}{'░' * bar_merge}{R}"
             f"  {B}{BGN}{merged}{R}/{seq} tokens  {DIM}−{pct}%{R}",
-            dt=0.2,
+            dt=0.45,
         )
     c.println()
 
@@ -328,14 +328,14 @@ def scene_wave13_spec(c: Cast) -> None:
         c.println(
             f"  {B}{BCY}{name:<16}{R}  {DIM}{method:<26}{R}  "
             f"{B}{BGN}{result:<17}{R}  {DIM}{note}{R}",
-            dt=0.2,
+            dt=0.45,
         )
     c.println()
     c.println(
         f"  {B}{BGN}→  SpeCache prefetcher: predict_next_turn_blocks() in 15 µs{R}",
         dt=0.15,
     )
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 4: Wave 14 Quantisation ─────────────────────────────────────────────
@@ -363,7 +363,7 @@ def scene_wave14_quant(c: Cast) -> None:
             f"compress {B}{BMAG}{comp_ms:>5.1f} ms{R}  "
             f"decompress {B}{BCY}{decomp_ms:>5.1f} ms{R}  "
             f"{DIM}lossless{R}",
-            dt=0.18,
+            dt=0.45,
         )
     c.println()
 
@@ -381,7 +381,7 @@ def scene_wave14_quant(c: Cast) -> None:
         c.println(
             f"  {B}{BMAG}{prec:<12}{R}  {B}{BGN}{snr:>12}{R}  "
             f"{B}{BCY}{comp:>14}{R}  {DIM}{lat:>20}{R}",
-            dt=0.2,
+            dt=0.45,
         )
     c.println()
 
@@ -395,7 +395,7 @@ def scene_wave14_quant(c: Cast) -> None:
         c.println(
             f"    {shape:<10}  SNR {B}{BGN}{snr}{R}  MSE {DIM}{mse}{R}"
             f"  {B}{BCY}0.25×{R} compression",
-            dt=0.18,
+            dt=0.45,
         )
     c.println()
 
@@ -409,14 +409,14 @@ def scene_wave14_quant(c: Cast) -> None:
         c.println(
             f"    n={n:<6}  encode {B}{BCY}{enc:>8}{R}  decode {B}{BCY}{dec:>8}{R}"
             f"  {B}{BGN}{bps} bytes/sym{R}",
-            dt=0.18,
+            dt=0.45,
         )
     c.println()
     c.println(
         f"  {B}{BGN}→  NF4+SqueezeLLM: 5–10× weight memory reduction on Apple Silicon{R}",
         dt=0.15,
     )
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 5: Wave 14 Speculative Decoding ─────────────────────────────────────
@@ -487,14 +487,14 @@ def scene_wave14_spec(c: Cast) -> None:
     for name, feat, note in more:
         c.println(
             f"  {B}{BMAG}{name:<18}{R}  {DIM}{feat:<44}{R}  {note}",
-            dt=0.18,
+            dt=0.45,
         )
     c.println()
     c.println(
         f"  {B}{BGN}→  55% draft acceptance on QSpec — highest in Squish spec-decode suite{R}",
         dt=0.15,
     )
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 6: Compound stack + summary ────────────────────────────────────────
@@ -546,10 +546,10 @@ def scene_full_stack(c: Cast) -> None:
         (BMAG, "[HeteroVocab]",     "VocabMapper draft→target vocab mapping"),
     ]
     for colour, tag, msg in inits:
-        c.println(f"  {B}{colour}{tag:<20}{R}  {DIM}{msg}{R}", dt=0.13)
+        c.println(f"  {B}{colour}{tag:<20}{R}  {DIM}{msg}{R}", dt=0.4)
 
     c.println()
-    c.println(f"  {DIM}Squish serving on http://127.0.0.1:11435{R}", dt=0.25)
+    c.println(f"  {DIM}Squish serving on http://127.0.0.1:11435{R}", dt=0.5)
     c.println()
     c.pause(0.3)
 
@@ -569,9 +569,9 @@ def scene_full_stack(c: Cast) -> None:
     for label, val, note, col in summary:
         c.println(
             f"  {DIM}·{R}  {label:<36}  {B}{col}{val:<10}{R}  {DIM}{note}{R}",
-            dt=0.15,
+            dt=0.45,
         )
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 7: Test results screen ─────────────────────────────────────────────
@@ -601,7 +601,7 @@ def scene_tests(c: Cast) -> None:
         c.println(
             f"  {DIM}{'.' * max(0, 54 - len(str(fname)))}{R}"
             f"  {DIM}{fname:<38}{R}  {B}{BGN}{count}{R}",
-            dt=0.1,
+            dt=0.4,
         )
     c.println()
     c.hbar(colour=BGN)
@@ -626,11 +626,11 @@ def scene_tests(c: Cast) -> None:
     for row in modules_grid:
         c.println(
             "  " + "  ".join(f"{DIM}{m:<22}{R}" for m in row),
-            dt=0.12,
+            dt=0.4,
         )
 
     c.println()
-    c.pause(0.4)
+    c.pause(2.5)
 
 
 # ── Scene 8: CLI demo ────────────────────────────────────────────────────────
@@ -658,8 +658,8 @@ def scene_cli(c: Cast) -> None:
     c.println()
 
     for cmd, desc in cmds:
-        c.println(f"  {B}{BGN}${R} {B}{WHT}{cmd}{R}", dt=0.1)
-        c.println(f"    {DIM}{desc}{R}", dt=0.05)
+        c.println(f"  {B}{BGN}${R} {B}{WHT}{cmd}{R}", dt=0.4)
+        c.println(f"    {DIM}{desc}{R}", dt=0.15)
 
     c.println()
     c.println(
@@ -670,7 +670,7 @@ def scene_cli(c: Cast) -> None:
         f"  {DIM}No API key. No cloud. No data leaving your machine. Free.{R}",
         dt=0.08,
     )
-    c.pause(0.5)
+    c.pause(2.0)
 
 
 # ── Scene 9: Closing ─────────────────────────────────────────────────────────
@@ -690,12 +690,12 @@ def scene_closing(c: Cast) -> None:
         ("GitHub",     "github.com/wesleyscholl/squish"),
     ]
     for label, path in links:
-        c.println(f"  {DIM}{label:<14}{R}  {path}", dt=0.1)
+        c.println(f"  {DIM}{label:<14}{R}  {path}", dt=0.3)
 
     c.println()
     c.hbar()
     c.print(SHOW_C)
-    c.pause(3.0)
+    c.pause(4.0)
 
 
 # ── Main assembler ────────────────────────────────────────────────────────────
@@ -724,10 +724,10 @@ def main() -> None:
                     help="Write .cast file only (skip GIF conversion)")
     ap.add_argument("--agg",       default=None,
                     help="Path to agg binary (auto-detected if not given)")
-    ap.add_argument("--font-size", type=int, default=12,
-                    help="agg font size (default: 12)")
-    ap.add_argument("--speed",     type=float, default=3.5,
-                    help="Playback speed multiplier for agg (default: 3.5)")
+    ap.add_argument("--font-size", type=int, default=14,
+                    help="agg font size (default: 14)")
+    ap.add_argument("--speed",     type=float, default=1.3,
+                    help="Playback speed multiplier for agg (default: 1.3)")
     args = ap.parse_args()
 
     cast_path = Path(args.out).with_suffix(".cast")
@@ -768,7 +768,7 @@ def main() -> None:
         "--font-size", str(args.font_size),
         "--speed",     str(args.speed),
         "--fps-cap",   "15",
-        "--idle-time-limit", "1",
+        "--idle-time-limit", "3",
         "--cols",      str(W),
         "--rows",      str(H),
     ]

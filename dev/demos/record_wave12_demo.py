@@ -110,14 +110,14 @@ class Cast:
 # ── Scene helpers ─────────────────────────────────────────────────────────────
 
 def _tick(c: Cast, label: str, value: str, unit: str = "", colour: str = BGN,
-          dt: float = 0.15) -> None:
+          dt: float = 0.45) -> None:
     """Print a single metric row: tick + label + coloured value."""
     c.println(f"  {DIM}·{R}  {label:<44} {B}{colour}{value}{R}  {DIM}{unit}{R}", dt=dt)
 
 
 def _section(c: Cast, title: str, subtitle: str = "") -> None:
     """Print a section header."""
-    c.pause(0.3)
+    c.pause(0.6)
     c.hbar()
     c.println(f"  {B}{BCY}{title}{R}", dt=0.05)
     if subtitle:
@@ -132,19 +132,29 @@ def scene_title(c: Cast) -> None:
     c.print(CLEAR + HIDE_C, dt=0.1)
 
     banner = [
-        r" ___  ___  ___  ___  ___  ___  ___  ",
-        r"/ __||   || . || | || __|| . ||_ _| ",
-        r"\__ \| | ||   || | |_\ _||   / | |  ",
-        r"|___/|___||_|_||___|___||_|_\ |_|  ",
-        r"",
-        r"  W A V E  1 2  —  R E A S O N I N G  &  C O M P R E S S I O N",
+        r"  ███████╣  ██████╗  ██╗   ██╗ ██╗ ███████╗ ██╗  ██╗",
+        r"  ██╔════╝ ██╔═══██╗ ██║   ██║ ██║ ██╔════╝ ██║  ██║",
+        r"  ███████╗ ██║   ██║ ██║   ██║ ██║ ███████╗ ███████║",
+        r"  ╚════██║ ██║◄◄ ██║ ██║   ██║ ██║ ╚════██║ ██╔══██║",
+        r"  ███████║ ╚██████╔╝ ╚██████╔╝ ██║ ███████║ ██║  ██║",
+        r"  ╚══════╝  ╚══►►═╝   ╚═════╝  ╚═╝ ╚══════╝ ╚═╝  ╚═╝",
     ]
 
     c.println()
-    for line in banner:
-        c.println(f"  {B}{CYN}{line}{R}", dt=0.04)
+    for i, line in enumerate(banner):
+        colour = BCY if i < 3 else CYN
+        c.println(f"{B}{colour}{line}{R}", dt=0.1)
     c.println()
-    c.println(f"  {DIM}Five new runtime optimisation modules for Apple Silicon LLM inference{R}")
+    c.println(
+        f"  {B}{WHT}W A V E  1 2{R}  "
+        f"{DIM}—  Reasoning-Aware KV · INT3 · Async I/O{R}",
+        dt=0.06,
+    )
+    c.println()
+    c.println(
+        f"  {DIM}Five new runtime optimisation modules for Apple Silicon LLM inference{R}",
+        dt=0.06,
+    )
     c.println()
 
     features = [
@@ -155,12 +165,12 @@ def scene_title(c: Cast) -> None:
         (CYN,  "AgileIO",     "Async NVMe I/O prefetch manager"),
     ]
     for colour, name, desc in features:
-        c.println(f"  {B}{colour}  {name:<14}{R}  {desc}", dt=0.12)
+        c.println(f"  {B}{colour}  {name:<14}{R}  {desc}", dt=0.35)
 
-    c.pause(1.2)
+    c.pause(2.0)
     c.println()
     c.println(f"  {DIM}──  benchmarked  ──  all tests passing  ──  composable with Waves 1–11  ──{R}")
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 2: PM-KVQ ───────────────────────────────────────────────────────────
@@ -185,10 +195,10 @@ def scene_pm_kvq(c: Cast) -> None:
     c.println(f"  {'Step range':<22}{'Precision':<28}{'Role'}", dt=0.1)
     c.println(f"  {'─' * 70}", dt=0.05)
     for rng, bar, col, role in steps:
-        c.println(f"  {rng:<22}{B}{col}{bar:<28}{R}{DIM}  {role}{R}", dt=0.18)
+        c.println(f"  {rng:<22}{B}{col}{bar:<28}{R}{DIM}  {role}{R}", dt=0.45)
 
     c.println()
-    c.println(f"  {DIM}Distribution over 4 096-token CoT trace:{R}", dt=0.2)
+    c.println(f"  {DIM}Distribution over 4 096-token CoT trace:{R}", dt=0.5)
     _tick(c, "FP16 fraction",           "6.2%",   "(256 / 4096 steps)")
     _tick(c, "INT8 fraction",           "18.8%",  "(768 / 4096 steps)")
     _tick(c, "INT4 fraction",           "75.0%",  "(3072 / 4096 steps)")
@@ -197,7 +207,7 @@ def scene_pm_kvq(c: Cast) -> None:
     c.println()
     c.println(f"  {B}{BGN}→  4.2× KV cache memory reduction at 4096 token context{R}", dt=0.15)
     c.println(f"  {B}{BGN}→  enables 4× longer context at the same VRAM budget{R}", dt=0.1)
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 3: MixKVQ ──────────────────────────────────────────────────────────
@@ -225,7 +235,7 @@ def scene_mix_kvq(c: Cast) -> None:
         ("32 / 64",  "INT2",  "50.0%", DIM,  "cold / low-importance"),
     ]
     for ch, bits, frac, col, role in rows:
-        c.println(f"  {ch:>10}  {B}{col}{bits:>5}{R}  {frac:>9}  {DIM}{role}{R}", dt=0.2)
+        c.println(f"  {ch:>10}  {B}{col}{bits:>5}{R}  {frac:>9}  {DIM}{role}{R}", dt=0.45)
 
     c.println()
     _tick(c, "Average bits / channel",         "4.12 bits", "vs 16-bit FP16")
@@ -235,7 +245,7 @@ def scene_mix_kvq(c: Cast) -> None:
 
     c.println()
     c.println(f"  {B}{BGN}→  3.9× KV memory reduction while preserving top 9.4% at FP16{R}", dt=0.15)
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 4: CocktailKV ──────────────────────────────────────────────────────
@@ -264,7 +274,7 @@ def scene_cocktail_kv(c: Cast) -> None:
         bar = "██" * n + "░░" * (16 - n)
         c.println(
             f"  {B}{col}{bits}{R}  {col}{bar}{R}  {n:>2}/16 chunks  {DIM}{role}{R}",
-            dt=0.25,
+            dt=0.5,
         )
 
     c.println()
@@ -274,7 +284,7 @@ def scene_cocktail_kv(c: Cast) -> None:
 
     c.println()
     c.println(f"  {B}{BGN}→  composable with PM-KVQ and MixKVQ for additive compression{R}", dt=0.15)
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 5: AgileIO ─────────────────────────────────────────────────────────
@@ -302,7 +312,7 @@ def scene_agile_io(c: Cast) -> None:
         ("prefetch_sequence() get", " 297 µs", BCY,  "3 files resolved after prefetch"),
     ]
     for op, lat, col, note in io_rows:
-        c.println(f"  {op:<36}  {B}{col}{lat:>10}{R}  {DIM}{note}{R}", dt=0.18)
+        c.println(f"  {op:<36}  {B}{col}{lat:>10}{R}  {DIM}{note}{R}", dt=0.45)
 
     c.println()
     _tick(c, "Cache hit rate (bench)", "50%",     "grows to >85% within one decode pass")
@@ -312,7 +322,7 @@ def scene_agile_io(c: Cast) -> None:
 
     c.println()
     c.println(f"  {B}{BGN}→  NVMe reads hidden behind compute during prefill phase{R}", dt=0.15)
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 6: MiLo ─────────────────────────────────────────────────────────────
@@ -344,7 +354,7 @@ def scene_milo(c: Cast) -> None:
     for shape, snr, rank, comp, col in shapes:
         c.println(
             f"  {shape:<22}  {B}{col}{snr:>9}{R}  {rank:>5}  {DIM}{comp:>12}{R}",
-            dt=0.2,
+            dt=0.45,
         )
 
     c.println()
@@ -364,7 +374,7 @@ def scene_milo(c: Cast) -> None:
 
     c.println()
     c.println(f"  {B}{BGN}→  5.3× smaller weights — fits 14B model in 5.6 GB (vs 29.6 GB){R}", dt=0.15)
-    c.pause(1.5)
+    c.pause(2.5)
 
 
 # ── Scene 7: Full stack demo ──────────────────────────────────────────────────
@@ -401,10 +411,10 @@ def scene_full_stack(c: Cast) -> None:
         (BGN,  "[SpargeAttn]", "sparse two-stage kernel patched"),
     ]
     for colour, tag, msg in inits:
-        c.println(f"  {B}{colour}{tag:<16}{R}  {DIM}{msg}{R}", dt=0.22)
+        c.println(f"  {B}{colour}{tag:<16}{R}  {DIM}{msg}{R}", dt=0.4)
 
     c.println()
-    c.println(f"  {DIM}Serving on http://127.0.0.1:11434{R}", dt=0.3)
+    c.println(f"  {DIM}Serving on http://127.0.0.1:11434{R}", dt=0.5)
     c.println()
     c.pause(0.4)
 
@@ -423,11 +433,11 @@ def scene_full_stack(c: Cast) -> None:
     for label, val, col in summary:
         c.println(
             f"  {DIM}{'·'}{R}  {label:<28} {B}{col}{val}{R}",
-            dt=0.18,
+            dt=0.45,
         )
 
     c.println()
-    c.pause(0.5)
+    c.pause(1.5)
 
 
 # ── Scene 8: Accuracy table ──────────────────────────────────────────────────
@@ -448,7 +458,7 @@ def scene_accuracy(c: Cast) -> None:
     for name, v1, w12, delta, col, mark in tasks:
         c.println(
             f"  {name:<22}  {v1:>10}  {B}{col}{w12:>10}{R}  {delta:>7}  {B}{col}{mark}{R}",
-            dt=0.2,
+            dt=0.45,
         )
 
     c.println(f"  {'─' * 64}", dt=0.1)
@@ -456,13 +466,13 @@ def scene_accuracy(c: Cast) -> None:
     c.println(f"  {DIM}Base weights unchanged — accuracy identical to Squish v1.{R}", dt=0.08)
     c.println()
     c.println(f"  {B}{BGN}✓  ALL BENCHMARKS PASS — Squish Wave 12{R}", dt=0.15)
-    c.pause(0.5)
+    c.pause(2.0)
 
 
 # ── Scene 9: Closing ─────────────────────────────────────────────────────────
 
 def scene_closing(c: Cast) -> None:
-    c.pause(0.2)
+    c.pause(0.5)
     c.hbar()
     c.println()
     c.println(f"  {B}{CYN}  Squish Wave 12{R}  {DIM}— ship it.{R}", dt=0.1)
@@ -474,12 +484,12 @@ def scene_closing(c: Cast) -> None:
         ("sources",   "squish/{pm_kvq,mix_kvq,cocktail_kv,agile_io,milo_quant}.py"),
     ]
     for label, path in links:
-        c.println(f"  {DIM}{label:<12}{R}  {path}", dt=0.1)
+        c.println(f"  {DIM}{label:<12}{R}  {path}", dt=0.3)
 
     c.println()
     c.hbar()
     c.print(SHOW_C)
-    c.pause(3.0)
+    c.pause(4.0)
 
 
 # ── Main builder ─────────────────────────────────────────────────────────────
@@ -510,10 +520,10 @@ def main() -> None:
                     help="Write .cast only, skip GIF conversion")
     ap.add_argument("--agg",       default=None,
                     help="Path to agg binary (auto-detected if not supplied)")
-    ap.add_argument("--font-size", type=int, default=16,
-                    help="agg font size (default: 16)")
-    ap.add_argument("--speed",     type=float, default=1.4,
-                    help="agg playback speed multiplier (default: 1.4)")
+    ap.add_argument("--font-size", type=int, default=14,
+                    help="agg font size (default: 14)")
+    ap.add_argument("--speed",     type=float, default=1.3,
+                    help="agg playback speed multiplier (default: 1.3)")
     args = ap.parse_args()
 
     root     = Path(__file__).resolve().parent.parent.parent
@@ -542,10 +552,12 @@ def main() -> None:
 
     cmd = [
         agg_bin,
-        "--speed",     str(args.speed),
-        "--font-size", str(args.font_size),
-        "--cols",      str(W),
-        "--rows",      str(H),
+        "--speed",           str(args.speed),
+        "--font-size",       str(args.font_size),
+        "--fps-cap",         "15",
+        "--idle-time-limit", "3",
+        "--cols",            str(W),
+        "--rows",            str(H),
         str(cast_out),
         str(gif_out),
     ]
