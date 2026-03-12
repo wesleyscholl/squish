@@ -5,6 +5,60 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [7.0.0] — 2026-03-12
+
+### Added — Wave 25: Cutting-Edge Attention Variants & Compute Fusion (14 modules)
+
+- **FlashMLA** (`squish/flash_mla.py`) — DeepSeek-V2 multi-head latent attention; KV compressed to latent_dim; 4× compression ratio; 0.55 µs append, 38.65 µs attend (seq=16, h=8)
+- **NativeSparseAttn** (`squish/native_sparse_attn.py`) — Block-sparse + sliding-window attention (DeepSeek-V3 NSA); ~87% sparsity; 646.6 µs forward (h=4, kv=256)
+- **FusedSampler** (`squish/fused_sampler.py`) — Fused temperature/top-k/top-p/min-p/rep-penalty in single pass; 1767 µs sample vocab=32k
+- **KVDefrag** (`squish/kv_defrag.py`) — Online KV cache page defragmentation; 2.36 µs alloc+free, 349 µs defrag
+- **DualChunkAttn** (`squish/dual_chunk_attn.py`) — Intra+inter-chunk long-context attention; 21.08 µs encode_chunk, 93.3 µs forward (4 past chunks)
+- **ActivationOffload** (`squish/activation_offload.py`) — CPU activation offloading with prefetch-ahead policy; 5.84 µs offload, 6.34 µs fetch (512×128 tensor)
+- **MorphAttn** (`squish/morph_attn.py`) — Per-layer full/sparse/linear attention morphing by seq_len threshold; 0.25 µs select_pattern; ~40% FLOP reduction at seq=2048
+- **HydraSpec** (`squish/hydra_spec.py`) — Multi-draft head speculative decoding; n_heads candidate tokens per step; 1069 µs draft (h=4, n=5), 1229 µs verify
+- **SeqCompact** (`squish/seq_compact.py`) — In-place KV compaction via boolean mask; 141 µs compact (h=8, seq=512, 50% keep), 2.35 µs compact_indices
+- **LatencyPredictor** (`squish/latency_predictor.py`) — OLS latency forecasting for batch scheduler; 0.82 µs predict (sub-microsecond), 0.78 µs record
+- **ParallelSampler** (`squish/parallel_sampler.py`) — Best-of-N + diversity-scored sampling; 509 µs sample (vocab=32k, n=8)
+- **ContextSummarizer** (`squish/context_summarizer.py`) — Importance/stride/recency context compression; 62.5 µs importance (seq=1024), 6.2 µs recency
+- **TokenWatermark** (`squish/token_watermark.py`) — Kirchenbauer green-list statistical watermarking; context-sensitive partition; 137 µs mark, z-score detection
+- **SchemaGen** (`squish/schema_gen.py`) — FSM-based constrained JSON generation; stack-based state machine; 5.38 µs constrain, 0.79 µs advance
+
+### Added — Wave 26: Distributed Inference & Production Reliability (14 modules)
+
+- **TensorParallel** (`squish/tensor_parallel.py`) — Row/column tensor sharding + simulated all-reduce; 5.95 µs shard, 15.94 µs forward (b=8, 256→512)
+- **SequenceParallel** (`squish/sequence_parallel.py`) — Ulysses-style sequence scatter/gather; 5.96 µs scatter, 39.07 µs gather (h=8, seq=256, 4 devices)
+- **KVMigrate** (`squish/kv_migrate.py`) — Live KV state pack/unpack with checksum verification; 88.9 µs pack, 77.2 µs unpack (seq=128, h=8)
+- **DisaggPrefill** (`squish/disagg_prefill.py`) — Disaggregated prefill + decode node pipeline; 2354 µs prefill (seq=64), 0.41 µs decode step
+- **RequestPreempt** (`squish/request_preempt.py`) — SRPT preemption scheduler; swap: 4.28 µs, recompute: 1.24 µs (preempt + resume round-trip)
+- **InferGateway** (`squish/infer_gateway.py`) — Least-loaded request routing gateway with health tracking; 1.90 µs route + complete (8 workers)
+- **ModelVersionSwap** (`squish/model_version_swap.py`) — Canary→promote→rollback zero-downtime version management; 1.45 µs route_request (canary 10%)
+- **ProductionProfiler** (`squish/production_profiler.py`) — APM windowed p50/p99/p999 profiling; 0.18 µs record (sub-200ns ring insert), 79.5 µs stats
+- **AdaptiveBatcher** (`squish/adaptive_batcher.py`) — Throughput/latency-objective dynamic batching via EMA model; 1.91 µs next_batch, 0.22 µs record_observation
+- **SafetyLayer** (`squish/safety_layer.py`) — Inline token safety classifier; 19.38 µs score (seq=64), 67.34 µs score_logits (1D vocab=8k)
+- **SemanticResponseCache** (`squish/semantic_response_cache.py`) — Embedding-similarity LRU response cache (threshold=0.95); 294.7 µs lookup miss, 0.81 µs store
+- **RateLimiter** (`squish/rate_limiter.py`) — Token-bucket per-tenant rate limiting with burst; 0.92 µs consume, 0.48 µs refill
+- **SchemaValidator** (`squish/schema_validator.py`) — JSON schema validation (type/required/properties/min+maxLength/min+max/items); 7.48 µs valid, 4.90 µs invalid
+- **AuditLogger** (`squish/audit_logger.py`) — SHA-256 hash-chained tamper-evident audit log; 1.92 µs log, 2236 µs verify (chain_length=2010)
+
+### Tests
+
+- `tests/test_wave25_server_wiring.py` — 56 tests, 56 passing
+- `tests/test_wave26_server_wiring.py` — 56 tests, 56 passing
+- **Total tests: 4 876** (56 Wave 25 + 56 Wave 26 new; 0 failures)
+
+### Benchmarks
+
+- `dev/benchmarks/bench_wave25_26.py` — micro-benchmark suite for all 28 modules (28/28, 0 skipped)
+- `dev/results/wave25_26_bench.json` — machine-readable results
+
+### Demo
+
+- `dev/demos/record_v9_demo.py` — v9 demo GIF generator (10 scenes, Wave 25+26 benchmarks)
+- `dev/demos/squish-v9-demo.gif` — 1957 KB animated demo
+
+---
+
 ## [6.0.0] — 2026-03-12
 
 ### Added — Wave 23: Multi-Modal & Long Context Intelligence (14 modules)

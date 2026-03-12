@@ -1,6 +1,6 @@
 # Squish — Development Plan
 
-> Last updated: 2026-03-12 (v8 planning)
+> Last updated: 2026-03-12 (v9 complete)
 
 This document tracks completed waves, the current release, and the next phase.
 
@@ -18,6 +18,7 @@ This document tracks completed waves, the current release, and the next phase.
 | **v6** | 19–20 | Next-Gen Precision · Serving Infrastructure · Intelligence |
 | **v7** | 21–22 | Advanced Decode · Production Serving · Observability |
 | **v8** | 23–24 | Multi-Modal & Long Context · Quantisation Evolution & Model Surgery |
+| **v9** | 25–26 | Cutting-Edge Attention Variants & Compute Fusion · Distributed Inference & Production Reliability |
 
 ---
 
@@ -427,3 +428,82 @@ and surgical model architecture patching.
 | Expected new tests | **~112** (4 per module × 28) |
 | Expected total tests after v8 | **~4 502** |
 
+---
+
+## ✅ v9 — Waves 25+26 — Released 2026-03-12
+
+Theme: **Cutting-Edge Attention Variants & Compute Fusion · Distributed Inference & Production Reliability**
+
+28 new modules across two waves.
+
+---
+
+### Wave 25 — Cutting-Edge Attention Variants & Compute Fusion (14 modules)
+
+Focus: DeepSeek-V2/V3 production attention patterns (MLA, NSA), fused sampling,
+online KV defragmentation, dual-chunk long-context attention, activation offloading,
+attention morphing, multi-draft hydra speculation, and constrained decoding.
+
+| Module | File | Key Classes | Flag | Key Result |
+|--------|------|-------------|------|-----------|\
+| **FlashMLA** | `flash_mla.py` | `FlashMLACache`, `MLAConfig` | `--flash-mla` | Multi-head latent attention (DeepSeek-V2 style); low-rank KV via down/up projection → **KV size ↓ by latent_dim/head_dim** |
+| **NativeSparseAttn** | `native_sparse_attn.py` | `NativeSparseAttention`, `NSAConfig` | `--native-sparse-attn` | Block-sparse + sliding window attention (DeepSeek-V3 NSA style) → **sub-quadratic attention cost** |
+| **FusedSampler** | `fused_sampler.py` | `FusedSampler`, `SamplerConfig` | `--fused-sampler` | Fused temperature/top-p/top-k/min-p/rep-penalty in single pass → **zero intermediate allocations** |
+| **KVDefrag** | `kv_defrag.py` | `KVDefragmenter`, `DefragStats` | `--kv-defrag` | Online KV cache defragmentation and in-place compaction → **fragmentation ratio ↓** |
+| **DualChunkAttn** | `dual_chunk_attn.py` | `DualChunkAttention`, `DCAConfig` | `--dual-chunk-attn` | Intra-chunk + inter-chunk attention for 1M+ contexts → **O(chunk²) not O(seq²)** |
+| **ActivationOffload** | `activation_offload.py` | `ActivationOffloader`, `OffloadPolicy` | `--act-offload` | Layer activation offload to CPU during prefill → **peak GPU memory ↓** |
+| **MorphAttn** | `morph_attn.py` | `AttentionMorpher`, `MorphConfig` | `--morph-attn` | Per-layer attention pattern selection: full/sparse/linear → **optimal compute per layer** |
+| **HydraSpec** | `hydra_spec.py` | `HydraSpecDecoder`, `HydraConfig` | `--hydra-spec` | Multi-draft heads for parallel speculation → **n_heads candidate tokens per step** |
+| **SeqCompact** | `seq_compact.py` | `SequenceCompactor`, `CompactStats` | `--seq-compact` | In-place KV sequence compaction after token pruning → **zero-copy repack** |
+| **LatencyPredictor** | `latency_predictor.py` | `LatencyPredictor`, `LatencyModel` | `--latency-predict` | Per-request latency prediction for scheduling → **prefill + decode latency forecast** |
+| **ParallelSampler** | `parallel_sampler.py` | `ParallelSampler`, `DiversityConfig` | `--parallel-sample` | Best-of-n sampling with diversity scoring → **quality improvement with n candidates** |
+| **ContextSummarizer** | `context_summarizer.py` | `ContextSummarizer`, `SummaryConfig` | `--ctx-summarize` | Inference-time context compression when context overflows → **keep semantics, shed tokens** |
+| **TokenWatermark** | `token_watermark.py` | `TokenWatermarker`, `WatermarkConfig` | `--token-watermark` | Statistical green-list token watermarking (Kirchenbauer et al.) → **detectable attribution** |
+| **SchemaGen** | `schema_gen.py` | `SchemaGenEngine`, `SchemaState` | `--schema-gen` | FSM-accelerated constrained JSON schema generation → **zero invalid token sampling** |
+
+### Wave 26 — Distributed Inference & Production Reliability (14 modules)
+
+Focus: Tensor/sequence parallelism, live KV migration, disaggregated prefill/decode,
+request preemption, smart inference gateway, zero-downtime model swaps, APM profiling,
+adaptive batching, safety classification, semantic response caching, and audit logging.
+
+| Module | File | Key Classes | Flag | Key Result |
+|--------|------|-------------|------|-----------|\
+| **TensorParallel** | `tensor_parallel.py` | `TensorParallelShard`, `TPConfig` | `--tensor-parallel` | Row/column tensor sharding + all-reduce → **linear memory scaling across devices** |
+| **SequenceParallel** | `sequence_parallel.py` | `SequenceParallelScatter`, `SPConfig` | `--seq-parallel` | Ulysses-style sequence dimension split → **attention FLOPs distributed across devices** |
+| **KVMigrate** | `kv_migrate.py` | `KVMigrator`, `MigrateStats` | `--kv-migrate` | Live KV state pack/unpack for cross-worker migration → **zero-recompute worker handoff** |
+| **DisaggPrefill** | `disagg_prefill.py` | `DisaggPrefillNode`, `DisaggDecodeNode` | `--disagg-prefill` | Disaggregated prefill→decode with KV payload transfer → **prefill/decode hardware specialisation** |
+| **RequestPreempt** | `request_preempt.py` | `PreemptScheduler`, `PreemptState` | `--req-preempt` | Preemptive SRPT scheduling with KV save/restore → **priority inversion elimination** |
+| **InferGateway** | `infer_gateway.py` | `InferenceGateway`, `WorkerRegistry` | `--infer-gateway` | Smart front-door gateway: routing + health + load balancing → **single ingress, N workers** |
+| **ModelVersionSwap** | `model_version_swap.py` | `ModelVersionManager`, `SwapPolicy` | `--model-swap` | Zero-downtime hot model version swap → **canary → promote → rollback in-flight** |
+| **ProductionProfiler** | `production_profiler.py` | `ProductionProfiler`, `ProfilerWindow` | `--prod-profiler` | Continuous APM-style per-op latency tracking → **p50/p99/p999 per operation** |
+| **AdaptiveBatcher** | `adaptive_batcher.py` | `AdaptiveBatchController`, `BatchObjective` | `--adaptive-batch` | Throughput/latency-objective dynamic batching → **SLO-aware batch size control** |
+| **SafetyLayer** | `safety_layer.py` | `SafetyClassifier`, `SafetyConfig` | `--safety-layer` | Inline token-level safety classification → **zero extra forward pass overhead** |
+| **SemanticResponseCache** | `semantic_response_cache.py` | `SemanticResponseCache`, `CacheConfig` | `--semantic-resp-cache` | Embedding-similarity response deduplication → **exact + fuzzy response cache hits** |
+| **RateLimiter** | `rate_limiter.py` | `TokenBucketRateLimiter`, `RateLimitConfig` | `--rate-limit` | Token-bucket per-tenant rate limiting with burst → **hard request ceiling per tenant** |
+| **SchemaValidator** | `schema_validator.py` | `SchemaValidator`, `ValidationResult` | `--schema-validate` | JSON schema validation for structured generation → **100% schema-compliant outputs** |
+| **AuditLogger** | `audit_logger.py` | `AuditLogger`, `AuditEntry` | `--audit-log` | SHA-256 chained inference audit log → **tamper-evident request provenance** |
+
+### v9 Deliverables checklist
+
+- [x] All 28 modules implemented in `squish/`
+- [x] `tests/test_wave25_server_wiring.py` — import + instantiation tests for 14 modules
+- [x] `tests/test_wave26_server_wiring.py` — import + instantiation tests for 14 modules
+- [x] `dev/benchmarks/bench_wave25_26.py` — micro-benchmark suite
+- [x] `dev/results/wave25_26_bench.json` — benchmark results
+- [x] `dev/demos/record_v9_demo.py` — v9 demo GIF generator
+- [x] `dev/demos/squish-v9-demo.gif` — demo GIF rendered
+- [x] README.md — v9 module sections, Wave 25+26 tables, CLI examples
+- [x] CHANGELOG.md — `[7.0.0]` entry
+- [x] PLAN.md updated to mark v9 complete
+
+### v9 Module Count Summary
+
+| Scope | Count |
+|-------|------:|
+| Wave 25 (Cutting-Edge Attention + Compute Fusion) | 14 |
+| Wave 26 (Distributed Inference + Production Reliability) | 14 |
+| Total new v9 modules | **28** |
+| Total modules after v9 | **222** |
+| Expected new tests | **~112** (4 per module × 28) |
+| Expected total tests after v9 | **~4 876** |

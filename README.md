@@ -25,6 +25,16 @@
 
 ![](dev/demos/squish-demo.gif)
 
+### v9 — Cutting-Edge Attention Variants · Distributed Inference & Production Reliability
+
+![](dev/demos/squish-v9-demo.gif)
+
+> v9 adds 28 new modules across Wave 25 and Wave 26.
+> Wave 25 (Cutting-Edge Attention Variants & Compute Fusion): FlashMLA, NativeSparseAttn, FusedSampler, KVDefrag, DualChunkAttn, ActivationOffload, MorphAttn, HydraSpec, SeqCompact, LatencyPredictor, ParallelSampler, ContextSummarizer, TokenWatermark, SchemaGen.
+> Wave 26 (Distributed Inference & Production Reliability): TensorParallel, SequenceParallel, KVMigrate, DisaggPrefill, RequestPreempt, InferGateway, ModelVersionSwap, ProductionProfiler, AdaptiveBatcher, SafetyLayer, SemanticResponseCache, RateLimiter, SchemaValidator, AuditLogger.
+> FlashMLA 4× KV compression · NSA ~87% attention sparsity · HydraSpec multi-draft speculation · disaggregated prefill/decode · SHA-256 audit log · sub-200ns APM record.
+> See [`dev/results/wave25_26_bench.json`](dev/results/wave25_26_bench.json) for full numbers.
+
 ### v8 — Multi-Modal & Long Context · Quantisation Evolution & Model Surgery
 
 ![](dev/demos/squish-v8-demo.gif)
@@ -1028,6 +1038,14 @@ squish bench --markdown --save bench_results.md
 | `dev/results/wave21_22_bench.json` | **v7 benchmark results** (machine-readable JSON) |
 | `docs/benchmark_wave21_22.md` | **v7 benchmark results** (human-readable Markdown table) |
 | `dev/demos/record_v7_demo.py` | **v7 demo GIF generator** |
+| `dev/benchmarks/bench_wave23_24.py` | **v8 micro-benchmark suite** for all 28 Wave 23+24 modules |
+| `dev/results/wave23_24_bench.json` | **v8 benchmark results** (machine-readable JSON) |
+| `dev/demos/record_v8_demo.py` | **v8 demo GIF generator** |
+| `dev/demos/squish-v8-demo.gif` | **v8 animated feature demo** |
+| `dev/benchmarks/bench_wave25_26.py` | **v9 micro-benchmark suite** for all 28 Wave 25+26 modules |
+| `dev/results/wave25_26_bench.json` | **v9 benchmark results** (machine-readable JSON) |
+| `dev/demos/record_v9_demo.py` | **v9 demo GIF generator** |
+| `dev/demos/squish-v9-demo.gif` | **v9 animated feature demo** |
 | `dev/benchmarks/bench_wave17_18.py` | **v5 micro-benchmark suite** for all 28 Wave 17+18 modules |
 | `dev/results/wave17_18_bench.json` | **v5 benchmark results** (machine-readable JSON) |
 | `docs/benchmark_wave17_18.md` | **v5 benchmark results** (human-readable Markdown table) |
