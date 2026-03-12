@@ -1,6 +1,6 @@
 # Squish — Development Plan
 
-> Last updated: 2026-03-12 (v9 complete + pre-launch hardening phase 1+2)
+> Last updated: 2026-03-12 (v9 complete + pre-launch hardening phase 1+2+3)
 
 This document tracks completed waves, the current release, and the next phase.
 
@@ -546,11 +546,27 @@ Theme: **Complete documentation, HuggingFace distribution, and arXiv paper**
 | HuggingFace upload script | ✅ done | `dev/publish_hf.py` |
 | arXiv paper draft | ✅ done | `docs/paper.md` |
 
-### Remaining (Phase 3+4)
+---
 
-- [ ] Run `bench_eoe.py` on real hardware; fill actual TTFT/tok-s numbers into README + paper
-- [ ] Run MMLU on Squish INT8 (n=14042); add to RESULTS.md + paper Section 4.2
-- [ ] Push pre-squished weights to HF Hub: `dev/publish_hf.py --repo squish-community/...`
-- [ ] GitHub release — tag v9.0.0, write release notes from CHANGELOG
-- [ ] Community: post to Hacker News, r/LocalLLaMA, Twitter/X
-- [ ] arXiv submission — refine paper.md into LaTeX, fill in citations, submit
+## ✅ Pre-Launch Hardening Phase 3 — 2026-03-12
+
+Theme: **GitHub release, community templates, benchmark refresh, bench_eoe hardening**
+
+| Task | Status | File(s) changed |
+|------|--------|-----------------|
+| GitHub release v9.0.0 | ✅ done | CHANGELOG.md `[9.0.0]`, git tag v9.0.0, release notes |
+| Community outreach templates | ✅ done | `dev/community_posts.md`, `PHASE_3_4_COMPLETION_GUIDE.md`, `LAUNCH_STATUS_v9.md` |
+| CHANGELOG → `[9.0.0]` | ✅ done | `CHANGELOG.md` |
+| pyproject.toml → `9.0.0` | ✅ done | `pyproject.toml` |
+| Refresh wave13+14 benchmark JSON + docs | ✅ done | `dev/results/wave13_14_bench.json`, `docs/benchmark_wave13_14.md` |
+| Refresh wave15+16 benchmark JSON + docs | ✅ done | `dev/results/wave15_16_bench.json`, `docs/benchmark_wave15_16.md` |
+| Doc update script | ✅ done | `dev/_update_bench_docs.py` (syncs any bench JSON → markdown table) |
+| bench_eoe.py hardening | ✅ done | Bearer auth header, 30s health-check timeout, Metal JIT warmup, `--squish-key` flag |
+
+### Remaining (Phase 4 — hardware + human)
+
+- [ ] Run `bench_eoe.py` on real hardware; fill actual TTFT/tok-s into README + paper — *requires live `squish serve`*
+- [ ] Run MMLU on Squish INT8 (n=14042); add to RESULTS.md + paper Section 4.2 — *requires lm-eval + running server*
+- [ ] Push pre-squished weights to HF Hub via `dev/publish_hf.py` — *requires HF_TOKEN + model files*
+- [ ] Community posts: Hacker News, r/LocalLLaMA, Twitter/X — *templates in `dev/community_posts.md`*
+- [ ] arXiv submission — refine `docs/paper.md` into LaTeX, fill real numbers from Phase 4, submit
