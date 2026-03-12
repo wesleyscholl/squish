@@ -160,7 +160,7 @@ continuous self-improvement, serving intelligence, and battery-aware evaluation.
 - [x] `dev/results/wave17_18_bench.json` — benchmark results
 - [x] `docs/benchmark_wave17_18.md` — human-readable results table
 - [x] `dev/demos/record_v5_demo.py` — v5 demo GIF generator (448 events, 85.2s)
-- [ ] `dev/demos/squish-v5-demo.gif` — demo GIF (requires `agg` binary)
+- [x] `dev/demos/squish-v5-demo.gif` — demo GIF rendered (2.6 MB, 448 events, 85.2s)
 - [x] README.md — v5 module sections, Wave 17+18 tables, CLI examples
 - [x] CHANGELOG.md — `[3.0.0]` entry
 - [x] PLAN.md updated to mark v5 complete
@@ -178,12 +178,84 @@ continuous self-improvement, serving intelligence, and battery-aware evaluation.
 
 ---
 
-## 🔮 v6 — Waves 19+ (Future)
+## 🚧 v6 — Waves 19+20 (Next Phase)
 
-Candidate themes (not yet scoped):
-- **Multi-GPU / tensor parallelism** — pipeline and tensor parallel inference
-- **Custom Metal/WGPU kernels** — native kernels for M-series ANE/GPU
-- **FP8 weight quantisation** — next-gen 8-bit float formats
-- **Advanced distillation** — iteration-level knowledge transfer
-- **Edge deployment** — compiled GGUF/MLIR export, CoreML packaging
-- **Evaluation harness** — extended lm-eval tasks, PPL tracking, SpecBench CI
+Theme: **Next-Gen Precision · Advanced Attention · Model Composition · Serving Infrastructure**
+
+28 new modules across two waves.
+
+---
+
+### Wave 19 — Next-Gen Attention & Precision (14 modules)
+
+Focus: FP8/MX microscaling quantization, advanced attention patterns (paged KV,
+GQA, sliding window, RoPE scaling), activation sparsity, and advanced speculative
+decode heads (MEDUSA, EAGLE-3).
+
+| Module | File | Key Classes | Flag | Key Result |
+|--------|------|-------------|------|-----------|
+| **FP8Quant** | `fp8_quant.py` | `FP8Quantizer`, `FP8Config` | `--fp8-quant` | E4M3/E5M2 weight encoding → **~60% storage vs BF16** |
+| **MXQuant** | `mx_quant.py` | `MXQuantizer`, `MXConfig` | `--mx-quant` | OCP MX4/MX6/MX9 microscaling → **better quality than INT4** at same bits |
+| **FlashDecode** | `flash_decode.py` | `FlashDecodeAttention`, `FlashDecodeConfig` | `--flash-decode` | Split-KV parallel decode → **O(1) memory overhead** per decode step |
+| **PagedKV** | `paged_kv.py` | `PagedKVCache`, `BlockTable` | `--paged-kv` | Virtual block mapping → **zero KV fragmentation** across requests |
+| **GQA** | `gqa.py` | `GQACache`, `GQAConfig` | `--gqa` | Grouped Query Attention → **4–8× KV reduction** vs MHA |
+| **SlidingWindowAttn** | `sliding_window_attn.py` | `SlidingWindowKVCache`, `SWAConfig` | `--sliding-window` | Sliding window KV → **O(window_size) memory** at any context length |
+| **RoPEScaling** | `rope_scaling.py` | `RoPEScaler`, `YaRNScaler`, `NTKScaler` | `--rope-scaling` | NTK/YaRN/LongRoPE → **4–32× context extension** without fine-tuning |
+| **ActSparsity** | `act_sparsity.py` | `ActSparsityPredictor`, `SparsityConfig` | `--act-sparsity` | Activation sparsity gating → **30–60% FFN compute saved** |
+| **FusedRMSNorm** | `fused_rmsnorm.py` | `FusedRMSNorm`, `FusedLayerNorm` | `--fused-norm` | Fused RMSNorm + residual → **single kernel pass**, reduced bandwidth |
+| **LoRAInference** | `lora_inference.py` | `LoRAInferenceAdapter`, `LoRAConfig` | `--lora-inference` | Zero-copy LoRA delta inference → **adapter switching without re-quant** |
+| **MEDUSA** | `medusa.py` | `MedusaHead`, `MedusaDecoder` | `--medusa` | Multi-head tree speculation → **2–3× decode throughput** |
+| **EAGLE3** | `eagle3.py` | `Eagle3DraftHead`, `Eagle3Decoder` | `--eagle3` | Feature-level draft head → **3.5× accept rate** vs token-prediction draft |
+| **PrefixPool** | `prefix_pool.py` | `PrefixPool`, `PrefixPoolConfig` | `--prefix-pool` | Cross-request KV prefix sharing → **40–80% KV savings** on shared prompts |
+| **TokenHealer** | `token_healer.py` | `TokenHealer`, `HealerConfig` | `--token-healer` | Boundary-aware token healing → **eliminates prefix-artifact generation** |
+
+### Wave 20 — Serving Infrastructure & Intelligence (14 modules)
+
+Focus: Model composition (merge, compose), continuous batching, evaluation harness,
+power profiling, multi-modal efficiency, and knowledge distillation for spec heads.
+
+| Module | File | Key Classes | Flag | Key Result |
+|--------|------|-------------|------|-----------|
+| **ModelMerge** | `model_merge.py` | `ModelMerger`, `MergeConfig` | `--model-merge` | SLERP/DARE/TIES merging → **combine domains without retraining** |
+| **LoRACompose** | `lora_compose.py` | `LoRAComposer`, `AdapterStack` | `--lora-compose` | Multi-LoRA mixture → **blend adapters with learnable coefficients** |
+| **ContinuousBatching** | `continuous_batching.py` | `CBScheduler`, `InFlightRequest` | `--continuous-batching` | Mid-generation insertion → **max GPU utilization at any request rate** |
+| **MatryoshkaEmb** | `matryoshka_emb.py` | `MatryoshkaEmbedding`, `MRLConfig` | `--matryoshka-emb` | Nested embedding truncation → **1 forward pass, any dimensionality** |
+| **ANEProfiler** | `ane_profiler.py` | `ANEProfiler`, `ANEMetrics` | `--ane-profiler` | Apple Neural Engine utilization → **op-level ANE vs GPU breakdown** |
+| **SpecBench** | `spec_bench.py` | `SpecBenchRunner`, `SpecBenchResult` | `--spec-bench` | SpecBench CI harness → **acceptance rate + throughput across tasks** |
+| **PPLTracker** | `ppl_tracker.py` | `PPLTracker`, `PPLWindow` | `--ppl-tracker` | Rolling perplexity tracker → **real-time quality degradation detection** |
+| **GrammarCache** | `grammar_cache.py` | `GrammarCache`, `FSMState` | `--grammar-cache` | FSM grammar cache → **constrained decoding without per-token rebuild** |
+| **QuantAware** | `quant_aware.py` | `QuantAwareCalibrator`, `QAConfig` | `--quant-aware` | Activation-range calibration → **per-channel optimal scale selection** |
+| **AdaptiveBudget** | `adaptive_budget.py` | `AdaptiveBudgetController`, `BudgetConfig` | `--adaptive-budget` | Dynamic compute budget → **SLO-aware KV + layer skip joint control** |
+| **VisionTokens** | `vision_tokens.py` | `VisionTokenCompressor`, `VTConfig` | `--vision-tokens` | Visual token pruning → **50–80% vision token reduction** without quality loss |
+| **ToolCache** | `tool_cache.py` | `ToolSchemaCache`, `ToolRouter` | `--tool-cache` | Schema + routing cache → **zero tool-call parse overhead** on repeated schemas |
+| **DistilSpec** | `distil_spec.py` | `DistilSpecCalibrator`, `DistilConfig` | `--distil-spec` | Draft-head knowledge distillation → **+10–15 pp acceptance from calibration** |
+| **BatchEmbed** | `batch_embed.py` | `BatchEmbedder`, `PoolingConfig` | `--batch-embed` | Dynamic pooling strategies → **mean/max/cls/weighted pool in single pass** |
+
+### v6 Deliverables checklist
+
+> **Progress (2026-03-11):** Wave 20 modules 1–7 implemented and tested:
+> ModelMerge, LoRACompose, ContinuousBatching, MatryoshkaEmb, ANEProfiler,
+> SpecBench, PPLTracker — 262 new tests, all passing.
+
+- [ ] All 28 modules implemented in `squish/`
+- [ ] `tests/test_wave19_server_wiring.py` — import + instantiation tests for 14 modules
+- [ ] `tests/test_wave20_server_wiring.py` — import + instantiation tests for 14 modules
+- [ ] `dev/benchmarks/bench_wave19_20.py` — micro-benchmark suite
+- [ ] `dev/results/wave19_20_bench.json` — benchmark results
+- [ ] `docs/benchmark_wave19_20.md` — human-readable results table
+- [ ] `dev/demos/record_v6_demo.py` — v6 demo GIF generator
+- [ ] `dev/demos/squish-v6-demo.gif` — demo GIF rendered
+- [ ] README.md — v6 module sections, Wave 19+20 tables, CLI examples
+- [ ] CHANGELOG.md — `[4.0.0]` entry
+- [ ] PLAN.md updated to mark v6 complete
+
+### v6 Module Count Summary
+
+| Scope | Count |
+|-------|------:|
+| Wave 19 (Next-Gen Attention + Precision) | 14 |
+| Wave 20 (Serving Infrastructure + Intelligence) | 14 |
+| Total new v6 modules | **28** |
+| Total modules after v6 | **138** |
+| Expected new tests | **~112** (4 per module × 28) |
+| Expected total tests after v6 | **~4 278** |
