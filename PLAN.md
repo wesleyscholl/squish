@@ -233,9 +233,11 @@ power profiling, multi-modal efficiency, and knowledge distillation for spec hea
 
 ### v6 Deliverables checklist
 
-> **Progress (2026-03-11):** Wave 20 modules 1–7 implemented and tested:
+
+> **Progress (2026-03-11):** Wave 20 modules 1–14 (all) implemented and tested:
 > ModelMerge, LoRACompose, ContinuousBatching, MatryoshkaEmb, ANEProfiler,
-> SpecBench, PPLTracker — 262 new tests, all passing.
+> SpecBench, PPLTracker, GrammarCache, QuantAware, AdaptiveBudget,
+> VisionTokens, ToolCache, DistilSpec, BatchEmbed — 262+ new tests.
 
 - [ ] All 28 modules implemented in `squish/`
 - [ ] `tests/test_wave19_server_wiring.py` — import + instantiation tests for 14 modules
