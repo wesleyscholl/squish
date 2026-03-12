@@ -89,6 +89,7 @@ def _chat_stream(
     max_tokens: int,
     temperature: float = 0.0,
     timeout: float = 120.0,
+    api_key: str = "squish",
 ) -> dict[str, Any]:
     """
     Send a streaming /v1/chat/completions request; return timing stats.
@@ -113,7 +114,10 @@ def _chat_stream(
     req = urllib.request.Request(
         f"{base_url}/v1/chat/completions",
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type":  "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
         method="POST",
     )
 
@@ -167,7 +171,7 @@ def _chat_stream(
     }
 
 
-def _is_server_up(base_url: str, timeout: float = 2.0) -> bool:
+def _is_server_up(base_url: str, timeout: float = 30.0) -> bool:
     try:
         urllib.request.urlopen(f"{base_url}/health", timeout=timeout)
         return True
@@ -196,6 +200,7 @@ def _run_suite(
     model: str,
     runs: int,
     max_tokens: int,
+    api_key: str = "squish",
 ) -> list[dict[str, Any]]:
     """Run `runs` inference calls and return raw per-run stats."""
     _hdr(f"{label}  ({model})")
@@ -207,9 +212,18 @@ def _run_suite(
     results: list[dict[str, Any]] = []
     prompt = _PROMPTS[0]   # single representative prompt for comparability
 
+    # Warm up the model (first generation triggers Metal JIT; discard result)
+    print(f"  {D}Warming up…{NC}", end="", flush=True)
+    try:
+        _chat_stream(base_url, model, "Say hi.", 8, api_key=api_key)
+        print(f"\r  {D}Warmup done.{NC}            ")
+    except Exception as exc:
+        print()
+        _warn(f"warmup failed: {exc}")
+
     for i in range(runs):
         try:
-            stats = _chat_stream(base_url, model, prompt, max_tokens)
+            stats = _chat_stream(base_url, model, prompt, max_tokens, api_key=api_key)
         except Exception as exc:
             _warn(f"run {i+1} failed: {exc}")
             continue
@@ -270,6 +284,8 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Squish server port (default: 11435)")
     p.add_argument("--squish-model", default="squish",
                    help="Model name to use for Squish requests (default: squish)")
+    p.add_argument("--squish-key",   default="squish",
+                   help="API key for Squish server (default: squish)")
     p.add_argument("--ollama-port",  type=int, default=0,
                    help="Ollama server port for comparison (0 = disabled, default: 0)")
     p.add_argument("--ollama-model", default="qwen2.5:1.5b",
@@ -296,6 +312,7 @@ def main() -> None:
         model=args.squish_model,
         runs=args.runs,
         max_tokens=args.max_tokens,
+        api_key=args.squish_key,
     )
     all_results["Squish"] = squish_runs
 

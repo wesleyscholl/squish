@@ -9,23 +9,23 @@
 
 | Module | Operation | Latency (µs) | Notes |
 |--------|-----------|:------------:|-------|
-| AdaServe | `get_gamma()` tight SLO | 1.99 | SLO-customized gamma selection |
-| AdaServe | `get_gamma()` relaxed SLO | 1.82 | |
-| ConfSpec | `verify_step()` flat logits | 100.21 | Full verification path |
-| ConfSpec | `verify_step()` peaked logits | 78.46 | Auto-accept path (high confidence) |
-| SeqPacking | `pack()` 32 short seqs | 2521.5 | 8–64 token sequences |
-| SeqPacking | `pack()` 8 long seqs | 43959.5 | 128–512 token sequences |
-| MetaReasoner | `compute_entropy()` 32k | 500.74 | Static method |
-| MetaReasoner | `step()` 32k vocab | 0.23 | Per-token thinking budget decision |
-| YOCO | `append()` seq=64 dim=128 | 1.11 | KV append to shared store |
-| YOCO | `get_shared_kv()` | 6473.63 | Retrieve cached KV for cross-decoder layers |
-| DiffKV | `get_policy()` | 1.59 | Per-head precision policy lookup |
-| DiffKV | `record_attention()` 4×4 | 6.33 | Attention pattern accumulation |
-| ParisKV | `encode()` batch=32 dim=128 | 34.4 | Online codebook assignment |
-| ParisKV | `decode()` batch=32 | 4.2 | Codebook reconstruction |
-| ParisKV | `online_update()` batch=8 | 129.4 | Drift-corrected centroid update |
-| KVTuner | `search()` 32 layers | 3815.4 | Sensitivity-aware bit assignment |
-| CLA | `CLASchedule.from_config()` | 27.56 | Cross-layer attention schedule gen |
+| AdaServe | `get_gamma()` tight SLO | 0.91 | SLO-customized gamma selection |
+| AdaServe | `get_gamma()` relaxed SLO | 0.83 | |
+| ConfSpec | `verify_step()` flat logits | 131.89 | Full verification path |
+| ConfSpec | `verify_step()` peaked logits | 127.56 | Auto-accept path (high confidence) |
+| SeqPacking | `pack()` 32 short seqs | 2754.3 | 8–64 token sequences |
+| SeqPacking | `pack()` 8 long seqs | 43442.3 | 128–512 token sequences |
+| MetaReasoner | `compute_entropy()` 32k | 448.64 | Static method |
+| MetaReasoner | `step()` 32k vocab | 0.12 | Per-token thinking budget decision |
+| YOCO | `append()` seq=64 dim=128 | 0.59 | KV append to shared store |
+| YOCO | `get_shared_kv()` | 2230.51 | Retrieve cached KV for cross-decoder layers |
+| DiffKV | `get_policy()` | 1.37 | Per-head precision policy lookup |
+| DiffKV | `record_attention()` 4×4 | 5.66 | Attention pattern accumulation |
+| ParisKV | `encode()` batch=32 dim=128 | 29.4 | Online codebook assignment |
+| ParisKV | `decode()` batch=32 | 3.9 | Codebook reconstruction |
+| ParisKV | `online_update()` batch=8 | 107.2 | Drift-corrected centroid update |
+| KVTuner | `search()` 32 layers | 4212.2 | Sensitivity-aware bit assignment |
+| CLA | `CLASchedule.from_config()` | 19.49 | Cross-layer attention schedule gen |
 
 ---
 
@@ -33,22 +33,22 @@
 
 | Module | Operation | Latency (µs) | Notes |
 |--------|-----------|:------------:|-------|
-| Dovetail | `verify_one()` vocab=32k | 384.8 | CPU target verification |
-| PIPO | `run_layer()` in=out=4096 | 1785.8 | INT4 dequant + matmul w/ prefetch |
-| MobileMoE | `route()` single 128 experts | 27.19 | Expert selection |
-| MobileMoE | `route_batch()` 32 tokens | 490.2 | |
-| OnlineSD | `record()` hidden=4096 | 2.30 | Trace buffer append |
-| LookaheadReasoning | `run_cycle()` k=4 | 15.5 | Parallel step verification cycle |
-| SparseSpec | `PillarAttnCache.update()` cap=4096 | 1.3 | Attention pillar accumulation |
-| SparseSpec | `top_k_indices()` k=205 | 13.9 | Sparse position selection |
-| FRSpec | `head.forward()` top-25% vocab | 3881.7 | Compressed draft logits |
-| FRSpec | `compress_logits()` 32k→subset | 13.8 | Vocab projection |
-| FRSpec | `expand_logits()` subset→32k | 25.3 | Full-vocab restore |
-| LongSpec | `LongSpecHead.forward()` h=4096 | 19966.0 | Shared-KV draft head |
-| ForeLen | `EGTPPredictor.predict()` | 109.92 | Entropy histogram → length |
-| ForeLen | `PLPPredictor.update()` | 0.89 | Exponential decay estimate |
-| RASD | `CorpusIndex.search()` 1k seqs | 0.6 | Prefix-tree lookup |
-| RASD | `build_retrieval_tree()` | 2.0 | Draft tree construction |
+| Dovetail | `verify_one()` vocab=32k | 602.4 | CPU target verification |
+| PIPO | `run_layer()` in=out=4096 | 1376.2 | INT4 dequant + matmul w/ prefetch |
+| MobileMoE | `route()` single 128 experts | 14.88 | Expert selection |
+| MobileMoE | `route_batch()` 32 tokens | 486.7 | |
+| OnlineSD | `record()` hidden=4096 | 1.40 | Trace buffer append |
+| LookaheadReasoning | `run_cycle()` k=4 | 13.7 | Parallel step verification cycle |
+| SparseSpec | `PillarAttnCache.update()` cap=4096 | 1.20 | Attention pillar accumulation |
+| SparseSpec | `top_k_indices()` k=205 | 24.4 | Sparse position selection |
+| FRSpec | `head.forward()` top-25% vocab | 4095.0 | Compressed draft logits |
+| FRSpec | `compress_logits()` 32k→subset | 12.6 | Vocab projection |
+| FRSpec | `expand_logits()` subset→32k | 21.8 | Full-vocab restore |
+| LongSpec | `LongSpecHead.forward()` h=4096 | 12434.7 | Shared-KV draft head |
+| ForeLen | `EGTPPredictor.predict()` | 99.12 | Entropy histogram → length |
+| ForeLen | `PLPPredictor.update()` | 1.42 | Exponential decay estimate |
+| RASD | `CorpusIndex.search()` 1k seqs | 0.72 | Prefix-tree lookup |
+| RASD | `build_retrieval_tree()` | 1.83 | Draft tree construction |
 
 ---
 
