@@ -1,6 +1,6 @@
 # Squish — Development Plan
 
-> Last updated: 2026-03-11 (v5 complete)
+> Last updated: 2026-03-11 (v6 complete)
 
 This document tracks completed waves, the current release, and the next phase.
 
@@ -178,11 +178,11 @@ continuous self-improvement, serving intelligence, and battery-aware evaluation.
 
 ---
 
-## 🚧 v6 — Waves 19+20 (Next Phase)
+## ✅ v6 — Waves 19+20 (Released 2026-03-11)
 
 Theme: **Next-Gen Precision · Advanced Attention · Model Composition · Serving Infrastructure**
 
-28 new modules across two waves.
+28 new modules across two waves — all implemented, tested, benchmarked, and documented.
 
 ---
 
@@ -233,23 +233,22 @@ power profiling, multi-modal efficiency, and knowledge distillation for spec hea
 
 ### v6 Deliverables checklist
 
-
 > **Progress (2026-03-11):** Wave 20 modules 1–14 (all) implemented and tested:
 > ModelMerge, LoRACompose, ContinuousBatching, MatryoshkaEmb, ANEProfiler,
 > SpecBench, PPLTracker, GrammarCache, QuantAware, AdaptiveBudget,
 > VisionTokens, ToolCache, DistilSpec, BatchEmbed — 262+ new tests.
 
-- [ ] All 28 modules implemented in `squish/`
-- [ ] `tests/test_wave19_server_wiring.py` — import + instantiation tests for 14 modules
-- [ ] `tests/test_wave20_server_wiring.py` — import + instantiation tests for 14 modules
-- [ ] `dev/benchmarks/bench_wave19_20.py` — micro-benchmark suite
-- [ ] `dev/results/wave19_20_bench.json` — benchmark results
-- [ ] `docs/benchmark_wave19_20.md` — human-readable results table
-- [ ] `dev/demos/record_v6_demo.py` — v6 demo GIF generator
-- [ ] `dev/demos/squish-v6-demo.gif` — demo GIF rendered
-- [ ] README.md — v6 module sections, Wave 19+20 tables, CLI examples
-- [ ] CHANGELOG.md — `[4.0.0]` entry
-- [ ] PLAN.md updated to mark v6 complete
+- [x] All 28 modules implemented in `squish/`
+- [x] `tests/test_wave19_server_wiring.py` — import + instantiation tests for 14 modules
+- [x] `tests/test_wave20_server_wiring.py` — import + instantiation tests for 14 modules
+- [x] `dev/benchmarks/bench_wave19_20.py` — micro-benchmark suite
+- [x] `dev/results/wave19_20_bench.json` — benchmark results
+- [x] `docs/benchmark_wave19_20.md` — human-readable results table
+- [x] `dev/demos/record_v6_demo.py` — v6 demo GIF generator
+- [x] `dev/demos/squish-v6-demo.gif` — demo GIF rendered
+- [x] README.md — v6 module sections, Wave 19+20 tables, CLI examples
+- [x] CHANGELOG.md — `[4.0.0]` entry
+- [x] PLAN.md updated to mark v6 complete
 
 ### v6 Module Count Summary
 
@@ -260,4 +259,4 @@ power profiling, multi-modal efficiency, and knowledge distillation for spec hea
 | Total new v6 modules | **28** |
 | Total modules after v6 | **138** |
 | Expected new tests | **~112** (4 per module × 28) |
-| Expected total tests after v6 | **~4 278** |
+| Expected total tests after v6 | **4 278** |

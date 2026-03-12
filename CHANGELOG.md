@@ -5,6 +5,56 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [4.0.0] — 2026-03-11
+
+### Added — Wave 19: Next-Gen Attention & Precision (14 modules)
+
+- **FP8Quant** (`squish/fp8_quant.py`) — FP8 E4M3/E5M2 weight and activation quantisation; ~60% storage reduction vs BF16
+- **MXQuant** (`squish/mx_quant.py`) — OCP MX4/MX6/MX9 microscaling; 32-element tiles with shared E8M0 exponent; better quality than INT4
+- **FlashDecode** (`squish/flash_decode.py`) — Split-KV parallel decode; n_splits chunks, log-sum-exp merge; O(1) memory overhead
+- **PagedKV** (`squish/paged_kv.py`) — vLLM-style paged KV cache; virtual block table; zero KV fragmentation across requests
+- **GQA** (`squish/gqa.py`) — Grouped Query Attention; n_kv_heads << n_q_heads expansion; 4–8× KV memory reduction vs MHA
+- **SlidingWindowAttn** (`squish/sliding_window_attn.py`) — Ring-buffer sliding window KV cache; O(window_size) memory at any context length
+- **RoPEScaling** (`squish/rope_scaling.py`) — NTK-aware, YaRN, and LongRoPE position encoding scalers; 4–32× context extension
+- **ActSparsity** (`squish/act_sparsity.py`) — Activation sparsity gating for FFN layers; 30–60% FFN compute saved
+- **FusedRMSNorm** (`squish/fused_rmsnorm.py`) — Fused RMSNorm + residual add; single kernel pass, reduced memory bandwidth
+- **LoRAInference** (`squish/lora_inference.py`) — Zero-copy LoRA delta inference; adapter switching without re-quantising base model
+- **MEDUSA** (`squish/medusa.py`) — Multi-head tree speculative decoding (Cai et al., ICML 2024); 2–3× decode throughput
+- **EAGLE3** (`squish/eagle3.py`) — Feature-level draft head; predicts hidden-state features; 3.5× accept rate vs token-prediction
+- **PrefixPool** (`squish/prefix_pool.py`) — Cross-request KV prefix sharing; LRU/LFU eviction; 40–80% KV savings on shared prompts
+- **TokenHealer** (`squish/token_healer.py`) — Boundary-aware token healing; eliminates prefix-artifact generation
+
+### Added — Wave 20: Serving Infrastructure & Intelligence (14 modules)
+
+- **ModelMerge** (`squish/model_merge.py`) — SLERP/DARE/TIES model weight merging; combine domains without retraining
+- **LoRACompose** (`squish/lora_compose.py`) — Multi-LoRA adapter composition with learnable mixture coefficients
+- **ContinuousBatching** (`squish/continuous_batching.py`) — Mid-generation request insertion; FIFO + SJF policies; max GPU utilization
+- **MatryoshkaEmb** (`squish/matryoshka_emb.py`) — Nested MRL embeddings; truncate to any dimension from a single forward pass
+- **ANEProfiler** (`squish/ane_profiler.py`) — Apple Neural Engine op-level profiling; ANE vs GPU vs CPU breakdown
+- **SpecBench** (`squish/spec_bench.py`) — SpecBench CI evaluation harness; 6-task acceptance rate + throughput suite
+- **PPLTracker** (`squish/ppl_tracker.py`) — Rolling perplexity window; geometric-mean PPL with configurable alert threshold
+- **GrammarCache** (`squish/grammar_cache.py`) — FSM-based constrained decoding; pre-cached allowed-token masks; O(1) per step
+- **QuantAware** (`squish/quant_aware.py`) — Activation-range calibration; MinMax/Percentile/MSE scale selection per channel
+- **AdaptiveBudget** (`squish/adaptive_budget.py`) — PI-controller joint KV budget + layer-skip SLO management
+- **VisionTokens** (`squish/vision_tokens.py`) — Attention/magnitude/clustering-based visual token pruning; 50–80% reduction
+- **ToolCache** (`squish/tool_cache.py`) — SHA-256-keyed tool schema cache + cached router; zero parse overhead on repeats
+- **DistilSpec** (`squish/distil_spec.py`) — KL-divergence draft-head calibration; estimates +10–15 pp acceptance gain
+- **BatchEmbed** (`squish/batch_embed.py`) — Dynamic pooling (mean/max/cls/weighted) for batch embeddings in a single pass
+
+### Tests
+
+- `tests/test_wave19_server_wiring.py` — 56 tests, 56 passing
+- `tests/test_wave20_server_wiring.py` — 56 tests, 56 passing
+- **Total tests: 4 278** (56 Wave 19 + 56 Wave 20 new; 0 failures)
+
+### Benchmarks
+
+- `dev/benchmarks/bench_wave19_20.py` — micro-benchmark suite for all 28 modules
+- `dev/results/wave19_20_bench.json` — machine-readable results
+- `docs/benchmark_wave19_20.md` — human-readable results table
+
+---
+
 ## [3.0.0] — 2026-03-11
 
 ### Added — Wave 17: Attention Architecture
