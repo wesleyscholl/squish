@@ -5,7 +5,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [7.0.0] — 2026-03-12
+## [9.0.0] — 2026-03-12
 
 ### Added — Wave 25: Cutting-Edge Attention Variants & Compute Fusion (14 modules)
 

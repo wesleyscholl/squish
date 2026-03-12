@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "squish"
-version = "1.0.1"
+version = "9.0.0"
 description = "Fast compressed model loader and OpenAI-compatible inference server for Apple Silicon and Linux"
 readme = "README.md"
 requires-python = ">=3.10"
