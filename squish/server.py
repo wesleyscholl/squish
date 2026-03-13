@@ -78,6 +78,8 @@ _kv_cache = None         # QuantizedKVCache | None — set in main() after model
 _paged_kv_cache = None   # PagedKVCache | None — set in main() when --paged-attention
 _disk_prompt_cache = None  # DiskKVCache | None — set in main() when --disk-prompt-cache given
 _lazy_llm_state = None  # _PruneState | None — set in main() when --lazy-llm given
+# Phase 13A: asymmetric INT2 KV cache (agent-kv)
+_agent_kv_config: "Any | None" = None   # AgentKVConfig | None — set in main() when --agent-kv
 
 # ── Wave optimization module state (lazily instantiated) ─────────────────────
 _prompt_lookup_decoder  = None  # PromptLookupDecoder    — --prompt-lookup
@@ -184,6 +186,8 @@ _req_tool_schema: "dict | None" = None     # per-request override: tool_choice-a
 # ── Phase C: Power & Energy Modes ────────────────────────────────────────────
 _power_monitor: "Any | None" = None        # PowerMonitor instance (auto mode only)
 _power_mode: str = "performance"           # current effective mode name
+# ── Phase 13B: macOS Memory Governor ─────────────────────────────────────────
+_memory_governor: "Any | None" = None      # MemoryGovernor instance (macOS only)
 
 # ── Conflict-Resolution Routing (Phase 0) ────────────────────────────────────
 # Two exclusive request paths prevent incompatible optimizations firing together:
@@ -2085,6 +2089,11 @@ async def health():
     _battery_level: float | None = None
     if _power_monitor is not None:
         _battery_level = round(_power_monitor.get_battery_level(), 2)
+    _mem_available: float | None = None
+    _mem_pressure: int | None = None
+    if _memory_governor is not None:
+        _mem_available = round(_memory_governor.available_gb, 2)
+        _mem_pressure  = _memory_governor.pressure_level
     return {
         "status":       "ok" if _state.model is not None else "no_model",
         "model":        _state.model_name,
@@ -2099,6 +2108,8 @@ async def health():
         "uptime_s":     round(time.time() - _state.loaded_at, 1) if _state.loaded_at else 0,
         "power_mode":   _power_mode,
         "battery_level": _battery_level,
+        "mem_available_gb": _mem_available,
+        "mem_pressure":     _mem_pressure,
     }
 
 
@@ -2336,6 +2347,18 @@ Examples:
                     help="SVD rank for KV compression: project head_dim → N before INT8.\n"
                          "0 = off (default).  Recommended: 64 for head_dim=128 models.\n"
                          "Requires --kv-cache-mode int8 or snap.")
+    # ── Phase 13A: Asymmetric INT2 KV Cache ──────────────────────────────────
+    ap.add_argument("--agent-kv", action="store_true", default=False,
+                    help="Enable the asymmetric INT2 KV cache (AgentKV):\n"
+                         "  Keeps first --agent-kv-sink tokens in FP32 (attention sinks),\n"
+                         "  quantizes older tokens to INT2 (history tier), and maintains\n"
+                         "  a FP32 local window for the most recent tokens.  Achieves ~6×\n"
+                         "  KV footprint reduction vs FP16 on long-context agent loops.\n"
+                         "  Automatically enabled by --agent preset.")
+    ap.add_argument("--agent-kv-sink", type=int, default=4, metavar="N",
+                    help="Number of FP32 attention-sink tokens to preserve (default 4)")
+    ap.add_argument("--agent-kv-window", type=int, default=64, metavar="N",
+                    help="FP32 local-window token count for AgentKV (default 64)")
     # Phase 2 retrieval attention
     ap.add_argument("--retrieval-attention", action="store_true", default=False,
                     help="Enable retrieval attention: fetch only the top-k most relevant\n"
@@ -2591,6 +2614,19 @@ Examples:
             "Useful for local testing. Modules that fail to init are skipped."
         ),
     )
+    # ── Phase 13D: Agent preset ───────────────────────────────────────────────
+    ap.add_argument(
+        "--agent", action="store_true", default=False,
+        help=(
+            "Agent-mode preset — enables the full Phase-13 agent stack:\n"
+            "  --agent-kv       INT2 asymmetric KV cache (6× footprint reduction)\n"
+            "  --chunk-prefill  bounded TTFT for long system prompts\n"
+            "  --batch-size 1   dedicated-slot serving for agent loops\n"
+            "  --max-kv-size    auto-sized from available UMA (min(32768, free_gb×2048))\n"
+            "Designed for 7–14 B models on 16 GB M-series Apple Silicon "
+            "running long tool-call agent loops."
+        ),
+    )
 
     args = ap.parse_args()
 
@@ -2609,6 +2645,33 @@ Examples:
         for _f in _bool_wave_flags:
             if not getattr(args, _f, False):
                 setattr(args, _f, True)
+
+    # ── Phase 13D: Expand --agent preset into individual flags ────────────────
+    if getattr(args, "agent", False):
+        # 1. Asymmetric INT2 KV cache
+        args.agent_kv = True
+        # 2. Bounded TTFT via chunked prefill (COMPRESS_PATH only)
+        args.chunk_prefill = True
+        # 3. Single-slot serving — agent loops occupy one context at a time
+        if getattr(args, "batch_size", 8) >= 8:   # don't override an explicit lower value
+            args.batch_size = 1
+        # 4. Auto-size context window from available UMA reported by MemoryGovernor
+        if getattr(args, "max_kv_size", None) is None:
+            try:
+                import sys as _sys
+                if _sys.platform == "darwin":
+                    from squish.memory_governor import MemoryGovernor as _MG  # noqa: PLC0415
+                    _mg_tmp = _MG(poll_interval=60.0).start()
+                    _free_gb = _mg_tmp.available_gb
+                    _mg_tmp.stop()
+                    args.max_kv_size = min(32768, int(_free_gb * 2048))
+                else:
+                    args.max_kv_size = 8192
+            except Exception:  # noqa: BLE001
+                args.max_kv_size = 8192
+        _info("agent-preset",
+              f"active  agent-kv=True  chunk-prefill=True"
+              f"  batch={args.batch_size}  max-kv={args.max_kv_size}")
 
     global _API_KEY
     # Prefer explicit CLI flag; fall back to SQUISH_API_KEY env var.
@@ -2754,6 +2817,21 @@ Examples:
             _logging.getLogger(__name__).warning(
                 "[KV cache] could not attach (%s) — running without KV quantisation", e
             )
+
+    # ── Phase 13A: Asymmetric INT2 KV cache (AgentKV) ────────────────────────
+    global _agent_kv_config
+    if getattr(args, "agent_kv", False):
+        try:
+            from squish.agent_kv import AgentKVConfig  # noqa: PLC0415
+            _agent_kv_config = AgentKVConfig(
+                sink_tokens=getattr(args, "agent_kv_sink", 4),
+                window_tokens=getattr(args, "agent_kv_window", 64),
+            )
+            _info("agent-kv",
+                  f"enabled  sink={_agent_kv_config.sink_tokens}"
+                  f"  window={_agent_kv_config.window_tokens}")
+        except Exception as _akv_exc:  # noqa: BLE001
+            _info("agent-kv", f"unavailable ({_akv_exc})")
 
     # ── Phase 3: persistent cross-session KV cache ────────────────────────────
     global _session_kv_cache
@@ -2902,6 +2980,19 @@ Examples:
         from squish.power_monitor import apply_mode  # noqa: PLC0415
         apply_mode(_power_mode, globals())
         _info("power-mode", _power_mode)
+
+    # ── Phase 13B: macOS Memory Governor ──────────────────────────────────────
+    import sys as _sys
+    if _sys.platform == "darwin":
+        global _memory_governor
+        try:
+            from squish.memory_governor import MemoryGovernor  # noqa: PLC0415
+            _memory_governor = MemoryGovernor(poll_interval=5.0).start()
+            _info("memory-governor",
+                  f"started  available={_memory_governor.available_gb:.1f} GB"
+                  f"  pressure={_memory_governor.pressure_level}")
+        except Exception as _mg_exc:  # noqa: BLE001
+            _info("memory-governor", f"unavailable ({_mg_exc})")
 
     # ── Phase 0C: hardware inference backend ─────────────────────────────────
     _inference_backend = getattr(args, "inference_backend", "mlx-eager")

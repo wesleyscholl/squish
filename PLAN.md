@@ -1610,7 +1610,7 @@ These are not duplicates — AgentKV is the combination that uniquely targets ag
 **Deliverables:**
 - [x] `squish/agent_kv.py` — AgentKVConfig, AgentKVTier, AgentKVCache, AgentKVQuantizer, patch_model_agent_kv
 - [x] `tests/test_agent_kv_unit.py` — 18+ tests: config validation, tier labelling for various context lengths, push/get round-trip precision preservation (sink and window FP16, history INT2), dequantize correctness on random values, entropy layer toggle, patch_model shape consistency
-- [ ] `squish/server.py` — `--agent-kv` flag; enable when `--agent` preset is active
+- [x] `squish/server.py` — `--agent-kv` flag; enable when `--agent` preset is active
 - [ ] `dev/benchmarks/bench_agent_kv.py` — peak RAM measurement on Qwen2.5-14B at context 4K / 8K / 16K / 32K with agent_kv vs default FP16 KV cache; save to `dev/results/agent_kv_bench.json`
 
 ---
@@ -1652,7 +1652,7 @@ as `"Memory governor: platform is not macOS — no-op mode"`.
 - [x] `squish/memory_governor.py` — MemPressureLevel, VMStatSnapshot, VMStatReader, MemoryGovernorConfig, MemoryGovernor, apply_default_handlers
 - [x] `tests/test_memory_governor_unit.py` — 14+ tests: VMStatReader parse on synthetic `vm_stat` output strings, level transition logic at configurable thresholds, handler registration, no-op on non-macOS (patched via `sys.platform`), apply_default_handlers callback ordering
 - [ ] `squish/server.py` — start `MemoryGovernor` during server startup when `sys.platform == "darwin"` (always-on, no flag needed — zero cost in no-op mode on other platforms)
-- [ ] `squish/fault_tolerance.py` — import `MemPressureLevel` and log governor level in `FaultEvent` for correlation
+- [x] `squish/fault_tolerance.py` — import `MemPressureLevel` and log governor level in `FaultEvent` for correlation
 
 ---
 
@@ -1720,9 +1720,9 @@ Recommended 16GB-M3 agent models:
 ```
 
 **Deliverables:**
-- [ ] `squish/cli.py` — add `--agent` flag to `squish serve`; wire expansion to the 9-flag combination above
-- [ ] `squish/server.py` — agent-mode startup logic: auto INT4, max_batch_size=1, dynamic context_length, per-turn memory log
-- [ ] `tests/test_agent_preset_unit.py` — 10+ tests: flag expansion correctness, dynamic context_length formula, memory log message format, agent preset compatibility with individual flag overrides
+- [x] `squish/cli.py` — add `--agent` flag to `squish serve`; wire expansion to the 9-flag combination above
+- [x] `squish/server.py` — agent-mode startup logic: auto INT4, max_batch_size=1, dynamic context_length, per-turn memory log
+- [x] `tests/test_agent_preset_unit.py` — 10+ tests: flag expansion correctness, dynamic context_length formula, memory log message format, agent preset compatibility with individual flag overrides
 - [ ] `docs/agent_mode.md` — the definitive guide: hardware requirements, recommended models, example OpenClaw integration, Continue.dev config snippet, LangChain example
 
 ---

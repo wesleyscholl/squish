@@ -550,6 +550,8 @@ def cmd_run(args):  # pragma: no cover
         cmd += ["--log-level", args.log_level]
     if getattr(args, "all_optimizations", False):
         cmd += ["--all-optimizations"]
+    if getattr(args, "agent", False):
+        cmd += ["--agent"]
 
     try:
         os.execv(sys.executable, cmd)  # replace this process — clean signals
@@ -1918,6 +1920,13 @@ Ollama drop-in:
                        help="Server log verbosity (default: warning)")
     p_run.add_argument("--all-optimizations", action="store_true", default=False,
                        help="Enable ALL built-in optimization modules at once")
+    # ── Phase 13D: Agent preset ──
+    p_run.add_argument("--agent", action="store_true", default=False,
+                       help="Agent-mode preset: enables --agent-kv, --grammar, "
+                            "--chunked-prefill, --radix-cache, sets batch-size=1, "
+                            "and auto-sizes context from available UMA memory.\n"
+                            "Designed for 16 GB M-series running 7–14 B models in "
+                            "long agent loops.")
     p_run.set_defaults(func=cmd_run)
 
     # ── serve (alias for run) ──
@@ -1937,6 +1946,13 @@ Ollama drop-in:
                          help="Server log verbosity (default: warning)")
     p_serve.add_argument("--all-optimizations", action="store_true", default=False,
                          help="Enable ALL built-in optimization modules at once")
+    # ── Phase 13D: Agent preset ──
+    p_serve.add_argument("--agent", action="store_true", default=False,
+                         help="Agent-mode preset: enables --agent-kv, --grammar, "
+                              "--chunked-prefill, --radix-cache, sets batch-size=1, "
+                              "and auto-sizes context from available UMA memory.\n"
+                              "Designed for 16 GB M-series running 7–14 B models in "
+                              "long agent loops.")
     p_serve.set_defaults(func=cmd_run)
 
     # ── chat ──

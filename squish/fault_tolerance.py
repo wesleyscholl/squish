@@ -50,9 +50,44 @@ __all__ = [
     "FaultAction",
     "FaultHandler",
     "FaultStats",
+    "mem_pressure_fraction",
 ]
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from squish.memory_governor import MemoryGovernor
+
+
+# ---------------------------------------------------------------------------
+# MemoryGovernor pressure → [0, 1] fraction
+# ---------------------------------------------------------------------------
+
+# Map MemoryGovernor integer pressure levels to normalised fractions.
+# LEVEL_NORMAL=0, LEVEL_WARNING=1, LEVEL_URGENT=2, LEVEL_CRITICAL=4.
+_PRESSURE_LEVEL_MAP: dict[int, float] = {
+    0: 0.00,   # NORMAL   — no action needed
+    1: 0.75,   # WARNING  — below default evict_kv_at=0.85; head-start signal
+    2: 0.92,   # URGENT   — triggers evict_kv + disable_draft at defaults
+    4: 1.00,   # CRITICAL — full degradation cascade
+}
+
+
+def mem_pressure_fraction(pressure_level: int) -> float:
+    """Convert a MemoryGovernor integer pressure level to a [0, 1] fraction.
+
+    Unknown levels are clamped to 1.0 so they always trigger full degradation.
+
+    Args:
+        pressure_level: Integer level (0, 1, 2, or 4) from
+                        ``MemoryGovernor.pressure_level``.
+
+    Returns:
+        A float in [0, 1] suitable for passing to
+        :meth:`FaultHandler.evaluate`.
+    """
+    return _PRESSURE_LEVEL_MAP.get(pressure_level, 1.0)
 
 
 # ---------------------------------------------------------------------------
@@ -130,20 +165,25 @@ class FaultStats:
     """Cumulative counters maintained by :class:`FaultHandler`.
 
     Attributes:
-        total_evaluations: Number of times :meth:`FaultHandler.evaluate`
-                           has been called.
-        kv_evictions:      Cumulative KV entries evicted via
-                           :meth:`FaultHandler.apply_evict_kv`.
-        draft_disables:    Number of evaluations that triggered
-                           :attr:`FaultAction.DISABLE_DRAFT`.
-        batch_reductions:  Number of evaluations that triggered
-                           :attr:`FaultAction.REDUCE_BATCH`.
+        total_evaluations:  Number of times :meth:`FaultHandler.evaluate`
+                            has been called.
+        kv_evictions:       Cumulative KV entries evicted via
+                            :meth:`FaultHandler.apply_evict_kv`.
+        draft_disables:     Number of evaluations that triggered
+                            :attr:`FaultAction.DISABLE_DRAFT`.
+        batch_reductions:   Number of evaluations that triggered
+                            :attr:`FaultAction.REDUCE_BATCH`.
+        last_governor_level: Most recent MemoryGovernor pressure level (int)
+                            that was passed to
+                            :meth:`FaultHandler.evaluate_from_governor`,
+                            or ``None`` if that method has never been called.
     """
 
     total_evaluations: int = 0
     kv_evictions: int = 0
     draft_disables: int = 0
     batch_reductions: int = 0
+    last_governor_level: "int | None" = None
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +288,32 @@ class FaultHandler:
             )
         self._stats.kv_evictions += n_to_evict
         return n_to_evict
+
+    def evaluate_from_governor(
+        self,
+        governor: "MemoryGovernor",
+        current_batch_size: int,
+    ) -> list[str]:
+        """Evaluate using a live :class:`~squish.memory_governor.MemoryGovernor`.
+
+        Reads ``governor.pressure_level``, converts it to a [0, 1] fraction
+        via :func:`mem_pressure_fraction`, records the raw level in
+        :attr:`FaultStats.last_governor_level`, then delegates to
+        :meth:`evaluate`.
+
+        Args:
+            governor:           A started ``MemoryGovernor`` instance.
+            current_batch_size: Active batch size before any reduction.
+
+        Returns:
+            Ordered list of :class:`FaultAction` strings.
+        """
+        level = governor.pressure_level
+        self._stats.last_governor_level = level
+        return self.evaluate(
+            pressure=mem_pressure_fraction(level),
+            current_batch_size=current_batch_size,
+        )
 
     @property
     def stats(self) -> FaultStats:
