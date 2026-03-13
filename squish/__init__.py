@@ -11,721 +11,394 @@ Public API:
 
     run_server(...)   # OpenAI-compatible HTTP server
 """
-# Phase 1.2 — AWQ calibration and scale application
-try:
-    from squish.awq import (  # noqa: F401
-        apply_awq_to_weights,
-        collect_activation_scales,
-        load_awq_scales,
-        save_awq_scales,
-    )
-except (ImportError, OSError):
-    pass
-
-# Model catalog + pull (requires huggingface_hub for download)
-from squish.catalog import (  # noqa: F401
-    CatalogEntry,
-    list_catalog,
-    load_catalog,
-    pull as pull_model,
-    resolve as resolve_model,
-)
-
-# Entropy compression helpers (optional zstandard dep)
-from squish.entropy import compress_npy_dir, decompress_npy_dir  # noqa: F401
-
-# Phase 2.3 — Flash Attention status + benchmarking
-try:
-    from squish.flash_attention import (  # noqa: F401
-        PatchResult,
-        attention_status,
-        patch_model_attention,
-        predict_memory_savings,
-        print_memory_table,
-    )
-except (ImportError, OSError):
-    pass
-
-# Phase 1.3 — Quantized KV cache (KIVI + SnapKV)
-try:
-    from squish.kv_cache import (  # noqa: F401
-        QuantizedKVCache,
-        make_quantized_cache,
-        patch_model_kv_cache,
-    )
-except (ImportError, OSError):
-    pass
-
-# Phase 2.2 — Layer-wise streaming for 70B+ models
-try:
-    from squish.layerwise_loader import (  # noqa: F401
-        LayerCache,
-        LayerwiseLoader,
-        LoadStats,
-        recommend_cache_size,
-        shard_model,
-    )
-except (ImportError, OSError):
-    pass
-
-# Quantizer public API (self-contained, no external deps beyond numpy)
-from squish.quantizer import (  # noqa: F401
-    QuantizationResult,
-    dequantize_int4,
-    get_backend_info,
-    mean_cosine_similarity,
-    quantize_embeddings,
-    quantize_int4,
-    reconstruct_embeddings,
-)
-
-# Speculative decoding (requires both target + draft model)
-try:
-    from squish.speculative import SpeculativeGenerator, load_draft_model  # noqa: F401
-except (ImportError, OSError):
-    pass
-
-# Phase 2.1C — CPU/GPU split loading (auto-offloads layers if model > Metal budget)
-try:
-    from squish.split_loader import (  # noqa: F401
-        OffloadedLayer,
-        SplitInfo,
-        SplitLayerLoader,
-        print_layer_profile,
-        profile_model_layers,
-    )
-except (ImportError, OSError):
-    pass
-
-try:
-    from .compressed_loader import (  # noqa: F401
-        load_compressed_model,
-        load_from_npy_dir,
-        save_int4_npy_dir,
-    )
-except (ImportError, OSError):
-    pass
-
-# Final-pass technique 15 — DFloat11 lossless weight compression (NeurIPS 2025)
-from squish.dfloat11 import (  # noqa: F401
-    CompressedBlock,
-    CompressedModel,
-    DFloat11Compressor,
-    DFloat11Config,
-    HuffmanCodec,
-    compress_model,
-)
-
-# Seventh Wave — Dovetail: CPU verification + GPU drafting (EMNLP 2025, arXiv:2412.18934)
-from squish.dovetail import (  # noqa: F401
-    DovetailConfig,
-    DovetailCPUVerifier,
-    DovetailDecoder,
-    DovetailDraftRunner,
-    DovetailStats,
-)
-
-# Seventh Wave — DuoDecoding: dynamic multi-sequence heterogeneous spec decode (arXiv:2503.00784)
-from squish.duo_decoding import (  # noqa: F401
-    DuoCandidate,
-    DuoCPUVerifier,
-    DuoDecodingConfig,
-    DuoDecodingDecoder,
-    DuoDecodingStats,
-    DuoScheduler,
-)
-
-# Eighth Wave — ForeLen: entropy-guided output length prediction (ICLR 2026)
-from squish.forelen import (  # noqa: F401
-    EGTPPredictor,
-    ForelenConfig,
-    ForelenStats,
-    PLPPredictor,
-)
-
-# Eighth Wave — IPW: Intelligence Per Watt evaluation framework (arXiv:2511.07885)
-from squish.ipw import (  # noqa: F401
-    IPWConfig,
-    IPWMeasurement,
-    IPWSummary,
-    IPWTracker,
-)
-
-# Sixth Wave — LongSpec: long-context shared-KV speculative decoding (ICML 2025)
-from squish.long_spec import (  # noqa: F401
-    LongSpecConfig,
-    LongSpecDecoder,
-    LongSpecHead,
-    LongSpecStats,
-)
-
-# Seventh Wave — Mirror-SD: GPU+NPU dual-pipeline speculative decoding (arXiv:2510.13161)
-from squish.mirror_sd import (  # noqa: F401
-    MirrorDraftPipeline,
-    MirrorFuture,
-    MirrorSDConfig,
-    MirrorSDDecoder,
-    MirrorSDStats,
-    MirrorVerifyPipeline,
-)
-
-# Final-pass technique 17 — PIPO pipelined offloading with INT4 bypass kernel
-from squish.pipo import (  # noqa: F401
-    INT4BypassKernel,
-    LayerWeightBuffer,
-    PIPOConfig,
-    PIPOScheduler,
-)
-
-# Sixth Wave — QSpec: W4A8 draft / W4A16 verify complementary quantization (arXiv:2410.11305)
-from squish.qspec import (  # noqa: F401
-    ActivationQuantizer,
-    QSpecConfig,
-    QSpecDecoder,
-    QSpecStats,
-)
-
-# Eighth Wave — Sequence Packing: barrel effect elimination
-from squish.seq_packing import (  # noqa: F401
-    PackedBatch,
-    PackingConfig,
-    PackingStats,
-    SequencePacker,
-)
-
-# Final-pass technique 16 — ShadowKV low-rank key cache + CPU value shadow (arXiv:2410.21465)
-from squish.shadow_kv import (  # noqa: F401
-    LandmarkSelector,
-    LowRankKeyCache,
-    ShadowKVCache,
-    ShadowKVConfig,
-)
-
-# Eighth Wave — SparseSpec: dynamic sparse self-speculation for reasoning (arXiv:2512.01278)
-from squish.sparse_spec import (  # noqa: F401
-    PillarAttnCache,
-    SparseSpecConfig,
-    SparseSpecDecoder,
-    SparseSpecDrafter,
-    SparseSpecStats,
-)
-
-# Eighth Wave — Sparse Verification Framework (arXiv:2512.21911)
-from squish.sparse_verify import (  # noqa: F401
-    InterDraftReuseCache,
-    SparseVerifyConfig,
-    SparseVerifyPass,
-    SparseVerifyStats,
-)
-
-# Eighth Wave — SpeContext: distilled model as KV retrieval algorithm (ASPLOS 2026)
-from squish.specontext import (  # noqa: F401
-    DistilledRetrievalHead,
-    SpeContextCache,
-    SpeContextConfig,
-    SpeContextStats,
-)
-
-# Final-pass technique 19 — SqueezeLLM dense-and-sparse quantization (ICML 2024)
-from squish.squeeze_llm import (  # noqa: F401
-    OutlierDetector,
-    SqueezeLLMConfig,
-    SqueezeLLMLayer,
-    SqueezeLLMQuantizer,
-)
-
-# Eighth Wave — StreamingLLM Attention Sinks: infinite context (ICLR 2024)
-from squish.streaming_sink import (  # noqa: F401
-    SinkConfig,
-    SinkKVCache,
-    SinkStats,
-)
-
-# Sixth Wave — SubSpec: NVMe-offload speculative decoding (NeurIPS 2025)
-from squish.sub_spec import (  # noqa: F401
-    SubSpecConfig,
-    SubSpecDecoder,
-    SubSpecStats,
-    SubstituteLayerProxy,
-)
-
-# Sixth Wave — TokenSwift: ultra-long generation with multi-token heads (ICML 2025)
-from squish.token_swift import (  # noqa: F401
-    MultiTokenHead,
-    PartialKVManager,
-    TokenSwiftConfig,
-    TokenSwiftDecoder,
-    TokenSwiftStats,
-)
-
-# Eighth Wave — TRAIL: recycled embedding length predictor (ICLR 2025)
-from squish.trail import (  # noqa: F401
-    TrailConfig,
-    TrailLinearProbe,
-    TrailPredictor,
-    TrailStats,
-)
-
-# Final-pass technique 18 — VPTQ vector post-training quantization (NeurIPS 2025)
-from squish.vptq import (  # noqa: F401
-    VPTQCodebook,
-    VPTQConfig,
-    VPTQLayer,
-    VPTQQuantizer,
-)
-
-# Ninth Wave — KVSharer: cross-layer KV sharing with dissimilar-pair heuristic (ICLR 2025)
-from squish.kvsharer import (  # noqa: F401
-    KVSharerConfig,
-    KVSharerCalibrator,
-    KVShareMap,
-    KVLayerCache,
-    KVSharerStats,
-)
-
-# Ninth Wave — CLA: Cross-Layer Attention architecture (Brandon et al., 2024)
-from squish.cla import (  # noqa: F401
-    CLAConfig,
-    CLALayerSpec,
-    CLASchedule,
-    CLAStats,
-)
-
-# Ninth Wave — YOCO: You Only Cache Once architecture (Sun et al., 2024)
-from squish.yoco import (  # noqa: F401
-    YOCOConfig,
-    YOCOLayerSpec,
-    YOCOSchedule,
-    YOCOKVStore,
-    YOCOStats,
-)
-
-# Ninth Wave — KVTuner: sensitivity-aware automated KV quantization search (ICML 2025)
-from squish.kvtuner import (  # noqa: F401
-    KVTunerConfig,
-    LayerSensitivity,
-    KVTunerCalibrator,
-    KVQuantConfig,
-    KVTunerStats,
-)
-
-# Ninth Wave — SVDq: per-head SVD key cache mixed precision (2025)
-from squish.svdq import (  # noqa: F401
-    SVDqConfig,
-    HeadSVDProfile,
-    SVDqCalibrator,
-    SVDqPrecisionMap,
-    SVDqStats,
-)
-
-# Ninth Wave — GemFilter: early-layer input token compression (ICLR 2025)
-from squish.gemfilter import (  # noqa: F401
-    GemFilterConfig,
-    AttentionScoreBuffer,
-    GemSelector,
-    GemFilterStats,
-)
-
-# Ninth Wave — Robust Scheduler: interval-prediction A_max + A_balanced (Aug 2025)
-from squish.robust_scheduler import (  # noqa: F401
-    RobustSchedulerConfig,
-    LengthInterval,
-    Request,
-    AMaxScheduler,
-    ABalancedScheduler,
-    RobustSchedulerStats,
-)
-
-# Ninth Wave — SqueezeAttention: joint 2D KV budget management (2025)
-from squish.squeeze_attention import (  # noqa: F401
-    SqueezeConfig,
-    LayerKVBudget,
-    BudgetAllocator,
-    SqueezeKVCache,
-    SqueezeStats,
-)
-
-# Tenth Wave — SageAttention
-try:
-    from .sage_attention import (  # noqa: F401
-        SageAttentionConfig, KSmoother, SageAttentionStats, SageAttentionKernel,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tenth Wave — SageAttention2
-try:
-    from .sage_attention2 import (  # noqa: F401
-        SageAttention2Config, WarpQuantResult, SageAttention2Stats, SageAttention2Kernel,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tenth Wave — SpargeAttn
-try:
-    from .sparge_attn import (  # noqa: F401
-        SpargeAttnConfig, BlockMask, SpargeAttnStats, SpargeAttnEngine,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tenth Wave — DiffKV
-try:
-    from .diffkv import (  # noqa: F401
-        DiffKVConfig, HeadSparsityProfile, TokenImportanceTier, DiffKVPolicy,
-        DiffKVPolicyManager, CompactedKVSlot, DiffKVStats,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tenth Wave — SmallKV
-try:
-    from .smallkv import (  # noqa: F401
-        SmallKVConfig, SaliencyTracker, MarginalVCache, SmallKVCache, SmallKVStats,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tenth Wave — SpecReason
-try:
-    from .spec_reason import (  # noqa: F401
-        ReasoningStep, SpecReasonConfig, SpecReasonStats, SpecReasonOrchestrator, StepVerdict,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tenth Wave — LookaheadReasoning
-try:
-    from .lookahead_reasoning import (  # noqa: F401
-        LookaheadConfig, LookaheadStep, LookaheadBatch, LookaheadStats,
-        LookaheadReasoningEngine,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tenth Wave — AdaServe
-try:
-    from .ada_serve import (  # noqa: F401
-        SLOTarget, AdaServeConfig, AdaServeRequest, AdaServeStats, AdaServeScheduler,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tenth Wave — ConfSpec
-try:
-    from .conf_spec import (  # noqa: F401
-        ConfSpecConfig, ConfSpecDecision, ConfSpecStats, ConfSpecVerifier,
-    )
-except (ImportError, OSError):
-    pass
-
-# Tier C — previously missing from __all__
-
-# Tier C — paged_attention and radix_cache (server imports directly; add to __all__)
-try:
-    from .paged_attention import (  # noqa: F401
-        PagedKVCache, PageBlockTable, BlockAllocator,
-    )
-except (ImportError, OSError):
-    pass
-
-try:
-    from .radix_cache import (  # noqa: F401
-        RadixTree, RadixNode,
-    )
-except (ImportError, OSError):
-    pass
-
-try:
-    from .layer_skip import (  # noqa: F401
-        EarlyExitConfig, EarlyExitDecoder, EarlyExitStats, ConfidenceEstimator,
-    )
-except (ImportError, OSError):
-    pass
-
-try:
-    from .fr_spec import (  # noqa: F401
-        FRSpecConfig, FreqTokenSubset, FRSpecHead, FRSpecCalibrator, FRSpecStats,
-    )
-except (ImportError, OSError):
-    pass
-
-try:
-    from .kv_slab import (  # noqa: F401
-        KVPage, KVSlabAllocator,
-    )
-except (ImportError, OSError):
-    pass
-
-try:
-    from .lora_manager import (  # noqa: F401
-        LoRAManager, DareTiesConfig, DareTiesMerger,
-    )
-except (ImportError, OSError):
-    pass
-
-try:
-    from .paris_kv import (  # noqa: F401
-        ParisKVConfig, ParisKVCodebook,
-    )
-except (ImportError, OSError):
-    pass
-
-try:
-    from .prompt_lookup import (  # noqa: F401
-        PromptLookupConfig, NGramIndex, PromptLookupStats, PromptLookupDecoder,
-    )
-except (ImportError, OSError):
-    pass
+from __future__ import annotations
 
 __version__ = "9.0.0"
-__all__ = [
-    "load_compressed_model",
-    "load_from_npy_dir",
-    "save_int4_npy_dir",
-    "compress_npy_dir",
-    "decompress_npy_dir",
-    "SpeculativeGenerator",
-    "load_draft_model",
-    # Phase 1.2 — AWQ
-    "collect_activation_scales",
-    "save_awq_scales",
-    "load_awq_scales",
-    "apply_awq_to_weights",
-    # Phase 1.3 — KV cache
-    "QuantizedKVCache",
-    "make_quantized_cache",
-    "patch_model_kv_cache",
-    # Phase 2.1C — CPU/GPU split
-    "SplitLayerLoader",
-    "SplitInfo",
-    "OffloadedLayer",
-    "profile_model_layers",
-    "print_layer_profile",
-    # Phase 2.2 — Layerwise streaming
-    "LayerCache",
-    "LayerwiseLoader",
-    "LoadStats",
-    "shard_model",
-    "recommend_cache_size",
-    # Phase 2.3 — Flash Attention
-    "patch_model_attention",
-    "attention_status",
-    "predict_memory_savings",
-    "print_memory_table",
-    "PatchResult",
-    # Quantizer API
-    "QuantizationResult",
-    "quantize_embeddings",
-    "reconstruct_embeddings",
-    "quantize_int4",
-    "dequantize_int4",
-    "mean_cosine_similarity",
-    "get_backend_info",
-    # Catalog + pull
-    "CatalogEntry",
-    "load_catalog",
-    "list_catalog",
-    "resolve_model",
-    "pull_model",
-    # DFloat11 — lossless weight compression
-    "DFloat11Config",
-    "HuffmanCodec",
-    "DFloat11Compressor",
-    "CompressedBlock",
-    "CompressedModel",
-    "compress_model",
-    # ShadowKV — low-rank key cache + CPU value shadow
-    "ShadowKVConfig",
-    "LowRankKeyCache",
-    "LandmarkSelector",
-    "ShadowKVCache",
-    # PIPO — pipelined offloading with INT4 bypass
-    "PIPOConfig",
-    "LayerWeightBuffer",
-    "INT4BypassKernel",
-    "PIPOScheduler",
-    # VPTQ — vector post-training quantization
-    "VPTQConfig",
-    "VPTQCodebook",
-    "VPTQLayer",
-    "VPTQQuantizer",
-    # SqueezeLLM — dense-and-sparse quantization
-    "SqueezeLLMConfig",
-    "OutlierDetector",
-    "SqueezeLLMLayer",
-    "SqueezeLLMQuantizer",
-    # Sixth Wave — SubSpec
-    "SubSpecConfig",
-    "SubstituteLayerProxy",
-    "SubSpecStats",
-    "SubSpecDecoder",
-    # Sixth Wave — LongSpec
-    "LongSpecConfig",
-    "LongSpecHead",
-    "LongSpecStats",
-    "LongSpecDecoder",
-    # Sixth Wave — TokenSwift
-    "TokenSwiftConfig",
-    "MultiTokenHead",
-    "PartialKVManager",
-    "TokenSwiftStats",
-    "TokenSwiftDecoder",
-    # Sixth Wave — QSpec
-    "QSpecConfig",
-    "ActivationQuantizer",
-    "QSpecStats",
-    "QSpecDecoder",
-    # Seventh Wave — Mirror-SD
-    "MirrorSDConfig",
-    "MirrorFuture",
-    "MirrorDraftPipeline",
-    "MirrorVerifyPipeline",
-    "MirrorSDStats",
-    "MirrorSDDecoder",
-    # Seventh Wave — Dovetail
-    "DovetailConfig",
-    "DovetailDraftRunner",
-    "DovetailCPUVerifier",
-    "DovetailStats",
-    "DovetailDecoder",
-    # Seventh Wave — DuoDecoding
-    "DuoDecodingConfig",
-    "DuoCandidate",
-    "DuoScheduler",
-    "DuoCPUVerifier",
-    "DuoDecodingStats",
-    "DuoDecodingDecoder",
-    # Seventh Wave — Heterogeneous Vocabulary SD
-    "HeteroVocabConfig",
-    "VocabMapper",
-    "HeteroVocabDrafter",
-    "HeteroVocabStats",
-    "HeteroVocabDecoder",
-    # Eighth Wave — SparseSpec
-    "SparseSpecConfig",
-    "PillarAttnCache",
-    "SparseSpecDrafter",
-    "SparseSpecStats",
-    "SparseSpecDecoder",
-    # Eighth Wave — Sparse Verification
-    "SparseVerifyConfig",
-    "InterDraftReuseCache",
-    "SparseVerifyPass",
-    "SparseVerifyStats",
-    # Eighth Wave — ForeLen
-    "ForelenConfig",
-    "EGTPPredictor",
-    "PLPPredictor",
-    "ForelenStats",
-    # Eighth Wave — TRAIL
-    "TrailConfig",
-    "TrailLinearProbe",
-    "TrailPredictor",
-    "TrailStats",
-    # Eighth Wave — SpeContext
-    "SpeContextConfig",
-    "DistilledRetrievalHead",
-    "SpeContextCache",
-    "SpeContextStats",
-    # Eighth Wave — IPW
-    "IPWConfig",
-    "IPWMeasurement",
-    "IPWTracker",
-    "IPWSummary",
-    # Eighth Wave — Sequence Packing
-    "PackingConfig",
-    "SequencePacker",
-    "PackedBatch",
-    "PackingStats",
-    # Eighth Wave — StreamingLLM Attention Sinks
-    "SinkConfig",
-    "SinkKVCache",
-    "SinkStats",
-    # Ninth Wave — KVSharer
-    "KVSharerConfig",
-    "KVSharerCalibrator",
-    "KVShareMap",
-    "KVLayerCache",
-    "KVSharerStats",
-    # Ninth Wave — CLA
-    "CLAConfig",
-    "CLALayerSpec",
-    "CLASchedule",
-    "CLAStats",
-    # Ninth Wave — YOCO
-    "YOCOConfig",
-    "YOCOLayerSpec",
-    "YOCOSchedule",
-    "YOCOKVStore",
-    "YOCOStats",
-    # Ninth Wave — KVTuner
-    "KVTunerConfig",
-    "LayerSensitivity",
-    "KVTunerCalibrator",
-    "KVQuantConfig",
-    "KVTunerStats",
-    # Ninth Wave — SVDq
-    "SVDqConfig",
-    "HeadSVDProfile",
-    "SVDqCalibrator",
-    "SVDqPrecisionMap",
-    "SVDqStats",
-    # Ninth Wave — GemFilter
-    "GemFilterConfig",
-    "AttentionScoreBuffer",
-    "GemSelector",
-    "GemFilterStats",
-    # Ninth Wave — Robust Scheduler
-    "RobustSchedulerConfig",
-    "LengthInterval",
-    "Request",
-    "AMaxScheduler",
-    "ABalancedScheduler",
-    "RobustSchedulerStats",
-    # Ninth Wave — SqueezeAttention
-    "SqueezeConfig",
-    "LayerKVBudget",
-    "BudgetAllocator",
-    "SqueezeKVCache",
-    "SqueezeStats",
-    # Tenth Wave — SageAttention
-    "SageAttentionConfig", "KSmoother", "SageAttentionStats", "SageAttentionKernel",
-    # Tenth Wave — SageAttention2
-    "SageAttention2Config", "WarpQuantResult", "SageAttention2Stats", "SageAttention2Kernel",
-    # Tenth Wave — SpargeAttn
-    "SpargeAttnConfig", "BlockMask", "SpargeAttnStats", "SpargeAttnEngine",
-    # Tenth Wave — DiffKV
-    "DiffKVConfig", "HeadSparsityProfile", "TokenImportanceTier", "DiffKVPolicy",
-    "DiffKVPolicyManager", "CompactedKVSlot", "DiffKVStats",
-    # Tenth Wave — SmallKV
-    "SmallKVConfig", "SaliencyTracker", "MarginalVCache", "SmallKVCache", "SmallKVStats",
-    # Tenth Wave — SpecReason
-    "ReasoningStep", "SpecReasonConfig", "SpecReasonStats", "SpecReasonOrchestrator",
-    "StepVerdict",
-    # Tenth Wave — LookaheadReasoning
-    "LookaheadConfig", "LookaheadStep", "LookaheadBatch", "LookaheadStats",
-    "LookaheadReasoningEngine",
-    # Tenth Wave — AdaServe
-    "SLOTarget", "AdaServeConfig", "AdaServeRequest", "AdaServeStats", "AdaServeScheduler",
-    # Tenth Wave — ConfSpec
-    "ConfSpecConfig", "ConfSpecDecision", "ConfSpecStats", "ConfSpecVerifier",
-    # Tier C — paged_attention, radix_cache, layer_skip
-    "PagedKVCache", "PageBlockTable", "BlockAllocator",
-    "RadixTree", "RadixNode",
-    "EarlyExitConfig", "EarlyExitDecoder", "EarlyExitStats", "ConfidenceEstimator",
-    # Tier C — diffusion_draft, fr_spec, kv_slab, lora_manager, paris_kv,
-    #           prompt_lookup, seq_packing, streaming_sink
-    "DiffusionDraftModel",
-    "FRSpecConfig", "FreqTokenSubset", "FRSpecHead", "FRSpecCalibrator", "FRSpecStats",
-    "KVPage", "KVSlabAllocator",
-    "LoRAManager", "DareTiesConfig", "DareTiesMerger",
-    "ParisKVConfig", "ParisKVCodebook",
-    "PromptLookupConfig", "NGramIndex", "PromptLookupStats", "PromptLookupDecoder",
-    "PackingConfig", "PackedBatch", "SequencePacker", "PackingStats",
-    "SinkConfig", "SinkKVCache", "SinkStats",
-    # Phase 2.1 — BatchScheduler  (import: from squish.scheduler import BatchScheduler)
-    # Phase 2.2 — Tool calling    (import: from squish.tool_calling import ...)
-    # Phase 2.2 — Ollama compat   (import: from squish.ollama_compat import mount_ollama)
-]
 
+# ── Lazy import registry ───────────────────────────────────────────────────────
+# Every public name is loaded on first access via __getattr__.
+# This keeps `import squish` fast regardless of how many wave modules exist.
+_LAZY_IMPORTS: dict[str, str] = {
+    # squish.ada_serve
+    "AdaServeConfig":            "squish.ada_serve",
+    "AdaServeRequest":           "squish.ada_serve",
+    "AdaServeScheduler":         "squish.ada_serve",
+    "AdaServeStats":             "squish.ada_serve",
+    "SLOTarget":                 "squish.ada_serve",
+
+    # squish.awq
+    "apply_awq_to_weights":      "squish.awq",
+    "collect_activation_scales": "squish.awq",
+    "load_awq_scales":           "squish.awq",
+    "save_awq_scales":           "squish.awq",
+
+    # squish.catalog
+    "CatalogEntry":              "squish.catalog",
+    "list_catalog":              "squish.catalog",
+    "load_catalog":              "squish.catalog",
+    "pull_model":                "squish.catalog",
+    "resolve_model":             "squish.catalog",
+
+    # squish.cla
+    "CLAConfig":                 "squish.cla",
+    "CLALayerSpec":              "squish.cla",
+    "CLASchedule":               "squish.cla",
+    "CLAStats":                  "squish.cla",
+
+    # squish.compressed_loader
+    "load_compressed_model":     "squish.compressed_loader",
+    "load_from_npy_dir":         "squish.compressed_loader",
+    "save_int4_npy_dir":         "squish.compressed_loader",
+
+    # squish.conf_spec
+    "ConfSpecConfig":            "squish.conf_spec",
+    "ConfSpecDecision":          "squish.conf_spec",
+    "ConfSpecStats":             "squish.conf_spec",
+    "ConfSpecVerifier":          "squish.conf_spec",
+
+    # squish.dfloat11
+    "CompressedBlock":           "squish.dfloat11",
+    "CompressedModel":           "squish.dfloat11",
+    "DFloat11Compressor":        "squish.dfloat11",
+    "DFloat11Config":            "squish.dfloat11",
+    "HuffmanCodec":              "squish.dfloat11",
+    "compress_model":            "squish.dfloat11",
+
+    # squish.diffkv
+    "CompactedKVSlot":           "squish.diffkv",
+    "DiffKVConfig":              "squish.diffkv",
+    "DiffKVPolicy":              "squish.diffkv",
+    "DiffKVPolicyManager":       "squish.diffkv",
+    "DiffKVStats":               "squish.diffkv",
+    "HeadSparsityProfile":       "squish.diffkv",
+    "TokenImportanceTier":       "squish.diffkv",
+
+    # squish.dovetail
+    "DovetailCPUVerifier":       "squish.dovetail",
+    "DovetailConfig":            "squish.dovetail",
+    "DovetailDecoder":           "squish.dovetail",
+    "DovetailDraftRunner":       "squish.dovetail",
+    "DovetailStats":             "squish.dovetail",
+
+    # squish.duo_decoding
+    "DuoCandidate":              "squish.duo_decoding",
+    "DuoCPUVerifier":            "squish.duo_decoding",
+    "DuoDecodingConfig":         "squish.duo_decoding",
+    "DuoDecodingDecoder":        "squish.duo_decoding",
+    "DuoDecodingStats":          "squish.duo_decoding",
+    "DuoScheduler":              "squish.duo_decoding",
+
+    # squish.entropy
+    "compress_npy_dir":          "squish.entropy",
+    "decompress_npy_dir":        "squish.entropy",
+
+    # squish.flash_attention
+    "PatchResult":               "squish.flash_attention",
+    "attention_status":          "squish.flash_attention",
+    "patch_model_attention":     "squish.flash_attention",
+    "predict_memory_savings":    "squish.flash_attention",
+    "print_memory_table":        "squish.flash_attention",
+
+    # squish.forelen
+    "EGTPPredictor":             "squish.forelen",
+    "ForelenConfig":             "squish.forelen",
+    "ForelenStats":              "squish.forelen",
+    "PLPPredictor":              "squish.forelen",
+
+    # squish.fr_spec
+    "FRSpecCalibrator":          "squish.fr_spec",
+    "FRSpecConfig":              "squish.fr_spec",
+    "FRSpecHead":                "squish.fr_spec",
+    "FRSpecStats":               "squish.fr_spec",
+    "FreqTokenSubset":           "squish.fr_spec",
+
+    # squish.gemfilter
+    "AttentionScoreBuffer":      "squish.gemfilter",
+    "GemFilterConfig":           "squish.gemfilter",
+    "GemFilterStats":            "squish.gemfilter",
+    "GemSelector":               "squish.gemfilter",
+
+    # squish.ipw
+    "IPWConfig":                 "squish.ipw",
+    "IPWMeasurement":            "squish.ipw",
+    "IPWSummary":                "squish.ipw",
+    "IPWTracker":                "squish.ipw",
+
+    # squish.kv_cache
+    "DiskKVCache":               "squish.kv_cache",
+    "KVBudgetBroker":            "squish.kv_cache",
+    "QuantizedKVCache":          "squish.kv_cache",
+    "make_quantized_cache":      "squish.kv_cache",
+    "patch_model_kv_cache":      "squish.kv_cache",
+
+    # squish.kv_slab
+    "KVPage":                    "squish.kv_slab",
+    "KVSlabAllocator":           "squish.kv_slab",
+
+    # squish.kvsharer
+    "KVLayerCache":              "squish.kvsharer",
+    "KVShareMap":                "squish.kvsharer",
+    "KVSharerCalibrator":        "squish.kvsharer",
+    "KVSharerConfig":            "squish.kvsharer",
+    "KVSharerStats":             "squish.kvsharer",
+
+    # squish.kvtuner
+    "KVQuantConfig":             "squish.kvtuner",
+    "KVTunerCalibrator":         "squish.kvtuner",
+    "KVTunerConfig":             "squish.kvtuner",
+    "KVTunerStats":              "squish.kvtuner",
+    "LayerSensitivity":          "squish.kvtuner",
+
+    # squish.layer_skip
+    "ConfidenceEstimator":       "squish.layer_skip",
+    "EarlyExitConfig":           "squish.layer_skip",
+    "EarlyExitDecoder":          "squish.layer_skip",
+    "EarlyExitStats":            "squish.layer_skip",
+
+    # squish.layerwise_loader
+    "LayerCache":                "squish.layerwise_loader",
+    "LayerwiseLoader":           "squish.layerwise_loader",
+    "LoadStats":                 "squish.layerwise_loader",
+    "recommend_cache_size":      "squish.layerwise_loader",
+    "shard_model":               "squish.layerwise_loader",
+
+    # squish.long_spec
+    "LongSpecConfig":            "squish.long_spec",
+    "LongSpecDecoder":           "squish.long_spec",
+    "LongSpecHead":              "squish.long_spec",
+    "LongSpecStats":             "squish.long_spec",
+
+    # squish.lookahead_reasoning
+    "LookaheadBatch":            "squish.lookahead_reasoning",
+    "LookaheadConfig":           "squish.lookahead_reasoning",
+    "LookaheadReasoningEngine":  "squish.lookahead_reasoning",
+    "LookaheadStats":            "squish.lookahead_reasoning",
+    "LookaheadStep":             "squish.lookahead_reasoning",
+
+    # squish.lora_manager
+    "DareTiesConfig":            "squish.lora_manager",
+    "DareTiesMerger":            "squish.lora_manager",
+    "LoRAManager":               "squish.lora_manager",
+
+    # squish.mirror_sd
+    "MirrorDraftPipeline":       "squish.mirror_sd",
+    "MirrorFuture":              "squish.mirror_sd",
+    "MirrorSDConfig":            "squish.mirror_sd",
+    "MirrorSDDecoder":           "squish.mirror_sd",
+    "MirrorSDStats":             "squish.mirror_sd",
+    "MirrorVerifyPipeline":      "squish.mirror_sd",
+
+    # squish.paged_attention
+    "BlockAllocator":            "squish.paged_attention",
+    "PageBlockTable":            "squish.paged_attention",
+    "PagedKVCache":              "squish.paged_attention",
+
+    # squish.paris_kv
+    "ParisKVCodebook":           "squish.paris_kv",
+    "ParisKVConfig":             "squish.paris_kv",
+
+    # squish.pipo
+    "INT4BypassKernel":          "squish.pipo",
+    "LayerWeightBuffer":         "squish.pipo",
+    "PIPOConfig":                "squish.pipo",
+    "PIPOScheduler":             "squish.pipo",
+
+    # squish.prompt_lookup
+    "NGramIndex":                "squish.prompt_lookup",
+    "PromptLookupConfig":        "squish.prompt_lookup",
+    "PromptLookupDecoder":       "squish.prompt_lookup",
+    "PromptLookupStats":         "squish.prompt_lookup",
+
+    # squish.qspec
+    "ActivationQuantizer":       "squish.qspec",
+    "QSpecConfig":               "squish.qspec",
+    "QSpecDecoder":              "squish.qspec",
+    "QSpecStats":                "squish.qspec",
+
+    # squish.quantizer
+    "QuantizationResult":        "squish.quantizer",
+    "dequantize_int4":           "squish.quantizer",
+    "get_backend_info":          "squish.quantizer",
+    "mean_cosine_similarity":    "squish.quantizer",
+    "quantize_embeddings":       "squish.quantizer",
+    "quantize_int4":             "squish.quantizer",
+    "reconstruct_embeddings":    "squish.quantizer",
+
+    # squish.radix_cache
+    "RadixNode":                 "squish.radix_cache",
+    "RadixTree":                 "squish.radix_cache",
+
+    # squish.robust_scheduler
+    "ABalancedScheduler":        "squish.robust_scheduler",
+    "AMaxScheduler":             "squish.robust_scheduler",
+    "LengthInterval":            "squish.robust_scheduler",
+    "Request":                   "squish.robust_scheduler",
+    "RobustSchedulerConfig":     "squish.robust_scheduler",
+    "RobustSchedulerStats":      "squish.robust_scheduler",
+
+    # squish.sage_attention
+    "KSmoother":                 "squish.sage_attention",
+    "SageAttentionConfig":       "squish.sage_attention",
+    "SageAttentionKernel":       "squish.sage_attention",
+    "SageAttentionStats":        "squish.sage_attention",
+
+    # squish.sage_attention2
+    "SageAttention2Config":      "squish.sage_attention2",
+    "SageAttention2Kernel":      "squish.sage_attention2",
+    "SageAttention2Stats":       "squish.sage_attention2",
+    "WarpQuantResult":           "squish.sage_attention2",
+
+    # squish.seq_packing
+    "PackedBatch":               "squish.seq_packing",
+    "PackingConfig":             "squish.seq_packing",
+    "PackingStats":              "squish.seq_packing",
+    "SequencePacker":            "squish.seq_packing",
+
+    # squish.shadow_kv
+    "LandmarkSelector":          "squish.shadow_kv",
+    "LowRankKeyCache":           "squish.shadow_kv",
+    "ShadowKVCache":             "squish.shadow_kv",
+    "ShadowKVConfig":            "squish.shadow_kv",
+
+    # squish.smallkv
+    "MarginalVCache":            "squish.smallkv",
+    "SaliencyTracker":           "squish.smallkv",
+    "SmallKVCache":              "squish.smallkv",
+    "SmallKVConfig":             "squish.smallkv",
+    "SmallKVStats":              "squish.smallkv",
+
+    # squish.sparge_attn
+    "BlockMask":                 "squish.sparge_attn",
+    "SpargeAttnConfig":          "squish.sparge_attn",
+    "SpargeAttnEngine":          "squish.sparge_attn",
+    "SpargeAttnStats":           "squish.sparge_attn",
+
+    # squish.sparse_spec
+    "PillarAttnCache":           "squish.sparse_spec",
+    "SparseSpecConfig":          "squish.sparse_spec",
+    "SparseSpecDecoder":         "squish.sparse_spec",
+    "SparseSpecDrafter":         "squish.sparse_spec",
+    "SparseSpecStats":           "squish.sparse_spec",
+
+    # squish.sparse_verify
+    "InterDraftReuseCache":      "squish.sparse_verify",
+    "SparseVerifyConfig":        "squish.sparse_verify",
+    "SparseVerifyPass":          "squish.sparse_verify",
+    "SparseVerifyStats":         "squish.sparse_verify",
+
+    # squish.spec_reason
+    "ReasoningStep":             "squish.spec_reason",
+    "SpecReasonConfig":          "squish.spec_reason",
+    "SpecReasonOrchestrator":    "squish.spec_reason",
+    "SpecReasonStats":           "squish.spec_reason",
+    "StepVerdict":               "squish.spec_reason",
+
+    # squish.specontext
+    "DistilledRetrievalHead":    "squish.specontext",
+    "SpeContextCache":           "squish.specontext",
+    "SpeContextConfig":          "squish.specontext",
+    "SpeContextStats":           "squish.specontext",
+
+    # squish.speculative
+    "SpeculativeGenerator":      "squish.speculative",
+    "load_draft_model":          "squish.speculative",
+
+    # squish.split_loader
+    "OffloadedLayer":            "squish.split_loader",
+    "SplitInfo":                 "squish.split_loader",
+    "SplitLayerLoader":          "squish.split_loader",
+    "print_layer_profile":       "squish.split_loader",
+    "profile_model_layers":      "squish.split_loader",
+
+    # squish.squeeze_attention
+    "BudgetAllocator":           "squish.squeeze_attention",
+    "LayerKVBudget":             "squish.squeeze_attention",
+    "SqueezeConfig":             "squish.squeeze_attention",
+    "SqueezeKVCache":            "squish.squeeze_attention",
+    "SqueezeStats":              "squish.squeeze_attention",
+
+    # squish.squeeze_llm
+    "OutlierDetector":           "squish.squeeze_llm",
+    "SqueezeLLMConfig":          "squish.squeeze_llm",
+    "SqueezeLLMLayer":           "squish.squeeze_llm",
+    "SqueezeLLMQuantizer":       "squish.squeeze_llm",
+
+    # squish.streaming_sink
+    "SinkConfig":                "squish.streaming_sink",
+    "SinkKVCache":               "squish.streaming_sink",
+    "SinkStats":                 "squish.streaming_sink",
+
+    # squish.sub_spec
+    "SubSpecConfig":             "squish.sub_spec",
+    "SubSpecDecoder":            "squish.sub_spec",
+    "SubSpecStats":              "squish.sub_spec",
+    "SubstituteLayerProxy":      "squish.sub_spec",
+
+    # squish.svdq
+    "HeadSVDProfile":            "squish.svdq",
+    "SVDqCalibrator":            "squish.svdq",
+    "SVDqConfig":                "squish.svdq",
+    "SVDqPrecisionMap":          "squish.svdq",
+    "SVDqStats":                 "squish.svdq",
+
+    # squish.token_swift
+    "MultiTokenHead":            "squish.token_swift",
+    "PartialKVManager":          "squish.token_swift",
+    "TokenSwiftConfig":          "squish.token_swift",
+    "TokenSwiftDecoder":         "squish.token_swift",
+    "TokenSwiftStats":           "squish.token_swift",
+
+    # squish.trail
+    "TrailConfig":               "squish.trail",
+    "TrailLinearProbe":          "squish.trail",
+    "TrailPredictor":            "squish.trail",
+    "TrailStats":                "squish.trail",
+
+    # squish.vptq
+    "VPTQCodebook":              "squish.vptq",
+    "VPTQConfig":                "squish.vptq",
+    "VPTQLayer":                 "squish.vptq",
+    "VPTQQuantizer":             "squish.vptq",
+
+    # squish.yoco
+    "YOCOConfig":                "squish.yoco",
+    "YOCOKVStore":               "squish.yoco",
+    "YOCOLayerSpec":             "squish.yoco",
+    "YOCOSchedule":              "squish.yoco",
+    "YOCOStats":                 "squish.yoco",
+}
+
+_lazy_cache: dict[str, object] = {}
+
+
+def __getattr__(name: str) -> object:
+    """Load any registered public name on first access (lazy import)."""
+    if name in _lazy_cache:
+        return _lazy_cache[name]
+    if name in _LAZY_IMPORTS:
+        import importlib
+        mod_name = _LAZY_IMPORTS[name]
+        # Special-case aliased names from squish.catalog
+        if mod_name == "squish.catalog" and name in ("pull_model", "resolve_model"):
+            mod = importlib.import_module(mod_name)
+            alias_map = {"pull_model": "pull", "resolve_model": "resolve"}
+            obj = getattr(mod, alias_map[name])
+            _lazy_cache[name] = obj
+            return obj
+        try:
+            mod = importlib.import_module(mod_name)
+        except (ImportError, OSError) as exc:
+            raise AttributeError(
+                f"module 'squish' has no attribute {name!r} "
+                f"(optional dependency {mod_name!r} could not be imported: {exc})"
+            ) from None
+        obj = getattr(mod, name)
+        _lazy_cache[name] = obj
+        return obj
+    raise AttributeError(f"module 'squish' has no attribute {name!r}")
+
+
+__all__ = [
+    "__version__",
+    *_LAZY_IMPORTS,
+]

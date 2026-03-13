@@ -717,11 +717,11 @@ class KVLayerCache:
             try:
                 try:
                     from squish.vector_index import HNSWIndex
-                except ImportError:
+                except ImportError:  # pragma: no cover
                     from vector_index import HNSWIndex  # direct run
                 max_elem = int(self._disk_map_k.shape[1]) if self._disk_map_k is not None else 500_000
                 self._hnsw = HNSWIndex(dim=dim, max_elements=max_elem)
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 return  # hnswlib not installed — silently skip
         ids = np.arange(start_pos, start_pos + n, dtype=np.int64)
         self._hnsw.add(k_f32, ids)
@@ -1275,7 +1275,7 @@ class HadamardKVCache(QuantizedKVCache):
         """
         try:
             import mlx.core as mx
-        except ImportError:
+        except ImportError:  # pragma: no cover
             raise RuntimeError("mlx.core not available")
 
         keys_mlx, vals_mlx = super().get_kv_mlx(layer_idx)
@@ -1973,4 +1973,157 @@ class H2OEvictionPolicy:
         """
         items = [(p, self._scores.get(p, 0.0)) for p in self._positions]
         return _h2o_heapq.nlargest(k, items, key=lambda x: x[1])
+
+
+# ---------------------------------------------------------------------------
+# KVBudgetBroker — unified KV token-budget arbitrator (Phase 5C Opt 7)
+# ---------------------------------------------------------------------------
+
+class KVBudgetBroker:
+    """
+    Singleton that arbitrates KV cache token budgets across all active eviction
+    systems (SnapKV, SqueezeKVCache, SmallKVCache, YOCO, DiffKV, KVTuner,
+    KVSharer, AdaptiveBudget, ...).
+
+    Without centralised arbitration, multiple budget-consuming systems running
+    simultaneously can double-count their reservations: each believes it owns
+    N tokens, but the total can exceed available unified memory by a large
+    multiple.  The broker ensures the sum of all allocations never exceeds the
+    configured ``total_tokens`` limit.
+
+    Usage
+    -----
+    ::
+
+        # At startup (once, after model load):
+        KVBudgetBroker.instance().set_total(max_seq_len)
+
+        # In each eviction module's __init__:
+        allocated = KVBudgetBroker.instance().register("squeeze_kv", requested=4_096)
+
+        # At request time:
+        budget = KVBudgetBroker.instance().allocated("squeeze_kv")
+
+    Allocation policy
+    -----------------
+    * If ``total_tokens == 0`` (unconstrained) every system gets its full
+      requested budget.
+    * If the sum of all requests ≤ ``total_tokens``, every system gets exactly
+      what it asked for.
+    * Otherwise each system is scaled down proportionally; each system receives
+      at least 1 token.
+    """
+
+    _instance: "KVBudgetBroker | None" = None
+
+    # ── Singleton access ────────────────────────────────────────────────────
+
+    @classmethod
+    def instance(cls) -> "KVBudgetBroker":
+        """Return (or create) the process-global broker instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """Destroy the current singleton.  Intended for tests and clean server restarts."""
+        cls._instance = None
+
+    # ── Lifecycle ───────────────────────────────────────────────────────────
+
+    def __init__(self) -> None:
+        self._total_tokens: int = 0
+        self._registrations: dict[str, int] = {}   # name → requested tokens
+        self._allocations:   dict[str, int] = {}   # name → allocated tokens
+
+    # ── Configuration ───────────────────────────────────────────────────────
+
+    def set_total(self, total_tokens: int) -> None:
+        """
+        Set the global KV token budget shared across all registered systems.
+
+        A value of 0 means "unconstrained" — each system gets its full
+        requested allocation.
+
+        Parameters
+        ----------
+        total_tokens : int
+            Maximum total KV tokens across all registered eviction systems.
+        """
+        if total_tokens < 0:
+            raise ValueError(f"total_tokens must be >= 0, got {total_tokens}")
+        self._total_tokens = total_tokens
+        self._recompute()
+
+    # ── Registration ────────────────────────────────────────────────────────
+
+    def register(self, name: str, requested: int) -> int:
+        """
+        Register an eviction system and return its allocated token budget.
+
+        Parameters
+        ----------
+        name      : str  — unique identifier for the system (e.g. "squeeze_kv")
+        requested : int  — desired number of KV tokens (> 0)
+
+        Returns
+        -------
+        int — actual allocated tokens (≤ requested when total is constrained)
+        """
+        if requested <= 0:
+            raise ValueError(f"requested must be > 0, got {requested!r}")
+        self._registrations[name] = requested
+        self._recompute()
+        return self._allocations[name]
+
+    def unregister(self, name: str) -> None:
+        """Remove a system from the budget pool (called on teardown)."""
+        self._registrations.pop(name, None)
+        self._allocations.pop(name, None)
+        self._recompute()
+
+    # ── Query ────────────────────────────────────────────────────────────────
+
+    def allocated(self, name: str) -> int:
+        """Return the allocated token budget for *name* (0 if not registered)."""
+        return self._allocations.get(name, 0)
+
+    @property
+    def total_tokens(self) -> int:
+        """The configured global token budget (0 = unconstrained)."""
+        return self._total_tokens
+
+    @property
+    def registered_systems(self) -> list:
+        """Names of all currently registered eviction systems."""
+        return list(self._registrations)
+
+    def summary(self) -> dict:
+        """Return a snapshot of all current allocations (name → tokens)."""
+        return dict(self._allocations)
+
+    # ── Internal ─────────────────────────────────────────────────────────────
+
+    def _recompute(self) -> None:
+        """
+        Re-run fair-share allocation after any registration or total change.
+        Called automatically; not part of the public API.
+        """
+        if not self._registrations:
+            self._allocations = {}
+            return
+
+        total_requested = sum(self._registrations.values())
+
+        if self._total_tokens == 0 or total_requested <= self._total_tokens:
+            # Unconstrained, or all requests fit — give everyone what they asked for.
+            self._allocations = dict(self._registrations)
+        else:
+            # Scale each system down proportionally; guarantee at least 1 token.
+            scale = self._total_tokens / total_requested
+            self._allocations = {
+                name: max(1, int(req * scale))
+                for name, req in self._registrations.items()
+            }
 

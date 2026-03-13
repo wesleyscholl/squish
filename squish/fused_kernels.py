@@ -51,7 +51,7 @@ try:
     import mlx.nn as nn
     _HAS_MLX = True
     _HAS_METAL_KERNEL = hasattr(mx, "fast") and hasattr(mx.fast, "metal_kernel")
-except ImportError:
+except ImportError:  # pragma: no cover
     _HAS_MLX = False
     _HAS_METAL_KERNEL = False
 
@@ -301,7 +301,7 @@ def patch_model(model) -> int:  # pragma: no cover
     -------
     int : number of layers successfully patched
     """
-    if not _HAS_MLX:
+    if not _HAS_MLX:  # pragma: no cover
         return 0
 
     FusedAttention()

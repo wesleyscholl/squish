@@ -189,7 +189,7 @@ def _load_safetensors_numpy(model_dir: Path) -> dict[str, np.ndarray]:
                     weights[key] = f.get_tensor(key)
         if weights:
             return weights
-    except ImportError:
+    except ImportError:  # pragma: no cover
         pass
 
     # Fallback: npz
@@ -215,7 +215,7 @@ def _save_safetensors_or_npz(
         from safetensors.numpy import save_file
         save_file(weights, str(output_dir / "model.safetensors"))
         return
-    except ImportError:
+    except ImportError:  # pragma: no cover
         pass
     np.savez(str(output_dir / "model.npz"), **weights)
 
