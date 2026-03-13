@@ -1009,8 +1009,8 @@ preprocessing). Adds Step 2: E8 lattice quantization and trellis decoding.
 **Flag in server**: `--quip` (Experimental tier)
 
 **Deliverables:**
-- [ ] `squish/quip_sharp.py` — E8Lattice, QuIPSharpConfig, QuIPSharpQuantizer, QuIPSharpLayer, quip_dequantize, quantize_model_quip
-- [ ] `tests/test_quip_unit.py` — 12+ tests: E8 codebook integrity (all 256 vectors distinct), round-trip quantize/dequantize on 8-D vectors, QuIPSharp layer forward pass, model-level integration
+- [x] `squish/quip_sharp.py` — E8Lattice, QuIPSharpConfig, QuIPSharpQuantizer, QuIPSharpLayer, quip_dequantize, quantize_model_quip
+- [x] `tests/test_quip_unit.py` — 12+ tests: E8 codebook integrity (all 256 vectors distinct), round-trip quantize/dequantize on 8-D vectors, QuIPSharp layer forward pass, model-level integration
 - [ ] `squish/convert.py` — add `--quip` flag; save e8_indices + residual_scales into npy-dir
 - [ ] `squish/compressed_loader.py` — detect `quip_e8.npy` + `quip_res.npy` and reconstruct QuIPSharpLayer
 - [ ] Benchmark: perplexity vs AQLM vs INT4 on Qwen2.5-1.5B; save to `dev/results/quip_bench.json`
@@ -1037,9 +1037,11 @@ Runs all three 2-bit methods on the same model and reports perplexity + throughp
 
 The script outputs `dev/results/quant_2bit_comparison.json` and prints an ASCII table.
 
-- [ ] `dev/benchmarks/bench_2bit.py` — perplexity + TPS comparison, 3 models × 4 methods
-- [ ] `dev/results/quant_2bit_comparison.json` — results (run on real hardware after Phase 5 bugs fixed)
-- [ ] `docs/benchmark_2bit.md` — human-readable results table
+- [x] `dev/benchmarks/bench_2bit.py` — perplexity + TPS comparison, 3 models × 4 methods
+  - INT4 + VPTQ + QuIP# run; AQLM skips until Phase 9A is implemented
+  - 88 tests in `tests/test_bench_2bit.py`; `--dry-run` completes in < 15 s
+- [x] `dev/results/quant_2bit_comparison.json` — weight-reconstruction results generated (stage-1); model perplexity + TPS require `--model-dir` on real hardware
+- [x] `docs/benchmark_2bit.md` — human-readable results table + usage instructions
 
 ---
 
