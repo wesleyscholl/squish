@@ -1,0 +1,400 @@
+[
+  {
+    "id": "calculator_add",
+    "prompt": "Add 42 and 17 together.",
+    "tool": {
+      "name": "calculator",
+      "description": "Performs arithmetic operations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operation": {"type": "string", "enum": ["add", "subtract", "multiply", "divide"]},
+          "a": {"type": "number", "description": "First operand"},
+          "b": {"type": "number", "description": "Second operand"}
+        },
+        "required": ["operation", "a", "b"]
+      }
+    },
+    "expected": {"name": "calculator", "arguments": {"operation": "add", "a": 42, "b": 17}}
+  },
+  {
+    "id": "file_read",
+    "prompt": "Read the contents of the file at path '/home/user/notes.txt'.",
+    "tool": {
+      "name": "file_read",
+      "description": "Read a file from the filesystem",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "Absolute path to the file"}
+        },
+        "required": ["path"]
+      }
+    },
+    "expected": {"name": "file_read", "arguments": {"path": "/home/user/notes.txt"}}
+  },
+  {
+    "id": "web_search",
+    "prompt": "Search the web for 'best Apple Silicon laptops 2025'.",
+    "tool": {
+      "name": "web_search",
+      "description": "Search the web for information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {"type": "string", "description": "Search query"},
+          "n_results": {"type": "integer", "description": "Number of results", "default": 5}
+        },
+        "required": ["query"]
+      }
+    },
+    "expected": {"name": "web_search", "arguments": {"query": "best Apple Silicon laptops 2025"}}
+  },
+  {
+    "id": "json_parse",
+    "prompt": "Parse the JSON string '{\"name\": \"Alice\", \"age\": 30}' and extract the fields.",
+    "tool": {
+      "name": "json_parse",
+      "description": "Parse a JSON string and return structured data",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "json_string": {"type": "string", "description": "Raw JSON string to parse"},
+          "extract_keys": {"type": "array", "items": {"type": "string"}, "description": "Keys to extract"}
+        },
+        "required": ["json_string"]
+      }
+    },
+    "expected": {"name": "json_parse", "arguments": {"json_string": "{\"name\": \"Alice\", \"age\": 30}"}}
+  },
+  {
+    "id": "send_email",
+    "prompt": "Send an email to alice@example.com with subject 'Meeting Tomorrow' and body 'Can we meet at 2pm?'",
+    "tool": {
+      "name": "send_email",
+      "description": "Send an email message",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "to": {"type": "string", "description": "Recipient email address"},
+          "subject": {"type": "string", "description": "Email subject line"},
+          "body": {"type": "string", "description": "Email body text"}
+        },
+        "required": ["to", "subject", "body"]
+      }
+    },
+    "expected": {"name": "send_email", "arguments": {"to": "alice@example.com", "subject": "Meeting Tomorrow"}}
+  },
+  {
+    "id": "calendar_lookup",
+    "prompt": "What events do I have scheduled for 2025-03-15?",
+    "tool": {
+      "name": "calendar_lookup",
+      "description": "Look up calendar events for a date",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date": {"type": "string", "description": "Date in YYYY-MM-DD format"},
+          "include_all_day": {"type": "boolean", "description": "Include all-day events", "default": true}
+        },
+        "required": ["date"]
+      }
+    },
+    "expected": {"name": "calendar_lookup", "arguments": {"date": "2025-03-15"}}
+  },
+  {
+    "id": "code_interpreter",
+    "prompt": "Execute the Python code 'print(2 + 2)' and return the output.",
+    "tool": {
+      "name": "code_interpreter",
+      "description": "Execute Python code in a sandboxed environment",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "code": {"type": "string", "description": "Python code to execute"},
+          "timeout_seconds": {"type": "integer", "description": "Max execution time", "default": 10}
+        },
+        "required": ["code"]
+      }
+    },
+    "expected": {"name": "code_interpreter", "arguments": {"code": "print(2 + 2)"}}
+  },
+  {
+    "id": "weather",
+    "prompt": "What is the current weather in San Francisco?",
+    "tool": {
+      "name": "get_weather",
+      "description": "Get current weather conditions for a location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "string", "description": "City and state, e.g. 'San Francisco, CA'"},
+          "units": {"type": "string", "enum": ["celsius", "fahrenheit"], "default": "fahrenheit"}
+        },
+        "required": ["location"]
+      }
+    },
+    "expected": {"name": "get_weather", "arguments": {"location": "San Francisco"}}
+  },
+  {
+    "id": "translate",
+    "prompt": "Translate 'Hello, how are you?' from English to Spanish.",
+    "tool": {
+      "name": "translate",
+      "description": "Translate text between languages",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {"type": "string", "description": "Text to translate"},
+          "source_language": {"type": "string", "description": "Source language code (e.g. 'en')"},
+          "target_language": {"type": "string", "description": "Target language code (e.g. 'es')"}
+        },
+        "required": ["text", "target_language"]
+      }
+    },
+    "expected": {"name": "translate", "arguments": {"text": "Hello, how are you?", "target_language": "es"}}
+  },
+  {
+    "id": "summarize",
+    "prompt": "Summarize the following text in 2 sentences: 'The quick brown fox jumps over the lazy dog. This pangram contains every letter of the alphabet. It has been used for typewriter and keyboard tests for over a century.'",
+    "tool": {
+      "name": "summarize",
+      "description": "Summarize a long text into a shorter version",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {"type": "string", "description": "Text to summarize"},
+          "max_sentences": {"type": "integer", "description": "Maximum number of sentences", "default": 3},
+          "style": {"type": "string", "enum": ["concise", "detailed", "bullet"], "default": "concise"}
+        },
+        "required": ["text"]
+      }
+    },
+    "expected": {"name": "summarize", "arguments": {"text": "The quick brown fox jumps over the lazy dog. This pangram contains every letter of the alphabet. It has been used for typewriter and keyboard tests for over a century."}}
+  },
+  {
+    "id": "database_query",
+    "prompt": "Query the users table to find all users where age is greater than 25.",
+    "tool": {
+      "name": "database_query",
+      "description": "Execute a SQL query against a database",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {"type": "string", "description": "SQL SELECT query"},
+          "database": {"type": "string", "description": "Database connection name", "default": "main"},
+          "limit": {"type": "integer", "description": "Maximum rows to return", "default": 100}
+        },
+        "required": ["query"]
+      }
+    },
+    "expected": {"name": "database_query", "arguments": {"query": "SELECT * FROM users WHERE age > 25"}}
+  },
+  {
+    "id": "image_generate",
+    "prompt": "Generate an image of a sunset over mountains with a realistic art style.",
+    "tool": {
+      "name": "image_generate",
+      "description": "Generate an image from a text description",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prompt": {"type": "string", "description": "Image description"},
+          "style": {"type": "string", "enum": ["realistic", "artistic", "cartoon", "sketch"], "default": "realistic"},
+          "width": {"type": "integer", "default": 1024},
+          "height": {"type": "integer", "default": 1024}
+        },
+        "required": ["prompt"]
+      }
+    },
+    "expected": {"name": "image_generate", "arguments": {"prompt": "sunset over mountains", "style": "realistic"}}
+  },
+  {
+    "id": "file_write",
+    "prompt": "Write the text 'Hello World' to a file named 'output.txt' in the /tmp directory.",
+    "tool": {
+      "name": "file_write",
+      "description": "Write content to a file",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "File path to write to"},
+          "content": {"type": "string", "description": "Content to write"},
+          "mode": {"type": "string", "enum": ["write", "append"], "default": "write"}
+        },
+        "required": ["path", "content"]
+      }
+    },
+    "expected": {"name": "file_write", "arguments": {"path": "/tmp/output.txt", "content": "Hello World"}}
+  },
+  {
+    "id": "http_request",
+    "prompt": "Make a GET request to https://api.example.com/users and return the response.",
+    "tool": {
+      "name": "http_request",
+      "description": "Make an HTTP request to a URL",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {"type": "string", "description": "URL to request"},
+          "method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE"], "default": "GET"},
+          "headers": {"type": "object", "description": "Request headers"},
+          "body": {"type": "string", "description": "Request body for POST/PUT"}
+        },
+        "required": ["url"]
+      }
+    },
+    "expected": {"name": "http_request", "arguments": {"url": "https://api.example.com/users", "method": "GET"}}
+  },
+  {
+    "id": "list_directory",
+    "prompt": "List all files in the /home/user/documents directory.",
+    "tool": {
+      "name": "list_directory",
+      "description": "List files and directories at a path",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "Directory path to list"},
+          "recursive": {"type": "boolean", "description": "Whether to list recursively", "default": false},
+          "include_hidden": {"type": "boolean", "description": "Include hidden files", "default": false}
+        },
+        "required": ["path"]
+      }
+    },
+    "expected": {"name": "list_directory", "arguments": {"path": "/home/user/documents"}}
+  },
+  {
+    "id": "nested_filter",
+    "prompt": "Filter products where category is 'electronics' and price is less than 500, sorted by rating descending.",
+    "tool": {
+      "name": "filter_products",
+      "description": "Filter and sort a product list",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object",
+            "properties": {
+              "category": {"type": "string"},
+              "max_price": {"type": "number"},
+              "min_rating": {"type": "number"}
+            }
+          },
+          "sort_by": {"type": "string", "enum": ["price", "rating", "name"]},
+          "sort_order": {"type": "string", "enum": ["asc", "desc"], "default": "asc"}
+        },
+        "required": ["filters"]
+      }
+    },
+    "expected": {"name": "filter_products", "arguments": {"filters": {"category": "electronics", "max_price": 500}, "sort_by": "rating", "sort_order": "desc"}}
+  },
+  {
+    "id": "nested_schedule",
+    "prompt": "Schedule a recurring meeting every Monday at 9am for John and Sarah, with a 30-minute duration and video conferencing.",
+    "tool": {
+      "name": "schedule_meeting",
+      "description": "Schedule a calendar meeting with attendees",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string"},
+          "attendees": {"type": "array", "items": {"type": "string"}},
+          "recurrence": {
+            "type": "object",
+            "properties": {
+              "frequency": {"type": "string", "enum": ["daily", "weekly", "monthly"]},
+              "day_of_week": {"type": "string"},
+              "time": {"type": "string"}
+            }
+          },
+          "duration_minutes": {"type": "integer"},
+          "location": {"type": "string"}
+        },
+        "required": ["title", "attendees", "recurrence"]
+      }
+    },
+    "expected": {"name": "schedule_meeting", "arguments": {"attendees": ["John", "Sarah"], "recurrence": {"frequency": "weekly", "day_of_week": "monday"}}}
+  },
+  {
+    "id": "nested_notification",
+    "prompt": "Send a push notification to user ID 12345 with title 'Order Shipped' and message 'Your order #789 has been shipped'. Set high priority.",
+    "tool": {
+      "name": "send_notification",
+      "description": "Send a push notification to a user",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {"type": "integer"},
+          "notification": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "message": {"type": "string"},
+              "priority": {"type": "string", "enum": ["low", "normal", "high"]}
+            },
+            "required": ["title", "message"]
+          },
+          "channels": {"type": "array", "items": {"type": "string"}, "default": ["push"]}
+        },
+        "required": ["user_id", "notification"]
+      }
+    },
+    "expected": {"name": "send_notification", "arguments": {"user_id": 12345, "notification": {"title": "Order Shipped", "priority": "high"}}}
+  },
+  {
+    "id": "nested_batch_process",
+    "prompt": "Process a batch of 3 images: resize them to 800x600, apply grayscale filter, and save as PNG.",
+    "tool": {
+      "name": "batch_process_images",
+      "description": "Apply transformations to multiple images in batch",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "images": {"type": "array", "items": {"type": "string"}, "description": "List of image paths"},
+          "transformations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {"type": "string", "enum": ["resize", "grayscale", "blur", "sharpen"]},
+                "params": {"type": "object"}
+              }
+            }
+          },
+          "output_format": {"type": "string", "enum": ["JPEG", "PNG", "WEBP"], "default": "JPEG"},
+          "output_dir": {"type": "string"}
+        },
+        "required": ["images", "transformations"]
+      }
+    },
+    "expected": {"name": "batch_process_images", "arguments": {"transformations": [{"type": "resize", "params": {"width": 800, "height": 600}}, {"type": "grayscale"}], "output_format": "PNG"}}
+  },
+  {
+    "id": "nested_analytics",
+    "prompt": "Generate a weekly sales report for the period 2025-01-01 to 2025-01-07, grouped by product category, with revenue and units sold metrics, exported as CSV.",
+    "tool": {
+      "name": "generate_report",
+      "description": "Generate a business analytics report",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_type": {"type": "string", "enum": ["daily", "weekly", "monthly", "custom"]},
+          "date_range": {
+            "type": "object",
+            "properties": {
+              "start": {"type": "string", "description": "Start date YYYY-MM-DD"},
+              "end": {"type": "string", "description": "End date YYYY-MM-DD"}
+            },
+            "required": ["start", "end"]
+          },
+          "group_by": {"type": "array", "items": {"type": "string"}},
+          "metrics": {"type": "array", "items": {"type": "string"}},
+          "export_format": {"type": "string", "enum": ["JSON", "CSV", "PDF", "XLSX"], "default": "JSON"}
+        },
+        "required": ["report_type", "date_range"]
+      }
+    },
+    "expected": {"name": "generate_report", "arguments": {"report_type": "weekly", "date_range": {"start": "2025-01-01", "end": "2025-01-07"}, "group_by": ["category"], "export_format": "CSV"}}
+  }
+]

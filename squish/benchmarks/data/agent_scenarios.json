@@ -1,0 +1,297 @@
+[
+  {
+    "id": "file_ops_1",
+    "category": "file_ops",
+    "goal": "Read the file at /data/config.json and return its contents.",
+    "tools": [
+      {"name": "file_read", "description": "Read a file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+      {"name": "file_write", "description": "Write a file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}
+    ],
+    "tool_fixtures": {
+      "file_read": {"{\"path\": \"/data/config.json\"}": {"content": "{\"debug\": true, \"port\": 8080}"}}
+    },
+    "expected_sequence": ["file_read"],
+    "expected_final_answer": "config|debug|port|8080"
+  },
+  {
+    "id": "file_ops_2",
+    "category": "file_ops",
+    "goal": "Search for all Python files containing the word 'import' in /src directory.",
+    "tools": [
+      {"name": "grep", "description": "Search files for pattern", "parameters": {"type": "object", "properties": {"pattern": {"type": "string"}, "path": {"type": "string"}, "file_glob": {"type": "string"}}, "required": ["pattern", "path"]}},
+      {"name": "list_directory", "description": "List directory contents", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}
+    ],
+    "tool_fixtures": {
+      "grep": {"{\"pattern\": \"import\", \"path\": \"/src\", \"file_glob\": \"*.py\"}": {"matches": ["/src/main.py:1:import os", "/src/util.py:3:import sys"]}}
+    },
+    "expected_sequence": ["grep"],
+    "expected_final_answer": "main.py|util.py|import"
+  },
+  {
+    "id": "file_ops_3",
+    "category": "file_ops",
+    "goal": "Read /data/input.csv, then write a summary to /data/summary.txt.",
+    "tools": [
+      {"name": "file_read", "description": "Read a file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+      {"name": "file_write", "description": "Write a file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}
+    ],
+    "tool_fixtures": {
+      "file_read": {"{\"path\": \"/data/input.csv\"}": {"content": "name,age\nAlice,30\nBob,25"}},
+      "file_write": {}
+    },
+    "expected_sequence": ["file_read", "file_write"],
+    "expected_final_answer": "written|saved|summary"
+  },
+  {
+    "id": "file_ops_4",
+    "category": "file_ops",
+    "goal": "List all files in /tmp, then delete any file ending in .log.",
+    "tools": [
+      {"name": "list_directory", "description": "List directory", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+      {"name": "file_delete", "description": "Delete a file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}
+    ],
+    "tool_fixtures": {
+      "list_directory": {"{\"path\": \"/tmp\"}": {"files": ["/tmp/app.log", "/tmp/data.csv", "/tmp/debug.log"]}},
+      "file_delete": {}
+    },
+    "expected_sequence": ["list_directory", "file_delete"],
+    "expected_final_answer": "deleted|removed|log"
+  },
+  {
+    "id": "file_ops_5",
+    "category": "file_ops",
+    "goal": "Read /etc/hosts and tell me how many lines it contains.",
+    "tools": [
+      {"name": "file_read", "description": "Read a file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}
+    ],
+    "tool_fixtures": {
+      "file_read": {"{\"path\": \"/etc/hosts\"}": {"content": "127.0.0.1 localhost\n::1 localhost\n127.0.1.1 myhostname"}}
+    },
+    "expected_sequence": ["file_read"],
+    "expected_final_answer": "3|three|lines"
+  },
+  {
+    "id": "data_lookup_1",
+    "category": "data_lookup",
+    "goal": "Search the web for the current population of Tokyo and return the number.",
+    "tools": [
+      {"name": "web_search", "description": "Search the web", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+      {"name": "calculator", "description": "Do math", "parameters": {"type": "object", "properties": {"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}}, "required": ["operation", "a", "b"]}}
+    ],
+    "tool_fixtures": {
+      "web_search": {"{\"query\": \"current population Tokyo\"}": {"results": [{"title": "Tokyo Population", "snippet": "Tokyo metropolitan area population is approximately 37.4 million as of 2024."}]}}
+    },
+    "expected_sequence": ["web_search"],
+    "expected_final_answer": "37|million|Tokyo"
+  },
+  {
+    "id": "data_lookup_2",
+    "category": "data_lookup",
+    "goal": "Look up the weather in Paris and convert the temperature from Celsius to Fahrenheit.",
+    "tools": [
+      {"name": "get_weather", "description": "Get weather", "parameters": {"type": "object", "properties": {"location": {"type": "string"}, "units": {"type": "string"}}, "required": ["location"]}},
+      {"name": "calculator", "description": "Do math", "parameters": {"type": "object", "properties": {"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}}, "required": ["operation", "a", "b"]}}
+    ],
+    "tool_fixtures": {
+      "get_weather": {"{\"location\": \"Paris\", \"units\": \"celsius\"}": {"temperature": 18, "condition": "partly cloudy"}},
+      "calculator": {}
+    },
+    "expected_sequence": ["get_weather", "calculator"],
+    "expected_final_answer": "64|65|Fahrenheit|fahrenheit"
+  },
+  {
+    "id": "data_lookup_3",
+    "category": "data_lookup",
+    "goal": "Search for the latest Python version and tell me what major features it added.",
+    "tools": [
+      {"name": "web_search", "description": "Search the web", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+      {"name": "json_parse", "description": "Parse JSON", "parameters": {"type": "object", "properties": {"json_string": {"type": "string"}}, "required": ["json_string"]}}
+    ],
+    "tool_fixtures": {
+      "web_search": {"{\"query\": \"latest Python version features\"}": {"results": [{"title": "Python 3.13 Released", "snippet": "Python 3.13 introduces improved error messages, free-threaded mode, and JIT compiler support."}]}}
+    },
+    "expected_sequence": ["web_search"],
+    "expected_final_answer": "Python 3.13|3.13|JIT|error messages"
+  },
+  {
+    "id": "data_lookup_4",
+    "category": "data_lookup",
+    "goal": "Query the database for users older than 30 and count how many there are.",
+    "tools": [
+      {"name": "database_query", "description": "Query database", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+      {"name": "calculator", "description": "Do math", "parameters": {"type": "object", "properties": {"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}}, "required": ["operation", "a", "b"]}}
+    ],
+    "tool_fixtures": {
+      "database_query": {"{\"query\": \"SELECT * FROM users WHERE age > 30\"}": {"rows": [{"id": 1, "name": "Alice", "age": 35}, {"id": 2, "name": "Bob", "age": 42}, {"id": 3, "name": "Carol", "age": 31}], "count": 3}}
+    },
+    "expected_sequence": ["database_query"],
+    "expected_final_answer": "3|three|users"
+  },
+  {
+    "id": "data_lookup_5",
+    "category": "data_lookup",
+    "goal": "Find the total revenue from the sales database for January 2025.",
+    "tools": [
+      {"name": "database_query", "description": "Query database", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+      {"name": "calculator", "description": "Do math", "parameters": {"type": "object", "properties": {"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}}, "required": ["operation", "a", "b"]}}
+    ],
+    "tool_fixtures": {
+      "database_query": {"{\"query\": \"SELECT SUM(amount) FROM sales WHERE date >= '2025-01-01' AND date <= '2025-01-31'\"}": {"total": 125430.50}}
+    },
+    "expected_sequence": ["database_query"],
+    "expected_final_answer": "125430|125,430|revenue|January"
+  },
+  {
+    "id": "code_tasks_1",
+    "category": "code_tasks",
+    "goal": "Write a Python function to calculate fibonacci(10) and execute it.",
+    "tools": [
+      {"name": "file_write", "description": "Write file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}},
+      {"name": "code_interpreter", "description": "Execute Python", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}
+    ],
+    "tool_fixtures": {
+      "code_interpreter": {}
+    },
+    "expected_sequence": ["code_interpreter"],
+    "expected_final_answer": "55|fibonacci|result"
+  },
+  {
+    "id": "code_tasks_2",
+    "category": "code_tasks",
+    "goal": "Read the file /src/buggy.py, identify the bug, and write a fixed version to /src/fixed.py.",
+    "tools": [
+      {"name": "file_read", "description": "Read file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+      {"name": "file_write", "description": "Write file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}
+    ],
+    "tool_fixtures": {
+      "file_read": {"{\"path\": \"/src/buggy.py\"}": {"content": "def add(a, b):\n    return a - b  # BUG: should be a + b\n"}},
+      "file_write": {}
+    },
+    "expected_sequence": ["file_read", "file_write"],
+    "expected_final_answer": "fixed|corrected|plus|addition"
+  },
+  {
+    "id": "code_tasks_3",
+    "category": "code_tasks",
+    "goal": "Execute the code 'x = [1,2,3,4,5]; print(sum(x))' and return the output.",
+    "tools": [
+      {"name": "code_interpreter", "description": "Execute Python", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}
+    ],
+    "tool_fixtures": {
+      "code_interpreter": {"{\"code\": \"x = [1,2,3,4,5]; print(sum(x))\"}": {"output": "15", "exit_code": 0}}
+    },
+    "expected_sequence": ["code_interpreter"],
+    "expected_final_answer": "15|fifteen"
+  },
+  {
+    "id": "code_tasks_4",
+    "category": "code_tasks",
+    "goal": "Write a shell script to count the number of .py files in /project and execute it.",
+    "tools": [
+      {"name": "file_write", "description": "Write file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}},
+      {"name": "code_interpreter", "description": "Execute code", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}
+    ],
+    "tool_fixtures": {
+      "code_interpreter": {}
+    },
+    "expected_sequence": ["code_interpreter"],
+    "expected_final_answer": "files|.py|count|project"
+  },
+  {
+    "id": "code_tasks_5",
+    "category": "code_tasks",
+    "goal": "Parse the JSON from /data/users.json and find the user with the highest score.",
+    "tools": [
+      {"name": "file_read", "description": "Read file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+      {"name": "json_parse", "description": "Parse JSON", "parameters": {"type": "object", "properties": {"json_string": {"type": "string"}}, "required": ["json_string"]}},
+      {"name": "code_interpreter", "description": "Execute Python", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}
+    ],
+    "tool_fixtures": {
+      "file_read": {"{\"path\": \"/data/users.json\"}": {"content": "[{\"name\":\"Alice\",\"score\":95},{\"name\":\"Bob\",\"score\":87},{\"name\":\"Carol\",\"score\":99}]"}},
+      "json_parse": {}
+    },
+    "expected_sequence": ["file_read"],
+    "expected_final_answer": "Carol|99|highest|score"
+  },
+  {
+    "id": "multi_step_1",
+    "category": "multi_step",
+    "goal": "Search for the current exchange rate USD to EUR, then calculate how much 500 USD is in EUR.",
+    "tools": [
+      {"name": "web_search", "description": "Search web", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+      {"name": "calculator", "description": "Do math", "parameters": {"type": "object", "properties": {"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}}, "required": ["operation", "a", "b"]}}
+    ],
+    "tool_fixtures": {
+      "web_search": {"{\"query\": \"USD to EUR exchange rate\"}": {"results": [{"snippet": "1 USD = 0.92 EUR as of March 2025"}]}},
+      "calculator": {"{\"a\": 500, \"b\": 0.92, \"operation\": \"multiply\"}": {"result": 460.0}}
+    },
+    "expected_sequence": ["web_search", "calculator"],
+    "expected_final_answer": "460|EUR|euro"
+  },
+  {
+    "id": "multi_step_2",
+    "category": "multi_step",
+    "goal": "Get the weather in London, then schedule a meeting with Sarah if it's raining.",
+    "tools": [
+      {"name": "get_weather", "description": "Get weather", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}},
+      {"name": "schedule_meeting", "description": "Schedule meeting", "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "attendees": {"type": "array", "items": {"type": "string"}}}, "required": ["title", "attendees"]}}
+    ],
+    "tool_fixtures": {
+      "get_weather": {"{\"location\": \"London\"}": {"temperature": 12, "condition": "rainy"}},
+      "schedule_meeting": {}
+    },
+    "expected_sequence": ["get_weather", "schedule_meeting"],
+    "expected_final_answer": "schedule|meeting|Sarah|rain"
+  },
+  {
+    "id": "multi_step_3",
+    "category": "multi_step",
+    "goal": "Summarize the article at /docs/article.txt, then translate the summary to French.",
+    "tools": [
+      {"name": "file_read", "description": "Read file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+      {"name": "summarize", "description": "Summarize text", "parameters": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}},
+      {"name": "translate", "description": "Translate text", "parameters": {"type": "object", "properties": {"text": {"type": "string"}, "target_language": {"type": "string"}}, "required": ["text", "target_language"]}}
+    ],
+    "tool_fixtures": {
+      "file_read": {"{\"path\": \"/docs/article.txt\"}": {"content": "Artificial intelligence is transforming industries worldwide. Machine learning models can now perform tasks that were previously thought to require human intelligence."}},
+      "summarize": {},
+      "translate": {}
+    },
+    "expected_sequence": ["file_read", "summarize", "translate"],
+    "expected_final_answer": "French|fran\u00e7ais|translation|traduit"
+  },
+  {
+    "id": "multi_step_4",
+    "category": "multi_step",
+    "goal": "Query the top 3 products by sales, generate a bar chart, and email the chart to manager@company.com.",
+    "tools": [
+      {"name": "database_query", "description": "Query database", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+      {"name": "image_generate", "description": "Generate chart/image", "parameters": {"type": "object", "properties": {"prompt": {"type": "string"}}, "required": ["prompt"]}},
+      {"name": "send_email", "description": "Send email", "parameters": {"type": "object", "properties": {"to": {"type": "string"}, "subject": {"type": "string"}, "body": {"type": "string"}}, "required": ["to", "subject", "body"]}}
+    ],
+    "tool_fixtures": {
+      "database_query": {"{\"query\": \"SELECT product, sales FROM products ORDER BY sales DESC LIMIT 3\"}": {"rows": [{"product": "Widget A", "sales": 1200}, {"product": "Widget B", "sales": 980}, {"product": "Widget C", "sales": 750}]}},
+      "image_generate": {},
+      "send_email": {}
+    },
+    "expected_sequence": ["database_query", "send_email"],
+    "expected_final_answer": "email|sent|manager|product"
+  },
+  {
+    "id": "multi_step_5",
+    "category": "multi_step",
+    "goal": "Search for Python best practices, write a summary to /docs/best_practices.md, and send a notification to the team channel.",
+    "tools": [
+      {"name": "web_search", "description": "Search web", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+      {"name": "file_write", "description": "Write file", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}},
+      {"name": "send_notification", "description": "Send notification", "parameters": {"type": "object", "properties": {"user_id": {"type": "integer"}, "notification": {"type": "object", "properties": {"title": {"type": "string"}, "message": {"type": "string"}}, "required": ["title", "message"]}}, "required": ["user_id", "notification"]}}
+    ],
+    "tool_fixtures": {
+      "web_search": {"{\"query\": \"Python best practices 2025\"}": {"results": [{"snippet": "Use type hints, write tests, follow PEP 8, use virtual environments, and document your code."}]}},
+      "file_write": {},
+      "send_notification": {}
+    },
+    "expected_sequence": ["web_search", "file_write", "send_notification"],
+    "expected_final_answer": "written|saved|notification|sent|best practices"
+  }
+]

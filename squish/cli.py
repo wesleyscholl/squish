@@ -717,10 +717,100 @@ def cmd_chat(args):  # pragma: no cover
 
 # ── squish bench ──────────────────────────────────────────────────────────────
 
+def _cmd_bench_track(args):  # pragma: no cover
+    """Dispatch to the new squish.benchmarks track runners."""
+    from squish.benchmarks.base import parse_engines
+    from squish.benchmarks.compare import ResultComparator
+    from squish.benchmarks.report import ReportGenerator
+
+    _TRACK_MAP = {
+        "quality": "squish.benchmarks.quality_bench.QualityBenchRunner",
+        "code":    "squish.benchmarks.code_bench.CodeBenchRunner",
+        "tool":    "squish.benchmarks.tool_bench.ToolBenchRunner",
+        "agent":   "squish.benchmarks.agent_bench.AgentBenchRunner",
+        "perf":    "squish.benchmarks.perf_bench.PerfBenchRunner",
+    }
+
+    track = args.track
+    model = getattr(args, "model", "squish")
+    engines_spec = getattr(args, "engines", "squish")
+    limit = getattr(args, "limit", None)
+    out_dir = getattr(args, "out", "eval_output")
+
+    try:
+        engines = parse_engines(engines_spec)
+    except ValueError as exc:
+        _die(str(exc))
+        return
+
+    # Import the runner class
+    module_path, class_name = _TRACK_MAP[track].rsplit(".", 1)
+    try:
+        import importlib
+        mod = importlib.import_module(module_path)
+        runner_cls = getattr(mod, class_name)
+    except ImportError as exc:
+        _die(f"Could not import {module_path}: {exc}")
+        return
+
+    runner = runner_cls()
+    print(f"\n  squish bench --track {track}  model={model}  engines={engines_spec}")
+    if limit:
+        print(f"  limit={limit}")
+    print()
+
+    results = []
+    for engine in engines:
+        print(f"  [{engine.name}] running {track} track …")
+        try:
+            record = runner.run(engine, model, limit=limit)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [{engine.name}] ERROR: {exc}")
+            continue
+        out_path = runner.output_path(engine.name, model, base_dir=out_dir)
+        record.save(out_path)
+        print(f"  [{engine.name}] saved → {out_path}")
+        results.append(record)
+
+        # Print metrics summary
+        for k, v in record.metrics.items():
+            print(f"    {k}: {v}")
+        print()
+
+    if not results:
+        print("  No results collected.")
+        return
+
+    # Optionally compare / report
+    if getattr(args, "compare", False):
+        print("  Generating comparison table …")
+        try:
+            comp = ResultComparator()
+            output = comp.generate(write_files=True)
+            for path in output.values():
+                print(f"  comparison saved → {path}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  compare failed: {exc}")
+
+    if getattr(args, "report", False):
+        print("  Generating benchmark report …")
+        try:
+            rg = ReportGenerator()
+            report_path = rg.generate(results=results, write_file=True)
+            print(f"  report saved → {report_path}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  report failed: {exc}")
+
+
 def cmd_bench(args):  # pragma: no cover
     """Quick throughput benchmark against a running server."""
     import socket
     import urllib.request
+
+    # ── New benchmark suite tracks ──────────────────────────────────────────
+    if getattr(args, "track", None):
+        _cmd_bench_track(args)
+        return
 
     port    = args.port or _DEFAULT_PORT
     host    = args.host or "127.0.0.1"
@@ -1993,6 +2083,22 @@ Ollama drop-in:
                               "default: squish_bench.md)")
     p_bench.add_argument("--cold-start",  action="store_true",
                          help="Time model load (first-request latency) before the benchmark prompts")
+    p_bench.add_argument("--track",
+                         choices=["quality", "code", "tool", "agent", "perf"],
+                         metavar="TRACK",
+                         help="Run a benchmark track: quality|code|tool|agent|perf")
+    p_bench.add_argument("--engines",    default="squish",
+                         help="Comma-separated engine specs for bench tracks (default: squish)")
+    p_bench.add_argument("--model",      default="squish",
+                         help="Model name to benchmark (default: squish)")
+    p_bench.add_argument("--compare",    action="store_true",
+                         help="After running, generate a comparison table from eval_output/")
+    p_bench.add_argument("--report",     action="store_true",
+                         help="After running, generate a full benchmark report to docs/")
+    p_bench.add_argument("--limit",      type=int, default=None,
+                         help="Limit items/tokens per track (passed to runner.run)")
+    p_bench.add_argument("--out",        default="eval_output",
+                         help="Directory to save ResultRecord JSON files (default: eval_output)")
     p_bench.set_defaults(func=cmd_bench)
 
     # ── doctor ──

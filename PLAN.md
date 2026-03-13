@@ -1469,16 +1469,17 @@ squish bench --report                  # generate unified report after any track
 
 ### Phase 11 Deliverables Checklist
 
-- [ ] `squish/benchmarks/__init__.py`, `base.py`, `compare.py`, `report.py`
-- [ ] Track A: `quality_bench.py` + `tests/test_bench_quality.py`
-- [ ] Track B: `code_bench.py` + `tests/test_bench_code.py`
-- [ ] Track C: `tool_bench.py` + `data/tool_schemas.json` + `tests/test_bench_tool.py`
-- [ ] Track D: `agent_bench.py` + `data/agent_scenarios.json` + `tests/test_bench_agent.py`
-- [ ] Track E: `perf_bench.py` + `tests/test_bench_perf.py`
-- [ ] `cli.py` — extend `bench` subcommand with `--track`, `--compare`, `--limit`, `--report` flags
-- [ ] `tests/test_bench_cli.py` — CLI integration tests for all new flags (mocked benchmark runners)
-- [ ] `docs/benchmark_guide.md` — how to run each track, what engines to install, expected output
-- [ ] `eval_output/eval_meta.json` — created/updated by every track run; records: date, model, quant, engine, squish_version, hardware (chip name, RAM), random_seed, n_shots per task
+- [x] `squish/benchmarks/__init__.py`, `base.py`, `compare.py`, `report.py`
+- [x] Track A: `quality_bench.py` + `tests/test_bench_quality.py`
+- [x] Track B: `code_bench.py` + `tests/test_bench_code.py`
+- [x] Track C: `tool_bench.py` + `data/tool_schemas.json` + `tests/test_bench_tool.py`
+- [x] Track D: `agent_bench.py` + `data/agent_scenarios.json` + `tests/test_bench_agent.py`
+- [x] Track E: `perf_bench.py` + `tests/test_bench_perf.py`
+- [x] `cli.py` — extend `bench` subcommand with `--track`, `--compare`, `--limit`, `--report` flags
+- [x] `tests/test_bench_cli.py` — CLI integration tests for all new flags (mocked benchmark runners)
+- [x] `docs/benchmark_guide.md` — how to run each track, what engines to install, expected output
+- [x] `eval_output/eval_meta.json` — created/updated by every track run; records: date, model, quant, engine, squish_version, hardware (chip name, RAM), random_seed, n_shots per task
+- [x] `dev/benchmarks/bench_eoe.py` — deprecation notice added pointing to `squish bench --track perf`
 
 ---
 

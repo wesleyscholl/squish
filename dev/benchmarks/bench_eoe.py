@@ -2,6 +2,16 @@
 """
 bench_eoe.py — End-to-end hardware benchmark for Squish on Apple Silicon.
 
+.. deprecated::
+    This script is superseded by the Phase 11 benchmark suite.
+    Use ``squish bench --track perf`` instead::
+
+        squish bench --track perf --model qwen3:8b
+
+    The new track adds batch throughput, long-context TPS, tokens/watt
+    (macOS powermetrics), and structured JSON output to eval_output/.
+    See docs/benchmark_guide.md for full details.
+
 Measures wall-clock latency and throughput for real inference against a running
 Squish server, with optional comparison against an Ollama server.
 
